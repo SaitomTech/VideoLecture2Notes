@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tauri-apps/plugin-dialog": "~2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
