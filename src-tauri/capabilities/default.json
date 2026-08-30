@@ -7,6 +7,16 @@
   ],
   "permissions": [
     "core:default",
-    "dialog:default"
+    "dialog:default",
+    "fs:default",
+    {
+      "identifier": "fs:allow-stat",
+      "allow": [
+        { "path": "$HOME" },
+        { "path": "$HOME/**/*" },
+        { "path": "/Volumes" },
+        { "path": "/Volumes/**/*" }
+      ]
+    }
   ]
 }
