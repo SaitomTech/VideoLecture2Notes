@@ -2,18 +2,17 @@ import { ArrowLeft } from 'lucide-react'
 import { useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
-import type { MediaProject } from '../../types/project'
+import type { MediaProject, TranscriptionResult } from '../../types/project'
 import { TranscriptionSettings } from './components/TranscriptionSettings'
 import { TranscriptionStatus } from './components/TranscriptionStatus'
 import { TranscriptPreview } from './components/TranscriptPreview'
 import { useTranscription } from './hooks/useTranscription'
 import type { TranscriptionLanguage } from './transcription'
-import type { TranscriptionOutput } from './types'
 
 type GenerateNotesPageProps = {
   project: MediaProject
   onBack: () => void
-  onCompleted: (output: TranscriptionOutput) => void | Promise<void>
+  onCompleted: (result: TranscriptionResult) => void | Promise<void>
 }
 
 export function GenerateNotesPage({ project, onBack, onCompleted }: GenerateNotesPageProps) {
@@ -22,8 +21,7 @@ export function GenerateNotesPage({ project, onBack, onCompleted }: GenerateNote
       ? project.transcription.language
       : 'auto',
   )
-  const transcription = useTranscription(project, { onCompleted })
-  const slides = transcription.output?.slides ?? []
+  const transcription = useTranscription(project, onCompleted)
   const handleTranscribe = () => transcription.transcribe(language)
 
   return (
@@ -75,8 +73,8 @@ export function GenerateNotesPage({ project, onBack, onCompleted }: GenerateNote
               error={transcription.error}
               onRetry={handleTranscribe}
             />
-            {transcription.output && transcription.status === 'completed' && (
-              <TranscriptPreview slides={slides} />
+            {transcription.status === 'completed' && (
+              <TranscriptPreview slides={project.slides} />
             )}
           </div>
         </div>

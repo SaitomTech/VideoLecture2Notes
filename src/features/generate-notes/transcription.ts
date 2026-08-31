@@ -1,13 +1,16 @@
 import { extractAudio } from '../../lib/media/ffmpeg'
-import { assignTranscriptToSlides } from '../../lib/pipeline/assignTranscriptToSlides'
 import { getAudioAssetPath } from '../../lib/storage/projectAssets'
 import { fileExists } from '../../lib/tauri/filesystem'
-import { ensureWhisperModel } from '../../lib/whisper/modelManager'
-import { runWhisper, WHISPER_MODEL_ID } from '../../lib/whisper/whisper'
-import type { MediaProject } from '../../types/project'
-import type { TranscriptionOutput, TranscriptionStage } from './types'
+import { DEFAULT_WHISPER_MODEL, ensureWhisperModel } from '../../lib/whisper/modelManager'
+import { runWhisper } from '../../lib/whisper/whisper'
+import type { MediaProject, TranscriptionResult } from '../../types/project'
 
 export type TranscriptionLanguage = 'auto' | 'ja' | 'en'
+export type TranscriptionStage =
+  | 'preparing-model'
+  | 'extracting-audio'
+  | 'transcribing'
+  | 'saving'
 
 type RunTranscriptionInput = {
   project: MediaProject
@@ -24,7 +27,7 @@ function inputFingerprint(project: MediaProject, language: TranscriptionLanguage
     metadata.durationMs,
     metadata.width,
     metadata.height,
-    WHISPER_MODEL_ID,
+    DEFAULT_WHISPER_MODEL.id,
     language,
   ].join(':')
 }
@@ -34,7 +37,7 @@ export async function runTranscription({
   language,
   onStage,
   onProgress,
-}: RunTranscriptionInput): Promise<TranscriptionOutput> {
+}: RunTranscriptionInput): Promise<TranscriptionResult> {
   onStage?.('preparing-model')
   onProgress?.(null)
   const modelPath = await ensureWhisperModel({
@@ -62,19 +65,12 @@ export async function runTranscription({
     language,
   })
 
-  onStage?.('assigning')
-  onProgress?.(null)
-  const result = {
-    model: WHISPER_MODEL_ID,
+  return {
+    model: DEFAULT_WHISPER_MODEL.id,
     language: rawTranscript.language ?? language,
     audioPath,
     segments: rawTranscript.segments,
     transcribedAt: new Date().toISOString(),
     inputFingerprint: inputFingerprint(project, language),
-  }
-
-  return {
-    result,
-    slides: assignTranscriptToSlides(project.slides, result.segments, result.model),
   }
 }

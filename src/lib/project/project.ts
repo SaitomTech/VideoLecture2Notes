@@ -1,6 +1,14 @@
 import type { SelectedVideo } from '../../features/import/types'
 import { assignTranscriptToSlides } from '../pipeline/assignTranscriptToSlides'
-import { PROJECT_VERSION, type CropRegion, type MediaMetadata, type MediaProject, type SlideData, type SlideDetectionResult, type TranscriptionResult } from '../../types/project'
+import {
+  PROJECT_VERSION,
+  type CropRegion,
+  type MediaMetadata,
+  type MediaProject,
+  type SlideData,
+  type SlideDetectionResult,
+  type TranscriptionResult,
+} from '../../types/project'
 
 const DEFAULT_SETTINGS = {
   slideDetection: {
@@ -53,7 +61,6 @@ export function updateProjectCrop(project: MediaProject, crop: CropRegion): Medi
       ? {
           slides: [],
           slideDetection: undefined,
-          transcription: undefined,
           article: undefined,
         }
       : {}),
@@ -70,6 +77,7 @@ export function updateProjectSlideDetection(project: MediaProject, result: Slide
     ...project,
     slideDetection: result,
     slides: nextSlides,
+    article: undefined,
     settings: {
       ...project.settings,
       slideDetection: {
@@ -89,6 +97,7 @@ export function updateProjectTranscription(
     ...project,
     transcription,
     slides: assignTranscriptToSlides(project.slides, transcription.segments, transcription.model),
+    article: undefined,
     updatedAt: new Date().toISOString(),
   }
 }
