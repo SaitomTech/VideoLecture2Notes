@@ -72,11 +72,30 @@ export function articleTargetSlides(project: MediaProject) {
 }
 
 function parseArticle(text: string, slide: SlideData): ArticleFormattingResult {
-  const result = ArticleResponseSchema.safeParse(parseJsonResponse(text))
-  if (!result.success) throw new Error('記事本文の形式が不正です。')
+  const looksLikeJson = /^\s*(?:\{|\[|```json\b)/i.test(text)
+  const plainText = text
+    .replace(/^```(?:text|markdown)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim()
+  let body = plainText
+
+  if (looksLikeJson) {
+    const result = ArticleResponseSchema.safeParse(parseJsonResponse(text))
+    if (!result.success) throw new Error('記事本文の形式が不正です。')
+    body = result.data.body
+  } else {
+    try {
+      const result = ArticleResponseSchema.safeParse(parseJsonResponse(text))
+      if (result.success) body = result.data.body
+    } catch {
+      // llama-server may return the requested article body without the JSON wrapper.
+    }
+  }
+
+  if (!body) throw new Error('記事本文の形式が不正です。')
 
   return {
-    body: result.data.body,
+    body,
     model: DEFAULT_TEXT_MODEL.id,
     inputFingerprint: articleInputFingerprint(slide),
   }
