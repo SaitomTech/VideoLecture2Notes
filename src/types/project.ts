@@ -72,7 +72,11 @@ export type TranscriptCorrection = {
   reason?: string
 }
 
-export type CorrectionMode = 'transcript-first' | 'slide-aligned'
+export type CorrectionMode =
+  | 'transcript-first'
+  | 'slide-aligned'
+  | 'slide-faithful'
+  | 'slide-authoritative'
 
 export type TranscriptCorrectionResult = {
   corrected: string

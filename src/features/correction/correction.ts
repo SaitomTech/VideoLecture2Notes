@@ -29,41 +29,62 @@ export const CORRECTION_MODES = [
     label: 'スライド表記を優先',
     description: 'スライドの正式な用語・表記に合わせます。',
   },
+  {
+    id: 'slide-faithful',
+    label: 'スライド準拠（強）',
+    description: 'スライドを基準に、欠落した短い用語や表記も補います。',
+  },
+  {
+    id: 'slide-authoritative',
+    label: 'スライド中心（最強）',
+    description: 'スライドを内容の基準にして、文の再構成まで許可します。',
+  },
 ] as const satisfies ReadonlyArray<{ id: CorrectionMode; label: string; description: string }>
 
 export const DEFAULT_CORRECTION_MODE: CorrectionMode = 'transcript-first'
 
-const TRANSCRIPT_FIRST_PROMPT = [
+const COMMON_PROMPT = [
   '/no_think',
   'あなたは動画講義の文字起こしを校正する編集者です。',
   '返答はJSONオブジェクトのみとし、次の形式にしてください。',
   '{"corrected":"補正後の発話","corrections":[{"before":"補正前","after":"補正後","reason":"理由"}]}',
-  'raw transcriptを発話内容の唯一の根拠とし、要約、発話の削除、情報の追加、意味の変更は禁止です。',
-  'スライドOCRは固有名詞、製品名、技術用語、英単語、数値の表記を確認する補助資料として使ってください。',
-  'OCRにしか存在しない内容を発話へ追加してはいけません。',
-  '補正不要ならcorrectedはraw transcriptと同じにし、correctionsは空配列にしてください。',
-  '日本語で出力してください。',
 ].join('\n')
 
-const SLIDE_ALIGNED_PROMPT = [
-  '/no_think',
-  'あなたは動画講義の文字起こしを校正する編集者です。',
-  '発話内容を変えずに、スライドに表示された正式な表記へ文字起こしを合わせてください。',
-  '返答はJSONオブジェクトのみとし、次の形式にしてください。',
-  '{"corrected":"補正後の発話","corrections":[{"before":"補正前","after":"補正後","reason":"理由"}]}',
-  '発話内容、主張、情報量は変更しないでください。',
-  '固有名詞、製品名、技術用語、英単語、略語、数値、単位は、スライドの表記を優先して補正してください。',
-  'スライドのOCRにある表記を、発話中の誤変換や聞き間違いと思われる箇所の修正に使ってください。',
-  '発話とスライドの内容が異なる場合、発話の意味を勝手にスライドへ合わせて変更してはいけません。',
-  'OCRの読み取りが不確かな場合は、無理に修正せず元の発話を維持してください。',
-  'スライドにしか存在しない内容を発話へ追加してはいけません。',
-  '要約、発話の削除、情報の追加、意味の変更は禁止です。',
-  '補正不要ならcorrectedはraw transcriptと同じにし、correctionsは空配列にしてください。',
-  '日本語で出力してください。',
-].join('\n')
+const MODE_PROMPT_RULES: Record<CorrectionMode, string[]> = {
+  'transcript-first': [
+    'raw transcriptを発話内容の唯一の根拠とし、要約、発話の削除、情報の追加、意味の変更は禁止です。',
+    'スライドOCRは固有名詞、製品名、技術用語、英単語、数値の表記を確認する補助資料として使ってください。',
+    'OCRにしか存在しない内容を発話へ追加してはいけません。',
+  ],
+  'slide-aligned': [
+    '発話内容を変えずに、スライドに表示された正式な表記へ文字起こしを合わせてください。',
+    '固有名詞、製品名、技術用語、英単語、略語、数値、単位は、スライドの表記を優先して補正してください。',
+    'スライドにしか存在しない内容を発話へ追加してはいけません。',
+  ],
+  'slide-faithful': [
+    'スライドを、用語・表記・短い事実関係を判断する最優先の資料として扱ってください。',
+    'RAW TRANSCRIPTに明らかな誤変換、聞き間違い、欠落した短い用語があり、スライドから正しい表記を特定できる場合は、積極的に補正してください。',
+    '発話とスライドが異なる場合、技術用語、数値、短い事実関係はスライドに合わせてください。',
+    'スライドに直接書かれた短い語句は、発話の文脈を成立させるために補完して構いません。',
+    'スライドの文章を大量にコピーしたり、発話にない説明や結論を追加したりしてはいけません。',
+  ],
+  'slide-authoritative': [
+    'スライドを、その区間で扱われた内容の正規化された基準として扱ってください。',
+    'RAW TRANSCRIPTは不完全な下書きとして扱い、用語、数値、短い事実関係がスライドと矛盾する場合はスライドを優先してください。',
+    '明らかな聞き間違いだけでなく、欠落した短い語句や文の一部も、スライドの直接的な根拠に基づいて補完・再構成して構いません。',
+    'RAW TRANSCRIPTが崩れている場合は、スライドの内容と発話の流れから、対応する一文を再構成して構いません。',
+    'スライドに明記されていない推測、例、理由、結論を追加してはいけません。',
+    'スライド全体を読み上げたような長文を新しく作ったり、記事や要約に変換したりしてはいけません。',
+  ],
+}
 
 function systemPromptFor(mode: CorrectionMode) {
-  return mode === 'slide-aligned' ? SLIDE_ALIGNED_PROMPT : TRANSCRIPT_FIRST_PROMPT
+  return [
+    COMMON_PROMPT,
+    ...MODE_PROMPT_RULES[mode],
+    '補正不要ならcorrectedはraw transcriptと同じにし、correctionsは空配列にしてください。',
+    '日本語で出力してください。',
+  ].join('\n')
 }
 
 function userPromptFor(slide: SlideData, mode: CorrectionMode) {

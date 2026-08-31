@@ -39,6 +39,9 @@ export function CorrectionPanel({
   const isCompleted = correction.status === 'completed'
   const total = correction.progress.total
   const progress = progressRatio(correction)
+  const modeDescription =
+    CORRECTION_MODES.find((mode) => mode.id === correctionMode)?.description ??
+    '選択した補正方針を使って発話を整えます。'
   const statusLabel = isCompleted
     ? 'READY'
     : correction.status === 'error'
@@ -68,11 +71,7 @@ export function CorrectionPanel({
               {statusLabel}
             </span>
           </div>
-          <p className="mt-1 text-xs text-[#71807b]">
-            {correctionMode === 'slide-aligned'
-              ? 'スライドの正式な用語・表記を優先して、発話の誤変換を整えます。'
-              : 'スライドの文字を補助資料にして、発話の誤変換や表記を整えます。'}
-          </p>
+          <p className="mt-1 text-xs text-[#71807b]">{modeDescription}</p>
         </div>
         <button
           className="inline-flex items-center justify-center gap-2 rounded-[9px] border border-[#b7cbc0] bg-[#fbfcfa] px-4 py-3 text-xs font-semibold text-[#1d6b50] transition hover:border-[#1d6b50] hover:bg-[#e2eee8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
