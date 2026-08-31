@@ -63,6 +63,7 @@ export async function runTranscription({
     audioPath,
     modelPath,
     language,
+    onProgress,
   })
 
   return {
