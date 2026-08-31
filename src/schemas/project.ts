@@ -33,6 +33,21 @@ const SlideDetectionResultSchema = z.object({
   detectedAt: z.iso.datetime(),
 })
 
+const TranscriptSegmentSchema = z.object({
+  startMs: z.number().finite().nonnegative(),
+  endMs: z.number().finite().nonnegative(),
+  text: z.string(),
+})
+
+const TranscriptionResultSchema = z.object({
+  model: z.string().min(1),
+  language: z.string().min(1).optional(),
+  audioPath: z.string().min(1),
+  segments: z.array(TranscriptSegmentSchema),
+  transcribedAt: z.iso.datetime(),
+  inputFingerprint: z.string().min(1),
+})
+
 const SlideDataSchema = z.object({
   id: z.string().min(1),
   index: z.number().int().nonnegative(),
@@ -83,6 +98,7 @@ export const MediaProjectSchema = z.object({
   }),
   slides: z.array(SlideDataSchema),
   slideDetection: SlideDetectionResultSchema.optional(),
+  transcription: TranscriptionResultSchema.optional(),
   article: z.unknown().optional(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),

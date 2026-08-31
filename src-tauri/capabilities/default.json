@@ -38,6 +38,11 @@
           "name": "binaries/ffprobe",
           "sidecar": true,
           "args": true
+        },
+        {
+          "name": "binaries/whisper-cli",
+          "sidecar": true,
+          "args": true
         }
       ]
     },
@@ -45,7 +50,9 @@
       "identifier": "fs:allow-mkdir",
       "allow": [
         { "path": "$APPLOCALDATA/projects" },
-        { "path": "$APPLOCALDATA/projects/**/*" }
+        { "path": "$APPLOCALDATA/projects/**/*" },
+        { "path": "$APPLOCALDATA/models" },
+        { "path": "$APPLOCALDATA/models/**/*" }
       ]
     },
     {
@@ -58,6 +65,36 @@
       "identifier": "fs:allow-write-text-file",
       "allow": [
         { "path": "$APPLOCALDATA/projects/**/*" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-read-file",
+      "allow": [
+        { "path": "$APPLOCALDATA/models/**/*" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-write-file",
+      "allow": [
+        { "path": "$APPLOCALDATA/models/**/*" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [
+        { "path": "$APPLOCALDATA/models/**/*" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-remove",
+      "allow": [
+        { "path": "$APPLOCALDATA/models/**/*" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-rename",
+      "allow": [
+        { "path": "$APPLOCALDATA/models/**/*" }
       ]
     }
   ]

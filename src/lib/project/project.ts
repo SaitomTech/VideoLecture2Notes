@@ -1,5 +1,6 @@
 import type { SelectedVideo } from '../../features/import/types'
-import { PROJECT_VERSION, type CropRegion, type MediaMetadata, type MediaProject, type SlideData, type SlideDetectionResult } from '../../types/project'
+import { assignTranscriptToSlides } from '../pipeline/assignTranscriptToSlides'
+import { PROJECT_VERSION, type CropRegion, type MediaMetadata, type MediaProject, type SlideData, type SlideDetectionResult, type TranscriptionResult } from '../../types/project'
 
 const DEFAULT_SETTINGS = {
   slideDetection: {
@@ -39,18 +40,36 @@ export function createMediaProject(video: SelectedVideo, metadata: MediaMetadata
 }
 
 export function updateProjectCrop(project: MediaProject, crop: CropRegion): MediaProject {
+  const cropChanged =
+    project.crop.x !== crop.x ||
+    project.crop.y !== crop.y ||
+    project.crop.width !== crop.width ||
+    project.crop.height !== crop.height
+
   return {
     ...project,
     crop,
+    ...(cropChanged
+      ? {
+          slides: [],
+          slideDetection: undefined,
+          transcription: undefined,
+          article: undefined,
+        }
+      : {}),
     updatedAt: new Date().toISOString(),
   }
 }
 
 export function updateProjectSlideDetection(project: MediaProject, result: SlideDetectionResult, slides: SlideData[]): MediaProject {
+  const nextSlides = project.transcription
+    ? assignTranscriptToSlides(slides, project.transcription.segments, project.transcription.model)
+    : slides
+
   return {
     ...project,
     slideDetection: result,
-    slides,
+    slides: nextSlides,
     settings: {
       ...project.settings,
       slideDetection: {
@@ -58,6 +77,18 @@ export function updateProjectSlideDetection(project: MediaProject, result: Slide
         threshold: result.threshold,
       },
     },
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+export function updateProjectTranscription(
+  project: MediaProject,
+  transcription: TranscriptionResult,
+): MediaProject {
+  return {
+    ...project,
+    transcription,
+    slides: assignTranscriptToSlides(project.slides, transcription.segments, transcription.model),
     updatedAt: new Date().toISOString(),
   }
 }

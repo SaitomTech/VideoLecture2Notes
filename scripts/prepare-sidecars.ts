@@ -5,7 +5,6 @@ import { tmpdir } from 'node:os'
 
 const TARGET_TRIPLE = process.env.TAURI_ENV_TARGET_TRIPLE ?? (process.platform === 'darwin' && process.arch === 'arm64' ? 'aarch64-apple-darwin' : '')
 const SIDECAR_DIRECTORY = join(import.meta.dir, '..', 'src-tauri', 'binaries')
-const RELEASE = '9.0.1'
 const RELEASE_DIRECTORY = '1787073674_9.0.1'
 
 const SIDECARS = [
@@ -18,6 +17,12 @@ const SIDECARS = [
     name: 'ffprobe',
     url: `https://ffmpeg.martin-riedl.de/download/macos/arm64/${RELEASE_DIRECTORY}/ffprobe.zip`,
     sha256: '102a26b8940a053298d9929bfaae71e4b6ef65ba5f19a99a88c433108560741a',
+  },
+  {
+    name: 'whisper-cli',
+    archiveEntry: 'whisper-cpp-darwin-arm64',
+    url: 'https://github.com/sjoerdteunisse/whisper.cpp/releases/download/v1.0.0/whisper-cpp-darwin-arm64.zip',
+    sha256: 'd033bd3f590cad50f39957bf86354f87b44394cb001e3f78a7b47264358103e3',
   },
 ] as const
 
@@ -79,7 +84,9 @@ async function downloadAndExtract(
     .split('\n')
     .map((entry) => entry.trim())
     .filter(Boolean)
-  const entry = entries.find((candidate) => basename(candidate) === sidecar.name)
+  const entry = entries.find(
+    (candidate) => basename(candidate) === (sidecar.archiveEntry ?? sidecar.name),
+  )
   if (!entry) {
     throw new Error(`${sidecar.name}をzip内から見つけられませんでした`)
   }
@@ -121,13 +128,17 @@ async function main() {
   const cleanTemporaryDirectory = await mkdtemp(join(tmpdir(), 'video-notes-sidecars-'))
   try {
     for (const sidecar of SIDECARS) {
+      if (!force && (await pathExists(sidecarPath(sidecar.name)))) {
+        console.log(`✓ ${sidecar.name}-${TARGET_TRIPLE}`)
+        continue
+      }
       await downloadAndExtract(sidecar, cleanTemporaryDirectory)
     }
   } finally {
     await rm(cleanTemporaryDirectory, { force: true, recursive: true })
   }
 
-  console.log(`ffmpeg ${RELEASE} sidecarの準備が完了しました。`)
+  console.log('sidecarの準備が完了しました。')
 }
 
 await main()

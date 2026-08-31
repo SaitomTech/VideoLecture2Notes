@@ -26,6 +26,11 @@ type RepresentativeFrameInput = {
   outputPath: string
 }
 
+type ExtractAudioInput = {
+  path: string
+  outputPath: string
+}
+
 function outputText(value: string | Uint8Array) {
   return typeof value === 'string' ? value : new TextDecoder().decode(value)
 }
@@ -99,6 +104,34 @@ export async function extractRepresentativeFrame({ path, crop, timestampMs, outp
   if (output.code !== 0) {
     const detail = output.stderr.trim()
     throw new Error(detail || `代表フレームの抽出に失敗しました (code ${output.code})`)
+  }
+
+  return outputPath
+}
+
+export async function extractAudio({ path, outputPath }: ExtractAudioInput) {
+  const output = await executeSidecar('binaries/ffmpeg', [
+    '-hide_banner',
+    '-v',
+    'error',
+    '-i',
+    path,
+    '-vn',
+    '-sn',
+    '-dn',
+    '-ac',
+    '1',
+    '-ar',
+    '16000',
+    '-c:a',
+    'pcm_s16le',
+    '-y',
+    outputPath,
+  ])
+
+  if (output.code !== 0) {
+    const detail = output.stderr.trim()
+    throw new Error(detail || `音声の抽出に失敗しました (code ${output.code})`)
   }
 
   return outputPath

@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { CropPage } from '../features/crop/CropPage'
+import { GenerateNotesPage } from '../features/generate-notes/GenerateNotesPage'
 import { ImportPage } from '../features/import/ImportPage'
 import { SlideDetectionPage } from '../features/slide-detection/SlideDetectionPage'
-import { createMediaProject, updateProjectCrop, updateProjectSlideDetection } from '../lib/project/project'
+import { createMediaProject, updateProjectCrop, updateProjectSlideDetection, updateProjectTranscription } from '../lib/project/project'
 import { saveProject } from '../lib/storage/projectStorage'
 import type { SelectedVideo } from '../features/import/types'
 import type { CropRegion, MediaProject } from '../types/project'
 import type { SlideDetectionOutput } from '../features/slide-detection/types'
+import type { TranscriptionOutput } from '../features/generate-notes/types'
 
-type AppStep = 'import' | 'crop' | 'detect-slides'
+type AppStep = 'import' | 'crop' | 'detect-slides' | 'generate-notes'
 
 function App() {
   const [step, setStep] = useState<AppStep>('import')
@@ -40,8 +42,25 @@ function App() {
     setProject(nextProject)
   }
 
+  const handleTranscriptionCompleted = async (output: TranscriptionOutput) => {
+    if (!project) return
+
+    const nextProject = updateProjectTranscription(project, output.result)
+    await saveProject(nextProject)
+    setProject(nextProject)
+  }
+
+  const handleOpenGenerateNotes = () => {
+    if (!project?.slideDetection) return
+    setStep('generate-notes')
+  }
+
+  if (step === 'generate-notes' && project) {
+    return <GenerateNotesPage project={project} onBack={() => setStep('detect-slides')} onCompleted={handleTranscriptionCompleted} />
+  }
+
   if (step === 'detect-slides' && project) {
-    return <SlideDetectionPage project={project} onBack={() => setStep('crop')} onCompleted={handleSlideDetectionCompleted} />
+    return <SlideDetectionPage project={project} onBack={() => setStep('crop')} onCompleted={handleSlideDetectionCompleted} onContinue={handleOpenGenerateNotes} />
   }
 
   if (step === 'crop' && project) {

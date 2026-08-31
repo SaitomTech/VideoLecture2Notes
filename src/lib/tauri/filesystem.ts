@@ -28,3 +28,12 @@ export async function readAppLocalTextFile(path: string) {
     baseDir: BaseDirectory.AppLocalData,
   })
 }
+
+export async function fileExists(path: string) {
+  try {
+    const fileInfo = await stat(path)
+    return fileInfo.isFile
+  } catch {
+    return false
+  }
+}

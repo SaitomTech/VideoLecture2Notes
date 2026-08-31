@@ -2,7 +2,7 @@ import { convertFileSrc } from '@tauri-apps/api/core'
 import type { ReactNode, RefObject, SyntheticEvent } from 'react'
 import { VideoPlayButton } from '../../../components/VideoPlaybackControls'
 import type { SlideData } from '../../../types/project'
-import { formatTimestamp } from '../utils'
+import { formatTimestamp } from '../../../lib/time'
 
 type SlideDetectionVideoProps = {
   path: string

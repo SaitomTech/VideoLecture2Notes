@@ -1,7 +1,7 @@
 import { convertFileSrc } from '@tauri-apps/api/core'
 import { ImageOff } from 'lucide-react'
 import { useState } from 'react'
-import type { SlideData } from '../../../types/project'
+import type { SlideData } from '../types/project'
 
 type SlideThumbnailProps = {
   slide: SlideData
