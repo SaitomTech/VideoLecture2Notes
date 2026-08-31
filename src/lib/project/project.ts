@@ -2,6 +2,7 @@ import type { SelectedVideo } from '../../features/import/types'
 import { assignTranscriptToSlides } from '../pipeline/assignTranscriptToSlides'
 import {
   PROJECT_VERSION,
+  type ArticleFormattingResult,
   type CropRegion,
   type MediaMetadata,
   type MediaProject,
@@ -149,6 +150,33 @@ export function updateProjectSlideCorrection(
           correctionModel: correction.model,
           correctionInputFingerprint: correction.inputFingerprint,
           articleBody: undefined,
+          articleModel: undefined,
+          articleInputFingerprint: undefined,
+        },
+      }
+    }),
+    article: undefined,
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+export function updateProjectSlideArticle(
+  project: MediaProject,
+  slideId: string,
+  article: ArticleFormattingResult,
+): MediaProject {
+  return {
+    ...project,
+    slides: project.slides.map((slide) => {
+      if (slide.id !== slideId || !slide.transcript) return slide
+
+      return {
+        ...slide,
+        transcript: {
+          ...slide.transcript,
+          articleBody: article.body,
+          articleModel: article.model,
+          articleInputFingerprint: article.inputFingerprint,
         },
       }
     }),

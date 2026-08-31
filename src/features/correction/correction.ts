@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import { completeChat } from '../../lib/llama/chat'
+import { completeChat, parseJsonResponse } from '../../lib/llama/chat'
 import { withLlamaServer } from '../../lib/llama/server'
-import { DEFAULT_CORRECTION_MODEL, ensureCorrectionModel } from '../../lib/correction/modelManager'
+import { DEFAULT_TEXT_MODEL, ensureTextModel } from '../../lib/llama/textModel'
 import { modelProgressRatio } from '../../lib/models/download'
 import type { MediaProject, SlideData, TranscriptCorrectionResult } from '../../types/project'
 
@@ -62,7 +62,7 @@ export function correctionInputFingerprint(slide: SlideData) {
     slide.ocr?.rawText ?? '',
     slide.ocr?.title ?? null,
     slide.ocr?.terms ?? [],
-    DEFAULT_CORRECTION_MODEL.id,
+    DEFAULT_TEXT_MODEL.id,
     CORRECTION_PROMPT_VERSION,
   ])
 }
@@ -74,28 +74,13 @@ export function hasCurrentCorrection(slide: SlideData) {
   )
 }
 
-function parseJsonResponse(text: string) {
-  const fencedJson = text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1] ?? text
-  const start = fencedJson.indexOf('{')
-  const end = fencedJson.lastIndexOf('}')
-  if (start < 0 || end <= start) {
-    throw new Error('補正結果のJSONを読み取れませんでした。')
-  }
-
-  try {
-    return JSON.parse(fencedJson.slice(start, end + 1)) as unknown
-  } catch {
-    throw new Error('補正結果のJSONを読み取れませんでした。')
-  }
-}
-
 function parseCorrection(text: string, slide: SlideData): TranscriptCorrectionResult {
   const result = CorrectionResponseSchema.safeParse(parseJsonResponse(text))
   if (!result.success) throw new Error('補正結果の形式が不正です。')
 
   return {
     ...result.data,
-    model: DEFAULT_CORRECTION_MODEL.id,
+    model: DEFAULT_TEXT_MODEL.id,
     inputFingerprint: correctionInputFingerprint(slide),
   }
 }
@@ -106,7 +91,7 @@ async function correctSlide(baseUrl: string, slide: SlideData, signal?: AbortSig
 
   try {
     const response = await completeChat(baseUrl, {
-      model: DEFAULT_CORRECTION_MODEL.id,
+      model: DEFAULT_TEXT_MODEL.id,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         {
@@ -152,7 +137,7 @@ export async function runCorrection({
 
   throwIfAborted(signal)
   onStage?.('preparing-model')
-  const model = await ensureCorrectionModel({
+  const model = await ensureTextModel({
     signal,
     onProgress: (progress) => report(modelProgressRatio(progress)),
   })

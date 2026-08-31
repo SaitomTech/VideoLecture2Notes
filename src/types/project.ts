@@ -79,6 +79,12 @@ export type TranscriptCorrectionResult = {
   inputFingerprint: string
 }
 
+export type ArticleFormattingResult = {
+  body: string
+  model: string
+  inputFingerprint: string
+}
+
 export type ProjectSettings = {
   slideDetection: {
     sampleIntervalMs: number
@@ -111,6 +117,8 @@ export type SlideData = {
     correctionModel?: string
     correctionInputFingerprint?: string
     articleBody?: string
+    articleModel?: string
+    articleInputFingerprint?: string
     model: string
   }
 }

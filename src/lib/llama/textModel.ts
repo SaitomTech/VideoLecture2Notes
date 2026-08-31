@@ -1,6 +1,6 @@
 import { ensureModelFiles, type ModelDownloadProgress } from '../models/download'
 
-export const DEFAULT_CORRECTION_MODEL = {
+export const DEFAULT_TEXT_MODEL = {
   id: 'qwen3-1.7b-q8_0',
   label: 'Qwen3 1.7B Q8_0',
   totalSizeBytes: 1_834_426_016,
@@ -16,7 +16,7 @@ export const DEFAULT_CORRECTION_MODEL = {
 
 const MODEL_DIRECTORY = 'models/qwen3-1.7b'
 
-export async function ensureCorrectionModel({
+export async function ensureTextModel({
   onProgress,
   signal,
 }: {
@@ -25,7 +25,7 @@ export async function ensureCorrectionModel({
 } = {}) {
   const [modelPath] = await ensureModelFiles({
     directory: MODEL_DIRECTORY,
-    files: DEFAULT_CORRECTION_MODEL.files,
+    files: DEFAULT_TEXT_MODEL.files,
     onProgress,
     signal,
   })

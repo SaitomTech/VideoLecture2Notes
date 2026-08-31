@@ -34,6 +34,19 @@ function contentToText(content: unknown) {
     .join('')
 }
 
+export function parseJsonResponse(text: string) {
+  const fencedJson = text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1] ?? text
+  const start = fencedJson.indexOf('{')
+  const end = fencedJson.lastIndexOf('}')
+  if (start < 0 || end <= start) throw new Error('JSON形式の応答を読み取れませんでした。')
+
+  try {
+    return JSON.parse(fencedJson.slice(start, end + 1)) as unknown
+  } catch {
+    throw new Error('JSON形式の応答を読み取れませんでした。')
+  }
+}
+
 export async function completeChat(
   baseUrl: string,
   { model, messages, temperature = 0, maxTokens = 2048, responseFormat, signal }: CompleteChatInput,
