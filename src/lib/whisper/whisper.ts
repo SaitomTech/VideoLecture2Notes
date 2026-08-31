@@ -1,5 +1,5 @@
 import { readTextFile } from '@tauri-apps/plugin-fs'
-import { executeSidecar } from '../tauri/sidecar'
+import { executeSidecarStreaming } from '../tauri/sidecar'
 import { getRawTranscriptAssetPath } from '../storage/projectAssets'
 import type { TranscriptSegment } from '../../types/project'
 
@@ -27,6 +27,7 @@ type RunWhisperInput = {
   audioPath: string
   modelPath: string
   language: string
+  onProgress?: (progress: number) => void
 }
 
 function parseTimestamp(value: unknown) {
@@ -56,20 +57,48 @@ function outputBasePath(path: string) {
   return path.endsWith('.json') ? path.slice(0, -'.json'.length) : path
 }
 
-export async function runWhisper({ projectId, audioPath, modelPath, language }: RunWhisperInput) {
+function createProgressParser(onProgress?: (progress: number) => void) {
+  let buffer = ''
+  let lastProgress = -1
+  const progressPattern = /progress\s*=\s*(\d{1,3})\s*%/gi
+
+  return (chunk: string) => {
+    buffer = `${buffer}${chunk}`.slice(-256)
+    for (const match of buffer.matchAll(progressPattern)) {
+      const percentage = Number(match[1])
+      if (!Number.isFinite(percentage) || percentage <= lastProgress) continue
+
+      lastProgress = percentage
+      onProgress?.(Math.min(100, percentage) / 100)
+    }
+  }
+}
+
+export async function runWhisper({
+  projectId,
+  audioPath,
+  modelPath,
+  language,
+  onProgress,
+}: RunWhisperInput) {
   const outputPath = await getRawTranscriptAssetPath(projectId)
-  const output = await executeSidecar('binaries/whisper-cli', [
-    '--model',
-    modelPath,
-    '--file',
-    audioPath,
-    '--language',
-    language,
-    '--output-json-full',
-    '--output-file',
-    outputBasePath(outputPath),
-    '--no-prints',
-  ])
+  const parseProgress = createProgressParser(onProgress)
+  const output = await executeSidecarStreaming(
+    'binaries/whisper-cli',
+    [
+      '--model',
+      modelPath,
+      '--file',
+      audioPath,
+      '--language',
+      language,
+      '--output-json-full',
+      '--output-file',
+      outputBasePath(outputPath),
+      '--print-progress',
+    ],
+    { onStdout: parseProgress, onStderr: parseProgress },
+  )
 
   if (output.code !== 0) {
     const detail = output.stderr.trim()
