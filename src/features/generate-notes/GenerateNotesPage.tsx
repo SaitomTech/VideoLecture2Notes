@@ -2,6 +2,7 @@ import { ArrowLeft } from 'lucide-react'
 import { useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
+import { getTextModel, type TextModelId } from '../../lib/llama/textModel'
 import type { MediaProject, TranscriptionResult } from '../../types/project'
 import type { ArticleSlideCompleted } from '../article/article'
 import { ArticlePreview } from '../article/components/ArticlePreview'
@@ -15,6 +16,7 @@ import { useOcr } from '../ocr/hooks/useOcr'
 import type { OcrSlideCompleted } from '../ocr/ocr'
 import { TranscriptionSettings } from './components/TranscriptionSettings'
 import { TranscriptionStatus } from './components/TranscriptionStatus'
+import { TextModelSelector } from './components/TextModelSelector'
 import { TranscriptPreview } from './components/TranscriptPreview'
 import { useTranscription } from './hooks/useTranscription'
 import type { TranscriptionLanguage } from './transcription'
@@ -43,10 +45,15 @@ export function GenerateNotesPage({
       ? project.transcription.language
       : 'auto',
   )
+  const storedTextModelId = project.slides
+    .map((slide) => slide.transcript?.correctionModel ?? slide.transcript?.articleModel)
+    .find((modelId): modelId is string => Boolean(modelId))
+  const [textModelId, setTextModelId] = useState<TextModelId>(() => getTextModel(storedTextModelId).id)
+  const textModel = getTextModel(textModelId)
   const transcription = useTranscription(project, onCompleted)
   const ocr = useOcr(project, onOcrSlideCompleted)
-  const correction = useCorrection(project, onCorrectionSlideCompleted)
-  const article = useArticleFormatting(project, onArticleSlideCompleted)
+  const correction = useCorrection(project, onCorrectionSlideCompleted, textModelId)
+  const article = useArticleFormatting(project, onArticleSlideCompleted, textModelId)
   const handleTranscribe = () => transcription.transcribe(language)
   const hasOcrResult = project.slides.some((slide) => Boolean(slide.ocr))
   const isOcrRunning = ocr.status === 'running'
@@ -105,16 +112,23 @@ export function GenerateNotesPage({
               disabled={isOcrRunning || isCorrectionRunning || isArticleRunning}
               onRetry={handleTranscribe}
             />
+            <TextModelSelector
+              value={textModelId}
+              disabled={isProcessing}
+              onChange={setTextModelId}
+            />
             <OcrPanel
               ocr={ocr}
               disabled={transcription.status === 'running' || isCorrectionRunning || isArticleRunning}
             />
             <CorrectionPanel
               correction={correction}
+              model={textModel}
               disabled={transcription.status === 'running' || isOcrRunning || isArticleRunning}
             />
             <ArticleFormattingPanel
               formatting={article}
+              model={textModel}
               disabled={transcription.status === 'running' || isOcrRunning || isCorrectionRunning}
             />
             {(transcription.status === 'completed' || hasOcrResult) && (

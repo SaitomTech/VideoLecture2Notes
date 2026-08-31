@@ -8,12 +8,17 @@ import {
   type CorrectionSlideCompleted,
   type CorrectionStage,
 } from '../correction'
+import type { TextModelId } from '../../../lib/llama/textModel'
 
 export type CorrectionStatus = 'idle' | 'running' | 'completed' | 'error'
 
-export function useCorrection(project: MediaProject, onSlideCompleted: CorrectionSlideCompleted) {
+export function useCorrection(
+  project: MediaProject,
+  onSlideCompleted: CorrectionSlideCompleted,
+  modelId: TextModelId,
+) {
   const targetSlides = project.slides.filter((slide) => slide.transcript?.raw.trim())
-  const completedFromProject = targetSlides.filter(hasCurrentCorrection).length
+  const completedFromProject = targetSlides.filter((slide) => hasCurrentCorrection(slide, modelId)).length
   const isUpToDate = completedFromProject === targetSlides.length && targetSlides.length > 0
   const [status, setStatus] = useState<CorrectionStatus>('idle')
   const [stage, setStage] = useState<CorrectionStage>('preparing-model')
@@ -30,6 +35,7 @@ export function useCorrection(project: MediaProject, onSlideCompleted: Correctio
     try {
       await runCorrection({
         project,
+        modelId,
         onStage: setStage,
         onProgress: setProgress,
         onSlideCompleted,

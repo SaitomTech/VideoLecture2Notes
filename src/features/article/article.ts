@@ -2,7 +2,12 @@ import { z } from 'zod'
 import { UserFacingError, withUserFacingError } from '../../lib/errors'
 import { parseJsonResponse, completeChat } from '../../lib/llama/chat'
 import { withLlamaServer } from '../../lib/llama/server'
-import { DEFAULT_TEXT_MODEL, ensureTextModel } from '../../lib/llama/textModel'
+import {
+  DEFAULT_TEXT_MODEL,
+  ensureTextModel,
+  getTextModel,
+  type TextModelId,
+} from '../../lib/llama/textModel'
 import { modelProgressRatio } from '../../lib/models/download'
 import { hasCurrentCorrection } from '../correction/correction'
 import type { ArticleFormattingResult, MediaProject, SlideData } from '../../types/project'
@@ -39,6 +44,7 @@ export type ArticleSlideCompleted = (
 
 type RunArticleFormattingInput = {
   project: MediaProject
+  modelId: TextModelId
   onStage?: (stage: ArticleFormattingStage) => void
   onProgress?: (progress: ArticleFormattingProgress) => void
   onSlideCompleted: ArticleSlideCompleted
@@ -50,28 +56,34 @@ function throwIfAborted(signal?: AbortSignal) {
   if (signal?.aborted) throw new DOMException('記事整形を中止しました。', 'AbortError')
 }
 
-export function articleInputFingerprint(slide: SlideData) {
+export function articleInputFingerprint(
+  slide: SlideData,
+  modelId = slide.transcript?.articleModel ?? DEFAULT_TEXT_MODEL.id,
+) {
   return JSON.stringify([
     slide.id,
     slide.transcript?.corrected ?? '',
     slide.transcript?.correctionInputFingerprint ?? '',
-    DEFAULT_TEXT_MODEL.id,
+    modelId,
     ARTICLE_PROMPT_VERSION,
   ])
 }
 
-export function hasCurrentArticle(slide: SlideData) {
+export function hasCurrentArticle(
+  slide: SlideData,
+  modelId = slide.transcript?.articleModel ?? DEFAULT_TEXT_MODEL.id,
+) {
   return (
     Boolean(slide.transcript?.articleBody?.trim()) &&
-    slide.transcript?.articleInputFingerprint === articleInputFingerprint(slide)
+    slide.transcript?.articleInputFingerprint === articleInputFingerprint(slide, modelId)
   )
 }
 
-export function articleTargetSlides(project: MediaProject) {
-  return project.slides.filter(hasCurrentCorrection)
+export function articleTargetSlides(project: MediaProject, modelId?: TextModelId) {
+  return project.slides.filter((slide) => hasCurrentCorrection(slide, modelId))
 }
 
-function parseArticle(text: string, slide: SlideData): ArticleFormattingResult {
+function parseArticle(text: string, slide: SlideData, modelId: TextModelId): ArticleFormattingResult {
   const looksLikeJson = /^\s*(?:\{|\[|```json\b)/i.test(text)
   const plainText = text
     .replace(/^```(?:text|markdown)?\s*/i, '')
@@ -96,12 +108,17 @@ function parseArticle(text: string, slide: SlideData): ArticleFormattingResult {
 
   return {
     body,
-    model: DEFAULT_TEXT_MODEL.id,
-    inputFingerprint: articleInputFingerprint(slide),
+    model: modelId,
+    inputFingerprint: articleInputFingerprint(slide, modelId),
   }
 }
 
-async function formatSlide(baseUrl: string, slide: SlideData, signal?: AbortSignal) {
+async function formatSlide(
+  baseUrl: string,
+  slide: SlideData,
+  modelId: TextModelId,
+  signal?: AbortSignal,
+) {
   const correctedTranscript = slide.transcript?.corrected?.trim() ?? ''
   if (!correctedTranscript) throw new Error(`Slide ${slide.index + 1}に補正済み発話がありません。`)
 
@@ -109,7 +126,7 @@ async function formatSlide(baseUrl: string, slide: SlideData, signal?: AbortSign
     `Slide ${slide.index + 1}の記事本文を生成できませんでした。再試行してください。`,
     async () => {
       const response = await completeChat(baseUrl, {
-        model: DEFAULT_TEXT_MODEL.id,
+        model: modelId,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: `[CORRECTED TRANSCRIPT]\n${correctedTranscript}` },
@@ -119,20 +136,22 @@ async function formatSlide(baseUrl: string, slide: SlideData, signal?: AbortSign
         responseFormat: { type: 'json_object' },
         signal,
       })
-      return parseArticle(response, slide)
+      return parseArticle(response, slide, modelId)
     },
   )
 }
 
 export async function runArticleFormatting({
   project,
+  modelId,
   onStage,
   onProgress,
   onSlideCompleted,
   signal,
   force = false,
 }: RunArticleFormattingInput) {
-  const targetSlides = articleTargetSlides(project)
+  const textModel = getTextModel(modelId)
+  const targetSlides = articleTargetSlides(project, modelId)
   if (targetSlides.length === 0) {
     throw new UserFacingError(
       '記事に整形する補正済み文字起こしがありません。先に文字起こしの補正を実行してください。',
@@ -141,7 +160,7 @@ export async function runArticleFormatting({
 
   const pendingSlides = force
     ? targetSlides
-    : targetSlides.filter((slide) => !hasCurrentArticle(slide))
+    : targetSlides.filter((slide) => !hasCurrentArticle(slide, modelId))
   let completed = targetSlides.length - pendingSlides.length
   const report = (stageProgress: number | null) => {
     onProgress?.({ completed, total: targetSlides.length, stageProgress })
@@ -156,6 +175,7 @@ export async function runArticleFormatting({
     '記事生成モデルを準備できませんでした。通信状況と空き容量を確認して、再試行してください。',
     () =>
       ensureTextModel({
+        model: textModel,
         signal,
         onProgress: (progress) => report(modelProgressRatio(progress)),
       }),
@@ -170,7 +190,7 @@ export async function runArticleFormatting({
       withLlamaServer(model, async (baseUrl) => {
         for (const slide of pendingSlides) {
           throwIfAborted(signal)
-          const article = await formatSlide(baseUrl, slide, signal)
+          const article = await formatSlide(baseUrl, slide, modelId, signal)
           await withUserFacingError(
             `Slide ${slide.index + 1}の記事本文を保存できませんでした。空き容量を確認して、再試行してください。`,
             () => onSlideCompleted(slide.id, article),

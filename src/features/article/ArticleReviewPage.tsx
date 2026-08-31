@@ -14,7 +14,7 @@ type ArticleReviewPageProps = {
 }
 
 export function ArticleReviewPage({ project, onBack, onSave, onExport }: ArticleReviewPageProps) {
-  const articleSlides = project.slides.filter(hasCurrentArticle)
+  const articleSlides = project.slides.filter((slide) => hasCurrentArticle(slide))
   const savedTitle = project.article?.title?.trim() || project.source.name.replace(/\.[^.]+$/, '')
   const [title, setTitle] = useState(savedTitle)
   const [bodies, setBodies] = useState<Record<string, string>>(() =>
