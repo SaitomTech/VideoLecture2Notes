@@ -8,6 +8,9 @@
 変更後は、次のコマンドで確認します。
 
 ```bash
+bun run setup       # 不足しているffmpeg/ffprobe sidecarを取得
 bun run build
 bun run lint
 ```
+
+Tauriアプリを起動するときは`bun tauri dev`を使います。`bun run dev`と`bun run build`にはsidecarの存在確認・取得が前処理として含まれています。

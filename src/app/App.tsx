@@ -1,7 +1,49 @@
+import { useState } from 'react'
+import { CropPage } from '../features/crop/CropPage'
 import { ImportPage } from '../features/import/ImportPage'
+import { createMediaProject, updateProjectCrop } from '../lib/project/project'
+import { saveProject } from '../lib/storage/projectStorage'
+import type { SelectedVideo } from '../features/import/types'
+import type { CropRegion, MediaProject } from '../types/project'
+
+type AppStep = 'import' | 'crop'
 
 function App() {
-  return <ImportPage />
+  const [step, setStep] = useState<AppStep>('import')
+  const [project, setProject] = useState<MediaProject | null>(null)
+
+  const handleImportContinue = async (video: SelectedVideo) => {
+    if (!video.metadata) throw new Error('動画メタデータがありません')
+
+    const nextProject = createMediaProject(video, video.metadata)
+    await saveProject(nextProject)
+    setProject(nextProject)
+    setStep('crop')
+  }
+
+  const handleApplyCrop = async (crop: CropRegion) => {
+    if (!project) return
+
+    const nextProject = updateProjectCrop(project, crop)
+    await saveProject(nextProject)
+    setProject(nextProject)
+  }
+
+  if (step === 'crop' && project) {
+    return <CropPage project={project} onBack={() => setStep('import')} onApply={handleApplyCrop} />
+  }
+
+  const initialVideo = project
+    ? {
+        name: project.source.name,
+        path: project.source.path,
+        extension: project.source.extension,
+        sizeBytes: project.source.sizeBytes,
+        metadata: project.source.metadata,
+      }
+    : undefined
+
+  return <ImportPage initialVideo={initialVideo} onContinue={handleImportContinue} />
 }
 
 export default App

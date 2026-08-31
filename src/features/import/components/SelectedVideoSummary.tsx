@@ -1,14 +1,17 @@
-import { formatSize } from '../utils'
-import type { SelectedVideo, VideoLoadStatus } from '../types'
+import { formatDuration, formatSize } from '../utils'
+import type { MetadataLoadStatus, SelectedVideo, VideoLoadStatus } from '../types'
 
 type SelectedVideoSummaryProps = {
   video: SelectedVideo | null
   videoStatus: VideoLoadStatus
+  metadataStatus: MetadataLoadStatus
 }
 
-export function SelectedVideoSummary({ video, videoStatus }: SelectedVideoSummaryProps) {
-  const statusLabel = videoStatus === 'ready' ? 'READY' : videoStatus === 'error' ? 'ERROR' : 'CHECKING'
-  const statusColor = videoStatus === 'ready' ? 'text-[#1d6b50]' : videoStatus === 'error' ? 'text-[#b6533a]' : 'text-[#9a7a35]'
+export function SelectedVideoSummary({ video, videoStatus, metadataStatus }: SelectedVideoSummaryProps) {
+  const hasError = videoStatus === 'error' || metadataStatus === 'error'
+  const isReady = videoStatus === 'ready' && metadataStatus === 'ready'
+  const statusLabel = isReady ? 'READY' : hasError ? 'ERROR' : 'CHECKING'
+  const statusColor = isReady ? 'text-[#1d6b50]' : hasError ? 'text-[#b6533a]' : 'text-[#9a7a35]'
 
   return (
     <div
@@ -27,9 +30,15 @@ export function SelectedVideoSummary({ video, videoStatus }: SelectedVideoSummar
             </div>
             <span className="font-mono text-[10px] text-[#1d6b50]">.{video.extension}</span>
           </div>
-          <div className="mt-[7px] flex items-center justify-between text-[10px] text-[#9aa6a1]">
+          <div className="mt-[7px] grid grid-cols-2 gap-x-5 gap-y-1.5 text-[10px] text-[#9aa6a1]">
             <span>サイズ</span>
-            <strong className="font-mono text-[10px] font-normal text-[#71807b]">{formatSize(video.sizeBytes)}</strong>
+            <strong className="text-right font-mono text-[10px] font-normal text-[#71807b]">{formatSize(video.sizeBytes)}</strong>
+            <span>長さ</span>
+            <strong className="text-right font-mono text-[10px] font-normal text-[#71807b]">{formatDuration(video.metadata?.durationMs)}</strong>
+            <span>解像度</span>
+            <strong className="text-right font-mono text-[10px] font-normal text-[#71807b]">
+              {video.metadata ? `${video.metadata.width} × ${video.metadata.height}` : '解析中…'}
+            </strong>
           </div>
         </>
       )}
