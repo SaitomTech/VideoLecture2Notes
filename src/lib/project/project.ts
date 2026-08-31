@@ -1,5 +1,5 @@
 import type { SelectedVideo } from '../../features/import/types'
-import { PROJECT_VERSION, type CropRegion, type MediaMetadata, type MediaProject } from '../../types/project'
+import { PROJECT_VERSION, type CropRegion, type MediaMetadata, type MediaProject, type SlideData, type SlideDetectionResult } from '../../types/project'
 
 const DEFAULT_SETTINGS = {
   slideDetection: {
@@ -42,6 +42,22 @@ export function updateProjectCrop(project: MediaProject, crop: CropRegion): Medi
   return {
     ...project,
     crop,
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+export function updateProjectSlideDetection(project: MediaProject, result: SlideDetectionResult, slides: SlideData[]): MediaProject {
+  return {
+    ...project,
+    slideDetection: result,
+    slides,
+    settings: {
+      ...project.settings,
+      slideDetection: {
+        sampleIntervalMs: result.sampleIntervalMs,
+        threshold: result.threshold,
+      },
+    },
     updatedAt: new Date().toISOString(),
   }
 }

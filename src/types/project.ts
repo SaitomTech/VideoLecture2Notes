@@ -28,6 +28,21 @@ export type CropRegion = {
   height: number
 }
 
+export type SlideBoundary = {
+  id: string
+  timestampMs: number
+  distance: number
+  source: 'auto' | 'manual'
+}
+
+export type SlideDetectionResult = {
+  sampleIntervalMs: number
+  threshold: number
+  framesAnalyzed: number
+  boundaries: SlideBoundary[]
+  detectedAt: string
+}
+
 export type ProjectSettings = {
   slideDetection: {
     sampleIntervalMs: number
@@ -73,6 +88,7 @@ export type MediaProject = {
   crop: CropRegion
   settings: ProjectSettings
   slides: SlideData[]
+  slideDetection?: SlideDetectionResult
   article?: unknown
   createdAt: string
   updatedAt: string

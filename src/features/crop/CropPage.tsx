@@ -3,9 +3,9 @@ import { useRef, useState } from 'react'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
+import { VideoPlaybackControls } from '../../components/VideoPlaybackControls'
 import type { MediaProject, CropRegion } from '../../types/project'
 import { CropSelector } from './components/CropSelector'
-import { CropPlaybackControls } from './components/CropPlaybackControls'
 import type { NormalizedCropRegion } from './types'
 import { FULL_FRAME, normalizedToPixelCrop, pixelToNormalizedCrop } from './utils'
 
@@ -130,7 +130,7 @@ export function CropPage({ project, onBack, onApply }: CropPageProps) {
               <CropSelector region={region} onChange={(nextRegion) => { setRegion(nextRegion); setNotice(null) }} />
             </div>
 
-            <CropPlaybackControls
+            <VideoPlaybackControls
               currentTime={currentTime}
               duration={duration}
               isPlaying={isPlaying}
@@ -178,7 +178,7 @@ export function CropPage({ project, onBack, onApply }: CropPageProps) {
               onClick={() => void handleApply()}
               disabled={isApplying}
             >
-              <span>{isApplying ? '保存中…' : '領域を保存'}</span>
+              <span>{isApplying ? '保存中…' : '保存して検出へ'}</span>
               <span className="text-[17px] font-normal leading-none" aria-hidden="true">→</span>
             </button>
           </div>

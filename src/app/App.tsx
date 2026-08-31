@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { CropPage } from '../features/crop/CropPage'
 import { ImportPage } from '../features/import/ImportPage'
-import { createMediaProject, updateProjectCrop } from '../lib/project/project'
+import { SlideDetectionPage } from '../features/slide-detection/SlideDetectionPage'
+import { createMediaProject, updateProjectCrop, updateProjectSlideDetection } from '../lib/project/project'
 import { saveProject } from '../lib/storage/projectStorage'
 import type { SelectedVideo } from '../features/import/types'
 import type { CropRegion, MediaProject } from '../types/project'
+import type { SlideDetectionOutput } from '../features/slide-detection/types'
 
-type AppStep = 'import' | 'crop'
+type AppStep = 'import' | 'crop' | 'detect-slides'
 
 function App() {
   const [step, setStep] = useState<AppStep>('import')
@@ -27,6 +29,19 @@ function App() {
     const nextProject = updateProjectCrop(project, crop)
     await saveProject(nextProject)
     setProject(nextProject)
+    setStep('detect-slides')
+  }
+
+  const handleSlideDetectionCompleted = async (output: SlideDetectionOutput) => {
+    if (!project) return
+
+    const nextProject = updateProjectSlideDetection(project, output.result, output.slides)
+    await saveProject(nextProject)
+    setProject(nextProject)
+  }
+
+  if (step === 'detect-slides' && project) {
+    return <SlideDetectionPage project={project} onBack={() => setStep('crop')} onCompleted={handleSlideDetectionCompleted} />
   }
 
   if (step === 'crop' && project) {

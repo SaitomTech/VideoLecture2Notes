@@ -18,6 +18,21 @@ const CropRegionSchema = z.object({
   height: z.number().finite().positive(),
 })
 
+const SlideBoundarySchema = z.object({
+  id: z.string().min(1),
+  timestampMs: z.number().int().nonnegative(),
+  distance: z.number().finite().nonnegative(),
+  source: z.enum(['auto', 'manual']),
+})
+
+const SlideDetectionResultSchema = z.object({
+  sampleIntervalMs: z.number().int().positive(),
+  threshold: z.number().finite().nonnegative(),
+  framesAnalyzed: z.number().int().nonnegative(),
+  boundaries: z.array(SlideBoundarySchema),
+  detectedAt: z.iso.datetime(),
+})
+
 const SlideDataSchema = z.object({
   id: z.string().min(1),
   index: z.number().int().nonnegative(),
@@ -67,6 +82,7 @@ export const MediaProjectSchema = z.object({
     articleFormatting: z.boolean(),
   }),
   slides: z.array(SlideDataSchema),
+  slideDetection: SlideDetectionResultSchema.optional(),
   article: z.unknown().optional(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
