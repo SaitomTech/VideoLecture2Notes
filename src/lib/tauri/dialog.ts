@@ -11,3 +11,13 @@ export async function pickVideoPath(): Promise<string | null> {
 
   return typeof selected === 'string' ? selected : null
 }
+
+export async function pickExportDirectory(): Promise<string | null> {
+  const selected = await open({
+    multiple: false,
+    directory: true,
+    title: 'Export先を選択',
+  })
+
+  return typeof selected === 'string' ? selected : null
+}

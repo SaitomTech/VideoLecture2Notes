@@ -1,4 +1,4 @@
-import { ArrowLeft, Save } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Save } from 'lucide-react'
 import { useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
@@ -10,9 +10,10 @@ type ArticleReviewPageProps = {
   project: MediaProject
   onBack: () => void
   onSave: (draft: ArticleDraft) => void | Promise<void>
+  onExport: () => void
 }
 
-export function ArticleReviewPage({ project, onBack, onSave }: ArticleReviewPageProps) {
+export function ArticleReviewPage({ project, onBack, onSave, onExport }: ArticleReviewPageProps) {
   const articleSlides = project.slides.filter(hasCurrentArticle)
   const savedTitle = project.article?.title?.trim() || project.source.name.replace(/\.[^.]+$/, '')
   const [title, setTitle] = useState(savedTitle)
@@ -64,14 +65,26 @@ export function ArticleReviewPage({ project, onBack, onSave }: ArticleReviewPage
             <h1 className="mt-1 text-[27px] font-bold tracking-[-0.06em]">記事を確認・編集</h1>
             <p className="mt-1 text-xs text-[#71807b]">生成した本文を確認して、必要な部分だけ修正できます。</p>
           </div>
-          <button
-            className="inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-[#71807b] transition hover:bg-[#e2eee8] hover:text-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30"
-            type="button"
-            onClick={handleBack}
-          >
-            <ArrowLeft size={15} strokeWidth={1.8} />
-            解析に戻る
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-[#71807b] transition hover:bg-[#e2eee8] hover:text-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30"
+              type="button"
+              onClick={handleBack}
+            >
+              <ArrowLeft size={15} strokeWidth={1.8} />
+              解析に戻る
+            </button>
+            <button
+              className="inline-flex items-center gap-2 rounded-[9px] bg-[#1d6b50] px-3 py-2 text-xs font-semibold text-[#f3faf6] transition hover:bg-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              type="button"
+              onClick={onExport}
+              disabled={isDirty || isSaving || hasEmptyTitle || hasEmptyBody}
+              title={isDirty ? '先に変更を保存してください' : undefined}
+            >
+              Exportへ
+              <ArrowRight size={14} />
+            </button>
+          </div>
         </div>
 
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
