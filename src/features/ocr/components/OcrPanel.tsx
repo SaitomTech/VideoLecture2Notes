@@ -80,7 +80,13 @@ export function OcrPanel({ ocr, disabled = false }: OcrPanelProps) {
             {ocr.progress.completed} / {total} slides
           </p>
           <p className="mt-1 text-[10px] text-[#9aa6a1]">
-            {isRunning ? stageLabels[ocr.stage] : isCompleted ? 'すべてのSlideを処理しました。' : 'まだ開始されていません。'}
+            {isRunning
+              ? stageLabels[ocr.stage]
+              : isCompleted
+                ? 'すべてのSlideを処理しました。'
+                : ocr.status === 'error'
+                  ? 'スライドOCRを完了できませんでした。'
+                  : 'まだ開始されていません。'}
           </p>
         </div>
       </div>
@@ -97,7 +103,7 @@ export function OcrPanel({ ocr, disabled = false }: OcrPanelProps) {
       </div>
 
       {ocr.error && (
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-[#e4b4a7] bg-[#fff5f1] px-4 py-3 text-xs text-[#9d422d]">
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-[#e4b4a7] bg-[#fff5f1] px-4 py-3 text-xs text-[#9d422d]" role="alert">
           <p className="min-w-0">{ocr.error}</p>
           <button
             className="inline-flex shrink-0 items-center gap-1.5 font-semibold text-[#9d422d] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b6533a]/30"

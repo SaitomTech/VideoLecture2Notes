@@ -1,10 +1,8 @@
 import { readFile } from '@tauri-apps/plugin-fs'
+import { UserFacingError, withUserFacingError } from '../../lib/errors'
 import { completeChat } from '../../lib/llama/chat'
 import { withLlamaServer } from '../../lib/llama/server'
-import {
-  DEFAULT_OCR_MODEL,
-  ensureOcrModel,
-} from '../../lib/ocr/modelManager'
+import { DEFAULT_OCR_MODEL, ensureOcrModel } from '../../lib/ocr/modelManager'
 import { modelProgressRatio } from '../../lib/models/download'
 import type { MediaProject, SlideData, SlideOcrResult } from '../../types/project'
 
@@ -19,10 +17,7 @@ export type OcrProgress = {
   stageProgress: number | null
 }
 
-export type OcrSlideCompleted = (
-  slideId: string,
-  ocr: SlideOcrResult,
-) => void | Promise<void>
+export type OcrSlideCompleted = (slideId: string, ocr: SlideOcrResult) => void | Promise<void>
 
 type RunOcrInput = {
   project: MediaProject
@@ -59,7 +54,7 @@ export function ocrInputFingerprint(slide: SlideData) {
 
 async function recognizeSlide(baseUrl: string, slide: SlideData, signal?: AbortSignal) {
   const imagePath = slide.image.representativeFramePath
-  if (!imagePath) throw new Error(`Slide ${slide.index + 1}の代表画像がありません。`)
+  if (!imagePath) throw new UserFacingError(`Slide ${slide.index + 1}の代表画像がありません。`)
 
   const image = toBase64(await readFile(imagePath))
   return completeChat(baseUrl, {
@@ -88,9 +83,13 @@ export async function runOcr({
   force = false,
 }: RunOcrInput) {
   const slides = project.slides
-  if (slides.length === 0) throw new Error('OCRするSlideがありません。先にスライド検出を実行してください。')
+  if (slides.length === 0) {
+    throw new UserFacingError('OCRするSlideがありません。先にスライド検出を実行してください。')
+  }
   if (slides.some((slide) => !slide.image.representativeFramePath)) {
-    throw new Error('代表画像のないSlideがあります。スライド検出をもう一度実行してください。')
+    throw new UserFacingError(
+      '代表画像のないSlideがあります。スライド検出をもう一度実行してください。',
+    )
   }
 
   const pendingSlides = force
@@ -110,26 +109,42 @@ export async function runOcr({
 
   throwIfAborted(signal)
   onStage?.('preparing-model')
-  const model = await ensureOcrModel({
-    signal,
-    onProgress: (progress) => report(modelProgressRatio(progress)),
-  })
+  const model = await withUserFacingError(
+    'OCRモデルを準備できませんでした。通信状況と空き容量を確認して、再試行してください。',
+    () =>
+      ensureOcrModel({
+        signal,
+        onProgress: (progress) => report(modelProgressRatio(progress)),
+      }),
+  )
 
   throwIfAborted(signal)
   onStage?.('recognizing')
   report(null)
-  await withLlamaServer(model, async (baseUrl) => {
-    for (const slide of pendingSlides) {
-      const fingerprint = ocrInputFingerprint(slide)
-      throwIfAborted(signal)
-      const rawText = await recognizeSlide(baseUrl, slide, signal)
-      await onSlideCompleted?.(slide.id, {
-        rawText,
-        model: DEFAULT_OCR_MODEL.id,
-        inputFingerprint: fingerprint,
-      })
-      completed += 1
-      report(null)
-    }
-  })
+  await withUserFacingError(
+    'OCRエンジンを起動または実行できませんでした。アプリを再起動して、再試行してください。',
+    () =>
+      withLlamaServer(model, async (baseUrl) => {
+        for (const slide of pendingSlides) {
+          const fingerprint = ocrInputFingerprint(slide)
+          throwIfAborted(signal)
+          const rawText = await withUserFacingError(
+            `Slide ${slide.index + 1}の文字を読み取れませんでした。再試行してください。`,
+            () => recognizeSlide(baseUrl, slide, signal),
+          )
+          await withUserFacingError(
+            `Slide ${slide.index + 1}のOCR結果を保存できませんでした。空き容量を確認して、再試行してください。`,
+            async () => {
+              await onSlideCompleted?.(slide.id, {
+                rawText,
+                model: DEFAULT_OCR_MODEL.id,
+                inputFingerprint: fingerprint,
+              })
+            },
+          )
+          completed += 1
+          report(null)
+        }
+      }),
+  )
 }

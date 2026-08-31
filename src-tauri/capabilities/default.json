@@ -9,6 +9,7 @@
     "core:default",
     "dialog:default",
     "fs:default",
+    "shell:allow-kill",
     {
       "identifier": "fs:allow-stat",
       "allow": [
@@ -39,6 +40,21 @@
           "sidecar": true,
           "args": true
         },
+        {
+          "name": "binaries/whisper-cli",
+          "sidecar": true,
+          "args": true
+        },
+        {
+          "name": "binaries/llama-server",
+          "sidecar": true,
+          "args": true
+        }
+      ]
+    },
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
         {
           "name": "binaries/whisper-cli",
           "sidecar": true,

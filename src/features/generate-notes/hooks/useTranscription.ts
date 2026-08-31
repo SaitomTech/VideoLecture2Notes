@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { getUserErrorMessage, withUserFacingError } from '../../../lib/errors'
 import type { MediaProject, TranscriptionResult } from '../../../types/project'
 import {
   runTranscription,
@@ -39,16 +40,20 @@ export function useTranscription(
       })
       setStage('saving')
       setStageProgress(null)
-      await onCompleted(result)
+      await withUserFacingError(
+        '文字起こし結果を保存できませんでした。空き容量を確認して、再試行してください。',
+        () => onCompleted(result),
+      )
       setStageProgress(1)
       setStatus('completed')
     } catch (transcriptionError) {
       console.error(transcriptionError)
       setStatus('error')
       setError(
-        transcriptionError instanceof Error
-          ? transcriptionError.message
-          : '文字起こしに失敗しました。',
+        getUserErrorMessage(
+          transcriptionError,
+          '文字起こしを完了できませんでした。アプリを再起動して、再試行してください。',
+        ),
       )
     }
   }

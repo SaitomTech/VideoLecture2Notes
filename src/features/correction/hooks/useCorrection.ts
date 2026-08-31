@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { getUserErrorMessage } from '../../../lib/errors'
 import type { MediaProject } from '../../../types/project'
 import {
   hasCurrentCorrection,
@@ -39,7 +40,12 @@ export function useCorrection(project: MediaProject, onSlideCompleted: Correctio
     } catch (correctionError) {
       console.error(correctionError)
       setStatus('error')
-      setError(correctionError instanceof Error ? correctionError.message : '文字起こしの補正に失敗しました。')
+      setError(
+        getUserErrorMessage(
+          correctionError,
+          '文字起こしの補正を完了できませんでした。アプリを再起動して、再試行してください。',
+        ),
+      )
     }
   }
 
@@ -51,7 +57,8 @@ export function useCorrection(project: MediaProject, onSlideCompleted: Correctio
           total: targetSlides.length,
           stageProgress: isUpToDate ? 1 : null,
         }
-  const visibleStatus = status === 'running' || status === 'error' ? status : isUpToDate ? 'completed' : 'idle'
+  const visibleStatus =
+    status === 'running' || status === 'error' ? status : isUpToDate ? 'completed' : 'idle'
 
   return { status: visibleStatus, stage, progress: visibleProgress, error, correct }
 }
