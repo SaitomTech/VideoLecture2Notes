@@ -38,8 +38,10 @@ export function renderHtml(document: ExportDocument) {
       return [
         '      <section class="slide-section">',
         `        <div class="section-meta"><span>${slideLabel}</span><time>${formatTimestamp(section.startMs)} — ${formatTimestamp(section.endMs)}</time></div>`,
-        `        <figure><img src="${section.imagePath}" alt="${slideLabel}の代表画像"></figure>`,
-        `        ${body}`,
+        '        <div class="section-content">',
+        `          <figure><img src="${section.imagePath}" alt="${slideLabel}の代表画像"></figure>`,
+        `          <div class="content">${body}</div>`,
+        '        </div>',
         '      </section>',
       ].join('\n')
     })
@@ -62,10 +64,12 @@ export function renderHtml(document: ExportDocument) {
     '    .source { margin: 12px 0 0; color: #71807b; font-size: 14px; }',
     '    .slide-section { padding: 40px 0; border-top: 1px solid #d8e1dc; }',
     '    .section-meta { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 16px; color: #1d6b50; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }',
-    '    figure { margin: 0 0 28px; }',
+    '    .section-content { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: start; }',
+    '    figure { margin: 0; }',
     '    img { display: block; width: 100%; height: auto; border-radius: 8px; }',
+    '    .content { min-width: 0; }',
     '    p { margin: 0 0 16px; font-size: 18px; line-height: 1.9; }',
-    '    @media (max-width: 600px) { main { padding-top: 36px; } .slide-section { padding: 28px 0; } .section-meta { display: block; } .section-meta time { display: block; margin-top: 4px; } p { font-size: 16px; } }',
+    '    @media (max-width: 600px) { main { padding-top: 36px; } .slide-section { padding: 28px 0; } .section-meta { display: block; } .section-meta time { display: block; margin-top: 4px; } .section-content { grid-template-columns: 1fr; gap: 24px; } p { font-size: 16px; } }',
     '  </style>',
     '</head>',
     '<body>',
