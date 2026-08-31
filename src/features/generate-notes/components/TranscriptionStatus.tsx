@@ -1,6 +1,6 @@
 import { AlertTriangle, Check, Mic2, RefreshCw } from 'lucide-react'
 import type { TranscriptionStatus } from '../hooks/useTranscription'
-import type { TranscriptionStage } from '../types'
+import type { TranscriptionStage } from '../transcription'
 
 type TranscriptionStatusProps = {
   status: TranscriptionStatus
@@ -14,9 +14,7 @@ const stageLabels: Record<TranscriptionStage, string> = {
   'preparing-model': 'モデルを確認・準備中…',
   'extracting-audio': '音声を準備中…',
   transcribing: '音声を文字に変換中…',
-  assigning: 'Slideへ割り当て中…',
   saving: '結果を保存中…',
-  completed: '文字起こしが完了しました。',
 }
 
 export function TranscriptionStatus({
@@ -60,7 +58,11 @@ export function TranscriptionStatus({
             </span>
           </div>
           <p className="mt-1 text-xs text-[#71807b]">
-            {isRunning ? stageLabels[stage] : isCompleted ? stageLabels.completed : '文字起こしはまだ開始されていません。'}
+            {isRunning
+              ? stageLabels[stage]
+              : isCompleted
+                ? '文字起こしが完了しました。'
+                : '文字起こしはまだ開始されていません。'}
           </p>
         </div>
         <span className="font-mono text-[11px] tabular-nums text-[#1d6b50]">{progressLabel}</span>

@@ -3,8 +3,6 @@ import { executeSidecar } from '../tauri/sidecar'
 import { getRawTranscriptAssetPath } from '../storage/projectAssets'
 import type { TranscriptSegment } from '../../types/project'
 
-export const WHISPER_MODEL_ID = 'large-v3-turbo-q5_0'
-
 type WhisperJsonSegment = {
   timestamps?: {
     from?: unknown
@@ -88,6 +86,5 @@ export async function runWhisper({ projectId, audioPath, modelPath, language }: 
   return {
     language: typeof parsed.result?.language === 'string' ? parsed.result.language : undefined,
     segments,
-    outputPath,
   }
 }

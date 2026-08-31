@@ -6,9 +6,8 @@ import { SlideDetectionPage } from '../features/slide-detection/SlideDetectionPa
 import { createMediaProject, updateProjectCrop, updateProjectSlideDetection, updateProjectTranscription } from '../lib/project/project'
 import { saveProject } from '../lib/storage/projectStorage'
 import type { SelectedVideo } from '../features/import/types'
-import type { CropRegion, MediaProject } from '../types/project'
+import type { CropRegion, MediaProject, TranscriptionResult } from '../types/project'
 import type { SlideDetectionOutput } from '../features/slide-detection/types'
-import type { TranscriptionOutput } from '../features/generate-notes/types'
 
 type AppStep = 'import' | 'crop' | 'detect-slides' | 'generate-notes'
 
@@ -42,10 +41,10 @@ function App() {
     setProject(nextProject)
   }
 
-  const handleTranscriptionCompleted = async (output: TranscriptionOutput) => {
+  const handleTranscriptionCompleted = async (transcription: TranscriptionResult) => {
     if (!project) return
 
-    const nextProject = updateProjectTranscription(project, output.result)
+    const nextProject = updateProjectTranscription(project, transcription)
     await saveProject(nextProject)
     setProject(nextProject)
   }

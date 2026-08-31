@@ -121,7 +121,7 @@ async function main() {
   const destinations = SIDECARS.map((sidecar) => sidecarPath(sidecar.name))
   const force = process.argv.includes('--force')
   if (!force && (await Promise.all(destinations.map(pathExists))).every(Boolean)) {
-    console.log(`✓ ffmpeg sidecarは準備済みです (${TARGET_TRIPLE})`)
+    console.log(`✓ sidecarは準備済みです (${TARGET_TRIPLE})`)
     return
   }
 
