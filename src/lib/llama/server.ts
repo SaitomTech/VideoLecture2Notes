@@ -1,4 +1,5 @@
 import { Command } from '@tauri-apps/plugin-shell'
+import { getErrorDetail } from '../errors'
 
 const STARTUP_TIMEOUT_MS = 120_000
 const HEALTH_POLL_INTERVAL_MS = 250
@@ -19,10 +20,7 @@ function choosePort() {
   return 40_000 + (((bytes[0] << 8) | bytes[1]) % 10_000)
 }
 
-async function waitForHealth(
-  baseUrl: string,
-  getStderr: () => string,
-) {
+async function waitForHealth(baseUrl: string, getStderr: () => string) {
   const deadline = Date.now() + STARTUP_TIMEOUT_MS
   while (Date.now() < deadline) {
     try {
@@ -83,7 +81,14 @@ async function startLlamaServer(model: LlamaModelPaths): Promise<LlamaServerSess
   command.once('error', onError)
   command.once('close', onClose)
 
-  const child = await command.spawn()
+  let child
+  try {
+    child = await command.spawn()
+  } catch (error) {
+    throw new Error(`llama-serverを起動できませんでした: ${getErrorDetail(error)}`, {
+      cause: error,
+    })
+  }
   try {
     await Promise.race([waitForHealth(baseUrl, () => stderr), startupFailure])
   } catch (error) {

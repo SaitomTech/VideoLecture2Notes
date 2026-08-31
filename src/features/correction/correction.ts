@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { UserFacingError, withUserFacingError } from '../../lib/errors'
 import { completeChat, parseJsonResponse } from '../../lib/llama/chat'
 import { withLlamaServer } from '../../lib/llama/server'
 import { DEFAULT_TEXT_MODEL, ensureTextModel } from '../../lib/llama/textModel'
@@ -40,7 +41,10 @@ export type CorrectionProgress = {
   stageProgress: number | null
 }
 
-export type CorrectionSlideCompleted = (slideId: string, correction: TranscriptCorrectionResult) => void | Promise<void>
+export type CorrectionSlideCompleted = (
+  slideId: string,
+  correction: TranscriptCorrectionResult,
+) => void | Promise<void>
 
 type RunCorrectionInput = {
   project: MediaProject
@@ -89,26 +93,26 @@ async function correctSlide(baseUrl: string, slide: SlideData, signal?: AbortSig
   const rawTranscript = slide.transcript?.raw.trim() ?? ''
   if (!rawTranscript) throw new Error(`Slide ${slide.index + 1}に発話がありません。`)
 
-  try {
-    const response = await completeChat(baseUrl, {
-      model: DEFAULT_TEXT_MODEL.id,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        {
-          role: 'user',
-          content: `[RAW TRANSCRIPT]\n${rawTranscript}\n\n[SLIDE OCR]\n${slide.ocr?.rawText.trim() || '(OCRなし)'}`,
-        },
-      ],
-      temperature: 0,
-      maxTokens: 2048,
-      responseFormat: { type: 'json_object' },
-      signal,
-    })
-    return parseCorrection(response, slide)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : '補正に失敗しました。'
-    throw new Error(`Slide ${slide.index + 1}の補正に失敗しました。${message}`)
-  }
+  return withUserFacingError(
+    `Slide ${slide.index + 1}の文字起こしを補正できませんでした。再試行してください。`,
+    async () => {
+      const response = await completeChat(baseUrl, {
+        model: DEFAULT_TEXT_MODEL.id,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          {
+            role: 'user',
+            content: `[RAW TRANSCRIPT]\n${rawTranscript}\n\n[SLIDE OCR]\n${slide.ocr?.rawText.trim() || '(OCRなし)'}`,
+          },
+        ],
+        temperature: 0,
+        maxTokens: 2048,
+        responseFormat: { type: 'json_object' },
+        signal,
+      })
+      return parseCorrection(response, slide)
+    },
+  )
 }
 
 export async function runCorrection({
@@ -121,7 +125,7 @@ export async function runCorrection({
 }: RunCorrectionInput) {
   const targetSlides = project.slides.filter((slide) => slide.transcript?.raw.trim())
   if (targetSlides.length === 0) {
-    throw new Error('補正する文字起こしがありません。先に文字起こしを実行してください。')
+    throw new UserFacingError('補正する文字起こしがありません。先に文字起こしを実行してください。')
   }
 
   const pendingSlides = force
@@ -137,21 +141,32 @@ export async function runCorrection({
 
   throwIfAborted(signal)
   onStage?.('preparing-model')
-  const model = await ensureTextModel({
-    signal,
-    onProgress: (progress) => report(modelProgressRatio(progress)),
-  })
+  const model = await withUserFacingError(
+    '文字起こし補正モデルを準備できませんでした。通信状況と空き容量を確認して、再試行してください。',
+    () =>
+      ensureTextModel({
+        signal,
+        onProgress: (progress) => report(modelProgressRatio(progress)),
+      }),
+  )
 
   throwIfAborted(signal)
   onStage?.('correcting')
   report(null)
-  await withLlamaServer(model, async (baseUrl) => {
-    for (const slide of pendingSlides) {
-      throwIfAborted(signal)
-      const correction = await correctSlide(baseUrl, slide, signal)
-      await onSlideCompleted(slide.id, correction)
-      completed += 1
-      report(null)
-    }
-  })
+  await withUserFacingError(
+    '文字起こし補正エンジンを起動または実行できませんでした。アプリを再起動して、再試行してください。',
+    () =>
+      withLlamaServer(model, async (baseUrl) => {
+        for (const slide of pendingSlides) {
+          throwIfAborted(signal)
+          const correction = await correctSlide(baseUrl, slide, signal)
+          await withUserFacingError(
+            `Slide ${slide.index + 1}の補正結果を保存できませんでした。空き容量を確認して、再試行してください。`,
+            () => onSlideCompleted(slide.id, correction),
+          )
+          completed += 1
+          report(null)
+        }
+      }),
+  )
 }

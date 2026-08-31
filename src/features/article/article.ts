@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { UserFacingError, withUserFacingError } from '../../lib/errors'
 import { parseJsonResponse, completeChat } from '../../lib/llama/chat'
 import { withLlamaServer } from '../../lib/llama/server'
 import { DEFAULT_TEXT_MODEL, ensureTextModel } from '../../lib/llama/textModel'
@@ -85,23 +86,23 @@ async function formatSlide(baseUrl: string, slide: SlideData, signal?: AbortSign
   const correctedTranscript = slide.transcript?.corrected?.trim() ?? ''
   if (!correctedTranscript) throw new Error(`Slide ${slide.index + 1}に補正済み発話がありません。`)
 
-  try {
-    const response = await completeChat(baseUrl, {
-      model: DEFAULT_TEXT_MODEL.id,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: `[CORRECTED TRANSCRIPT]\n${correctedTranscript}` },
-      ],
-      temperature: 0,
-      maxTokens: 2048,
-      responseFormat: { type: 'json_object' },
-      signal,
-    })
-    return parseArticle(response, slide)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : '記事本文の生成に失敗しました。'
-    throw new Error(`Slide ${slide.index + 1}の記事整形に失敗しました。${message}`)
-  }
+  return withUserFacingError(
+    `Slide ${slide.index + 1}の記事本文を生成できませんでした。再試行してください。`,
+    async () => {
+      const response = await completeChat(baseUrl, {
+        model: DEFAULT_TEXT_MODEL.id,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: `[CORRECTED TRANSCRIPT]\n${correctedTranscript}` },
+        ],
+        temperature: 0,
+        maxTokens: 2048,
+        responseFormat: { type: 'json_object' },
+        signal,
+      })
+      return parseArticle(response, slide)
+    },
+  )
 }
 
 export async function runArticleFormatting({
@@ -114,7 +115,9 @@ export async function runArticleFormatting({
 }: RunArticleFormattingInput) {
   const targetSlides = articleTargetSlides(project)
   if (targetSlides.length === 0) {
-    throw new Error('記事に整形する補正済み文字起こしがありません。先に文字起こしの補正を実行してください。')
+    throw new UserFacingError(
+      '記事に整形する補正済み文字起こしがありません。先に文字起こしの補正を実行してください。',
+    )
   }
 
   const pendingSlides = force
@@ -130,21 +133,32 @@ export async function runArticleFormatting({
 
   throwIfAborted(signal)
   onStage?.('preparing-model')
-  const model = await ensureTextModel({
-    signal,
-    onProgress: (progress) => report(modelProgressRatio(progress)),
-  })
+  const model = await withUserFacingError(
+    '記事生成モデルを準備できませんでした。通信状況と空き容量を確認して、再試行してください。',
+    () =>
+      ensureTextModel({
+        signal,
+        onProgress: (progress) => report(modelProgressRatio(progress)),
+      }),
+  )
 
   throwIfAborted(signal)
   onStage?.('formatting')
   report(null)
-  await withLlamaServer(model, async (baseUrl) => {
-    for (const slide of pendingSlides) {
-      throwIfAborted(signal)
-      const article = await formatSlide(baseUrl, slide, signal)
-      await onSlideCompleted(slide.id, article)
-      completed += 1
-      report(null)
-    }
-  })
+  await withUserFacingError(
+    '記事生成エンジンを起動または実行できませんでした。アプリを再起動して、再試行してください。',
+    () =>
+      withLlamaServer(model, async (baseUrl) => {
+        for (const slide of pendingSlides) {
+          throwIfAborted(signal)
+          const article = await formatSlide(baseUrl, slide, signal)
+          await withUserFacingError(
+            `Slide ${slide.index + 1}の記事本文を保存できませんでした。空き容量を確認して、再試行してください。`,
+            () => onSlideCompleted(slide.id, article),
+          )
+          completed += 1
+          report(null)
+        }
+      }),
+  )
 }

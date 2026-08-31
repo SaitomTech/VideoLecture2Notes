@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { getUserErrorMessage } from '../../../lib/errors'
 import type { MediaProject } from '../../../types/project'
 import {
   articleTargetSlides,
@@ -45,9 +46,10 @@ export function useArticleFormatting(
       console.error(formattingError)
       setStatus('error')
       setError(
-        formattingError instanceof Error
-          ? formattingError.message
-          : '記事本文の生成に失敗しました。',
+        getUserErrorMessage(
+          formattingError,
+          '記事本文の生成を完了できませんでした。アプリを再起動して、再試行してください。',
+        ),
       )
     }
   }
@@ -60,9 +62,17 @@ export function useArticleFormatting(
           total: targetSlides.length,
           stageProgress: isUpToDate ? 1 : null,
         }
-  const visibleStatus = status === 'running' || status === 'error' ? status : isUpToDate ? 'completed' : 'idle'
+  const visibleStatus =
+    status === 'running' || status === 'error' ? status : isUpToDate ? 'completed' : 'idle'
 
-  return { status: visibleStatus, stage, progress: visibleProgress, error, formattedSlides, format }
+  return {
+    status: visibleStatus,
+    stage,
+    progress: visibleProgress,
+    error,
+    formattedSlides,
+    format,
+  }
 }
 
 export type ArticleFormattingController = ReturnType<typeof useArticleFormatting>

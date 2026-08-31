@@ -1,4 +1,5 @@
 import { extractAudio } from '../../lib/media/ffmpeg'
+import { UserFacingError, withUserFacingError } from '../../lib/errors'
 import { getAudioAssetPath } from '../../lib/storage/projectAssets'
 import { fileExists } from '../../lib/tauri/filesystem'
 import { DEFAULT_WHISPER_MODEL, ensureWhisperModel } from '../../lib/whisper/modelManager'
@@ -6,11 +7,7 @@ import { runWhisper } from '../../lib/whisper/whisper'
 import type { MediaProject, TranscriptionResult } from '../../types/project'
 
 export type TranscriptionLanguage = 'auto' | 'ja' | 'en'
-export type TranscriptionStage =
-  | 'preparing-model'
-  | 'extracting-audio'
-  | 'transcribing'
-  | 'saving'
+export type TranscriptionStage = 'preparing-model' | 'extracting-audio' | 'transcribing' | 'saving'
 
 type RunTranscriptionInput = {
   project: MediaProject
@@ -40,31 +37,42 @@ export async function runTranscription({
 }: RunTranscriptionInput): Promise<TranscriptionResult> {
   onStage?.('preparing-model')
   onProgress?.(null)
-  const modelPath = await ensureWhisperModel({
-    onProgress: ({ receivedBytes, totalBytes }) => {
-      onProgress?.(totalBytes > 0 ? receivedBytes / totalBytes : null)
-    },
-  })
+  const modelPath = await withUserFacingError(
+    '文字起こしモデルを準備できませんでした。通信状況と空き容量を確認して、再試行してください。',
+    () =>
+      ensureWhisperModel({
+        onProgress: ({ receivedBytes, totalBytes }) => {
+          onProgress?.(totalBytes > 0 ? receivedBytes / totalBytes : null)
+        },
+      }),
+  )
 
   onStage?.('extracting-audio')
   onProgress?.(null)
-  const audioPath = await getAudioAssetPath(project.id)
-  if (!(await fileExists(audioPath))) {
-    await extractAudio({ path: project.source.path, outputPath: audioPath })
-  }
-  if (!(await fileExists(audioPath))) {
-    throw new Error('音声ファイルを作成できませんでした。動画に音声トラックがあるか確認してください。')
-  }
+  const audioError =
+    '動画から音声を準備できませんでした。音声トラックを確認して、再試行してください。'
+  const audioPath = await withUserFacingError(audioError, async () => {
+    const path = await getAudioAssetPath(project.id)
+    if (!(await fileExists(path))) {
+      await extractAudio({ path: project.source.path, outputPath: path })
+    }
+    if (!(await fileExists(path))) throw new UserFacingError(audioError)
+    return path
+  })
 
   onStage?.('transcribing')
   onProgress?.(null)
-  const rawTranscript = await runWhisper({
-    projectId: project.id,
-    audioPath,
-    modelPath,
-    language,
-    onProgress,
-  })
+  const rawTranscript = await withUserFacingError(
+    '音声を文字起こしできませんでした。アプリを再起動して、再試行してください。',
+    () =>
+      runWhisper({
+        projectId: project.id,
+        audioPath,
+        modelPath,
+        language,
+        onProgress,
+      }),
+  )
 
   return {
     model: DEFAULT_WHISPER_MODEL.id,
