@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { getUserErrorMessage } from '../../../lib/errors'
+import type { TextModelId } from '../../../lib/llama/textModel'
 import type { MediaProject } from '../../../types/project'
 import {
   articleTargetSlides,
@@ -15,9 +16,10 @@ export type ArticleFormattingStatus = 'idle' | 'running' | 'completed' | 'error'
 export function useArticleFormatting(
   project: MediaProject,
   onSlideCompleted: ArticleSlideCompleted,
+  modelId: TextModelId,
 ) {
-  const targetSlides = articleTargetSlides(project)
-  const formattedSlides = targetSlides.filter(hasCurrentArticle)
+  const targetSlides = articleTargetSlides(project, modelId)
+  const formattedSlides = targetSlides.filter((slide) => hasCurrentArticle(slide, modelId))
   const completedFromProject = formattedSlides.length
   const isUpToDate = completedFromProject === targetSlides.length && targetSlides.length > 0
   const [status, setStatus] = useState<ArticleFormattingStatus>('idle')
@@ -35,6 +37,7 @@ export function useArticleFormatting(
     try {
       await runArticleFormatting({
         project,
+        modelId,
         onStage: setStage,
         onProgress: setProgress,
         onSlideCompleted,

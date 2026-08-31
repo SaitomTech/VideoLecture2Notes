@@ -2,7 +2,12 @@ import { z } from 'zod'
 import { UserFacingError, withUserFacingError } from '../../lib/errors'
 import { completeChat, parseJsonResponse } from '../../lib/llama/chat'
 import { withLlamaServer } from '../../lib/llama/server'
-import { DEFAULT_TEXT_MODEL, ensureTextModel } from '../../lib/llama/textModel'
+import {
+  DEFAULT_TEXT_MODEL,
+  ensureTextModel,
+  getTextModel,
+  type TextModelId,
+} from '../../lib/llama/textModel'
 import { modelProgressRatio } from '../../lib/models/download'
 import type { MediaProject, SlideData, TranscriptCorrectionResult } from '../../types/project'
 
@@ -48,6 +53,7 @@ export type CorrectionSlideCompleted = (
 
 type RunCorrectionInput = {
   project: MediaProject
+  modelId: TextModelId
   onStage?: (stage: CorrectionStage) => void
   onProgress?: (progress: CorrectionProgress) => void
   onSlideCompleted: CorrectionSlideCompleted
@@ -59,37 +65,48 @@ function throwIfAborted(signal?: AbortSignal) {
   if (signal?.aborted) throw new DOMException('補正を中止しました。', 'AbortError')
 }
 
-export function correctionInputFingerprint(slide: SlideData) {
+export function correctionInputFingerprint(
+  slide: SlideData,
+  modelId = slide.transcript?.correctionModel ?? DEFAULT_TEXT_MODEL.id,
+) {
   return JSON.stringify([
     slide.id,
     slide.transcript?.raw ?? '',
     slide.ocr?.rawText ?? '',
     slide.ocr?.title ?? null,
     slide.ocr?.terms ?? [],
-    DEFAULT_TEXT_MODEL.id,
+    modelId,
     CORRECTION_PROMPT_VERSION,
   ])
 }
 
-export function hasCurrentCorrection(slide: SlideData) {
+export function hasCurrentCorrection(
+  slide: SlideData,
+  modelId = slide.transcript?.correctionModel ?? DEFAULT_TEXT_MODEL.id,
+) {
   return (
     Boolean(slide.transcript?.corrected?.trim()) &&
-    slide.transcript?.correctionInputFingerprint === correctionInputFingerprint(slide)
+    slide.transcript?.correctionInputFingerprint === correctionInputFingerprint(slide, modelId)
   )
 }
 
-function parseCorrection(text: string, slide: SlideData): TranscriptCorrectionResult {
+function parseCorrection(text: string, slide: SlideData, modelId: TextModelId): TranscriptCorrectionResult {
   const result = CorrectionResponseSchema.safeParse(parseJsonResponse(text))
   if (!result.success) throw new Error('補正結果の形式が不正です。')
 
   return {
     ...result.data,
-    model: DEFAULT_TEXT_MODEL.id,
-    inputFingerprint: correctionInputFingerprint(slide),
+    model: modelId,
+    inputFingerprint: correctionInputFingerprint(slide, modelId),
   }
 }
 
-async function correctSlide(baseUrl: string, slide: SlideData, signal?: AbortSignal) {
+async function correctSlide(
+  baseUrl: string,
+  slide: SlideData,
+  modelId: TextModelId,
+  signal?: AbortSignal,
+) {
   const rawTranscript = slide.transcript?.raw.trim() ?? ''
   if (!rawTranscript) throw new Error(`Slide ${slide.index + 1}に発話がありません。`)
 
@@ -97,7 +114,7 @@ async function correctSlide(baseUrl: string, slide: SlideData, signal?: AbortSig
     `Slide ${slide.index + 1}の文字起こしを補正できませんでした。再試行してください。`,
     async () => {
       const response = await completeChat(baseUrl, {
-        model: DEFAULT_TEXT_MODEL.id,
+        model: modelId,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           {
@@ -110,19 +127,21 @@ async function correctSlide(baseUrl: string, slide: SlideData, signal?: AbortSig
         responseFormat: { type: 'json_object' },
         signal,
       })
-      return parseCorrection(response, slide)
+      return parseCorrection(response, slide, modelId)
     },
   )
 }
 
 export async function runCorrection({
   project,
+  modelId,
   onStage,
   onProgress,
   onSlideCompleted,
   signal,
   force = false,
 }: RunCorrectionInput) {
+  const textModel = getTextModel(modelId)
   const targetSlides = project.slides.filter((slide) => slide.transcript?.raw.trim())
   if (targetSlides.length === 0) {
     throw new UserFacingError('補正する文字起こしがありません。先に文字起こしを実行してください。')
@@ -130,7 +149,7 @@ export async function runCorrection({
 
   const pendingSlides = force
     ? targetSlides
-    : targetSlides.filter((slide) => !hasCurrentCorrection(slide))
+    : targetSlides.filter((slide) => !hasCurrentCorrection(slide, modelId))
   let completed = targetSlides.length - pendingSlides.length
   const report = (stageProgress: number | null) => {
     onProgress?.({ completed, total: targetSlides.length, stageProgress })
@@ -145,6 +164,7 @@ export async function runCorrection({
     '文字起こし補正モデルを準備できませんでした。通信状況と空き容量を確認して、再試行してください。',
     () =>
       ensureTextModel({
+        model: textModel,
         signal,
         onProgress: (progress) => report(modelProgressRatio(progress)),
       }),
@@ -159,7 +179,7 @@ export async function runCorrection({
       withLlamaServer(model, async (baseUrl) => {
         for (const slide of pendingSlides) {
           throwIfAborted(signal)
-          const correction = await correctSlide(baseUrl, slide, signal)
+          const correction = await correctSlide(baseUrl, slide, modelId, signal)
           await withUserFacingError(
             `Slide ${slide.index + 1}の補正結果を保存できませんでした。空き容量を確認して、再試行してください。`,
             () => onSlideCompleted(slide.id, correction),

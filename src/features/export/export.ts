@@ -72,11 +72,13 @@ function buildExportDocument(project: MediaProject): ExportDocument {
     throw new Error('ExportするSlideがありません。先にスライド検出を実行してください。')
   }
 
-  if (!project.slides.some(hasCurrentArticle)) {
+  if (!project.slides.some((slide) => hasCurrentArticle(slide))) {
     throw new Error('Exportする記事本文がありません。先に記事本文を生成してください。')
   }
 
-  const incompleteSlide = project.slides.find((slide) => slide.transcript?.raw.trim() && !hasCurrentArticle(slide))
+  const incompleteSlide = project.slides.find(
+    (slide) => slide.transcript?.raw.trim() && !hasCurrentArticle(slide),
+  )
   if (incompleteSlide) {
     throw new Error(`Slide ${incompleteSlide.index + 1}の記事本文が未生成です。記事本文の生成を完了してください。`)
   }

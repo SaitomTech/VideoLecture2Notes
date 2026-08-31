@@ -1,9 +1,10 @@
 import { AlertTriangle, Check, FilePenLine, RefreshCw } from 'lucide-react'
-import { DEFAULT_TEXT_MODEL } from '../../../lib/llama/textModel'
+import type { TextModel } from '../../../lib/llama/textModel'
 import type { CorrectionController } from '../hooks/useCorrection'
 
 type CorrectionPanelProps = {
   correction: CorrectionController
+  model: TextModel
   disabled?: boolean
 }
 
@@ -23,7 +24,7 @@ function progressRatio(correction: CorrectionController) {
   return correction.progress.total > 0 ? correction.progress.completed / correction.progress.total : 0
 }
 
-export function CorrectionPanel({ correction, disabled = false }: CorrectionPanelProps) {
+export function CorrectionPanel({ correction, model, disabled = false }: CorrectionPanelProps) {
   const isRunning = correction.status === 'running'
   const isCompleted = correction.status === 'completed'
   const total = correction.progress.total
@@ -73,10 +74,10 @@ export function CorrectionPanel({ correction, disabled = false }: CorrectionPane
       <div className="mt-5 grid gap-4 rounded-[12px] border border-[#d8e1dc] bg-[#f7faf7] p-4 md:grid-cols-2 md:p-5">
         <div className="text-xs text-[#71807b]">
           <span className="block font-semibold text-[#18211f]">使用モデル</span>
-          <p className="mt-2 font-mono text-[11px] text-[#1d6b50]">{DEFAULT_TEXT_MODEL.label}</p>
+          <p className="mt-2 font-mono text-[11px] text-[#1d6b50]">{model.label}</p>
           <p className="mt-1 text-[10px] text-[#9aa6a1]">
             初回のみモデルをダウンロードします（約
-            {formatModelSize(DEFAULT_TEXT_MODEL.totalSizeBytes)}）。
+            {formatModelSize(model.totalSizeBytes)}）。
           </p>
         </div>
         <div className="text-xs text-[#71807b]">
