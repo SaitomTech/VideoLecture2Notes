@@ -12,9 +12,11 @@ export function TranscriptPreview({ slides }: TranscriptPreviewProps) {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="transcript-preview-heading" className="text-[21px] font-bold tracking-[-0.05em]">
-            文字起こし結果
+            解析結果
           </h2>
-          <p className="mt-1 text-xs text-[#71807b]">Slideの区間ごとに発話を確認できます。</p>
+          <p className="mt-1 text-xs text-[#71807b]">
+            Slideごとに発話とスライド内の文字を確認できます。
+          </p>
         </div>
         <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#1d6b50]">
           {slides.length} slides
@@ -36,9 +38,20 @@ export function TranscriptPreview({ slides }: TranscriptPreviewProps) {
                     {formatTimestamp(slide.startMs)} — {formatTimestamp(slide.endMs)}
                   </span>
                 </div>
-                <p className={`mt-3 whitespace-pre-wrap text-sm leading-7 ${transcript ? 'text-[#33413c]' : 'text-[#9aa6a1]'}`}>
-                  {transcript || 'この区間に発話はありません。'}
-                </p>
+                <div className="mt-3 space-y-4">
+                  <div>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">発話</p>
+                    <p className={`whitespace-pre-wrap text-sm leading-7 ${transcript ? 'text-[#33413c]' : 'text-[#9aa6a1]'}`}>
+                      {transcript || 'この区間に発話はありません。'}
+                    </p>
+                  </div>
+                  <div className="border-t border-[#e0e8e3] pt-3">
+                    <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">スライド内の文字</p>
+                    <p className={`mt-1 whitespace-pre-wrap text-sm leading-7 ${slide.ocr?.rawText ? 'text-[#33413c]' : 'text-[#9aa6a1]'}`}>
+                      {slide.ocr?.rawText || 'OCR未実行'}
+                    </p>
+                  </div>
+                </div>
               </div>
             </article>
           )

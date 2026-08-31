@@ -66,6 +66,7 @@ const SlideDataSchema = z.object({
     title: z.string().nullable().optional(),
     terms: z.array(z.string()).optional(),
     model: z.string(),
+    inputFingerprint: z.string().optional(),
   }).optional(),
   transcript: z.object({
     raw: z.string(),

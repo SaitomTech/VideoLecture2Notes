@@ -8,7 +8,7 @@
 変更後は、次のコマンドで確認します。
 
 ```bash
-bun run setup       # 不足しているffmpeg/ffprobe sidecarを取得
+bun run setup       # 不足しているffmpeg/ffprobe/whisper/llama sidecarを取得
 bun run build
 bun run lint
 ```

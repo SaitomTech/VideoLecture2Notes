@@ -43,6 +43,11 @@
           "name": "binaries/whisper-cli",
           "sidecar": true,
           "args": true
+        },
+        {
+          "name": "binaries/llama-server",
+          "sidecar": true,
+          "args": true
         }
       ]
     },
@@ -70,6 +75,7 @@
     {
       "identifier": "fs:allow-read-file",
       "allow": [
+        { "path": "$APPLOCALDATA/projects/**/*" },
         { "path": "$APPLOCALDATA/models/**/*" }
       ]
     },

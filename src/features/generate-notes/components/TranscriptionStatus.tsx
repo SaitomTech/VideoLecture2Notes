@@ -7,6 +7,7 @@ type TranscriptionStatusProps = {
   stage: TranscriptionStage
   stageProgress: number | null
   error: string | null
+  disabled?: boolean
   onRetry: () => void | Promise<void>
 }
 
@@ -22,6 +23,7 @@ export function TranscriptionStatus({
   stage,
   stageProgress,
   error,
+  disabled = false,
   onRetry,
 }: TranscriptionStatusProps) {
   const isRunning = status === 'running'
@@ -86,6 +88,7 @@ export function TranscriptionStatus({
             className="inline-flex shrink-0 items-center gap-1.5 font-semibold text-[#9d422d] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b6533a]/30"
             type="button"
             onClick={() => void onRetry()}
+            disabled={isRunning || disabled}
           >
             <RefreshCw size={13} />
             再試行
