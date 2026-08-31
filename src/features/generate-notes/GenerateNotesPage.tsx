@@ -3,6 +3,10 @@ import { useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
 import type { MediaProject, TranscriptionResult } from '../../types/project'
+import type { ArticleSlideCompleted } from '../article/article'
+import { ArticlePreview } from '../article/components/ArticlePreview'
+import { ArticleFormattingPanel } from '../article/components/ArticleFormattingPanel'
+import { useArticleFormatting } from '../article/hooks/useArticleFormatting'
 import { CorrectionPanel } from '../correction/components/CorrectionPanel'
 import { useCorrection } from '../correction/hooks/useCorrection'
 import type { CorrectionSlideCompleted } from '../correction/correction'
@@ -21,6 +25,7 @@ type GenerateNotesPageProps = {
   onCompleted: (result: TranscriptionResult) => void | Promise<void>
   onOcrSlideCompleted: OcrSlideCompleted
   onCorrectionSlideCompleted: CorrectionSlideCompleted
+  onArticleSlideCompleted: ArticleSlideCompleted
 }
 
 export function GenerateNotesPage({
@@ -29,6 +34,7 @@ export function GenerateNotesPage({
   onCompleted,
   onOcrSlideCompleted,
   onCorrectionSlideCompleted,
+  onArticleSlideCompleted,
 }: GenerateNotesPageProps) {
   const [language, setLanguage] = useState<TranscriptionLanguage>(
     project.transcription?.language === 'ja' || project.transcription?.language === 'en'
@@ -38,11 +44,13 @@ export function GenerateNotesPage({
   const transcription = useTranscription(project, onCompleted)
   const ocr = useOcr(project, onOcrSlideCompleted)
   const correction = useCorrection(project, onCorrectionSlideCompleted)
+  const article = useArticleFormatting(project, onArticleSlideCompleted)
   const handleTranscribe = () => transcription.transcribe(language)
   const hasOcrResult = project.slides.some((slide) => Boolean(slide.ocr))
   const isOcrRunning = ocr.status === 'running'
   const isCorrectionRunning = correction.status === 'running'
-  const isProcessing = transcription.status === 'running' || isOcrRunning || isCorrectionRunning
+  const isArticleRunning = article.status === 'running'
+  const isProcessing = transcription.status === 'running' || isOcrRunning || isCorrectionRunning || isArticleRunning
 
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
@@ -83,7 +91,7 @@ export function GenerateNotesPage({
             <TranscriptionSettings
               language={language}
               status={transcription.status}
-              disabled={isOcrRunning || isCorrectionRunning}
+              disabled={isOcrRunning || isCorrectionRunning || isArticleRunning}
               onLanguageChange={setLanguage}
               onTranscribe={handleTranscribe}
             />
@@ -92,19 +100,26 @@ export function GenerateNotesPage({
               stage={transcription.stage}
               stageProgress={transcription.stageProgress}
               error={transcription.error}
-              disabled={isOcrRunning || isCorrectionRunning}
+              disabled={isOcrRunning || isCorrectionRunning || isArticleRunning}
               onRetry={handleTranscribe}
             />
             <OcrPanel
               ocr={ocr}
-              disabled={transcription.status === 'running' || isCorrectionRunning}
+              disabled={transcription.status === 'running' || isCorrectionRunning || isArticleRunning}
             />
             <CorrectionPanel
               correction={correction}
-              disabled={transcription.status === 'running' || isOcrRunning}
+              disabled={transcription.status === 'running' || isOcrRunning || isArticleRunning}
+            />
+            <ArticleFormattingPanel
+              formatting={article}
+              disabled={transcription.status === 'running' || isOcrRunning || isCorrectionRunning}
             />
             {(transcription.status === 'completed' || hasOcrResult) && (
               <TranscriptPreview slides={project.slides} />
+            )}
+            {article.formattedSlides.length > 0 && (
+              <ArticlePreview slides={article.formattedSlides} />
             )}
           </div>
         </div>

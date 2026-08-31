@@ -6,6 +6,7 @@ import { SlideDetectionPage } from '../features/slide-detection/SlideDetectionPa
 import {
   createMediaProject,
   updateProjectCrop,
+  updateProjectSlideArticle,
   updateProjectSlideCorrection,
   updateProjectSlideDetection,
   updateProjectSlideOcr,
@@ -14,6 +15,7 @@ import {
 import { saveProject } from '../lib/storage/projectStorage'
 import type { SelectedVideo } from '../features/import/types'
 import type {
+  ArticleFormattingResult,
   CropRegion,
   MediaProject,
   SlideOcrResult,
@@ -88,6 +90,15 @@ function App() {
     )
   }
 
+  const handleArticleSlideCompleted = async (
+    slideId: string,
+    article: ArticleFormattingResult,
+  ) => {
+    await updateCurrentProject((currentProject) =>
+      updateProjectSlideArticle(currentProject, slideId, article),
+    )
+  }
+
   const handleOpenGenerateNotes = () => {
     if (!project?.slideDetection) return
     setStep('generate-notes')
@@ -101,6 +112,7 @@ function App() {
         onCompleted={handleTranscriptionCompleted}
         onOcrSlideCompleted={handleOcrSlideCompleted}
         onCorrectionSlideCompleted={handleCorrectionSlideCompleted}
+        onArticleSlideCompleted={handleArticleSlideCompleted}
       />
     )
   }

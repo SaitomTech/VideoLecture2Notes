@@ -79,6 +79,8 @@ const SlideDataSchema = z.object({
     correctionModel: z.string().optional(),
     correctionInputFingerprint: z.string().optional(),
     articleBody: z.string().optional(),
+    articleModel: z.string().optional(),
+    articleInputFingerprint: z.string().optional(),
     model: z.string(),
   }).optional(),
 })
