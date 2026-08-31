@@ -1,12 +1,18 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { CropPage } from '../features/crop/CropPage'
 import { GenerateNotesPage } from '../features/generate-notes/GenerateNotesPage'
 import { ImportPage } from '../features/import/ImportPage'
 import { SlideDetectionPage } from '../features/slide-detection/SlideDetectionPage'
-import { createMediaProject, updateProjectCrop, updateProjectSlideDetection, updateProjectTranscription } from '../lib/project/project'
+import {
+  createMediaProject,
+  updateProjectCrop,
+  updateProjectSlideDetection,
+  updateProjectSlideOcr,
+  updateProjectTranscription,
+} from '../lib/project/project'
 import { saveProject } from '../lib/storage/projectStorage'
 import type { SelectedVideo } from '../features/import/types'
-import type { CropRegion, MediaProject, TranscriptionResult } from '../types/project'
+import type { CropRegion, MediaProject, SlideOcrResult, TranscriptionResult } from '../types/project'
 import type { SlideDetectionOutput } from '../features/slide-detection/types'
 
 type AppStep = 'import' | 'crop' | 'detect-slides' | 'generate-notes'
@@ -14,39 +20,56 @@ type AppStep = 'import' | 'crop' | 'detect-slides' | 'generate-notes'
 function App() {
   const [step, setStep] = useState<AppStep>('import')
   const [project, setProject] = useState<MediaProject | null>(null)
+  const projectRef = useRef<MediaProject | null>(null)
+
+  const persistProject = async (nextProject: MediaProject) => {
+    await saveProject(nextProject)
+    projectRef.current = nextProject
+    setProject(nextProject)
+  }
+
+  const updateCurrentProject = async (
+    update: (currentProject: MediaProject) => MediaProject,
+  ) => {
+    const currentProject = projectRef.current
+    if (!currentProject) return null
+
+    const nextProject = update(currentProject)
+    await persistProject(nextProject)
+    return nextProject
+  }
 
   const handleImportContinue = async (video: SelectedVideo) => {
     if (!video.metadata) throw new Error('動画メタデータがありません')
 
-    const nextProject = createMediaProject(video, video.metadata)
-    await saveProject(nextProject)
-    setProject(nextProject)
+    await persistProject(createMediaProject(video, video.metadata))
     setStep('crop')
   }
 
   const handleApplyCrop = async (crop: CropRegion) => {
-    if (!project) return
-
-    const nextProject = updateProjectCrop(project, crop)
-    await saveProject(nextProject)
-    setProject(nextProject)
+    const nextProject = await updateCurrentProject((currentProject) =>
+      updateProjectCrop(currentProject, crop),
+    )
+    if (!nextProject) return
     setStep('detect-slides')
   }
 
   const handleSlideDetectionCompleted = async (output: SlideDetectionOutput) => {
-    if (!project) return
-
-    const nextProject = updateProjectSlideDetection(project, output.result, output.slides)
-    await saveProject(nextProject)
-    setProject(nextProject)
+    await updateCurrentProject((currentProject) =>
+      updateProjectSlideDetection(currentProject, output.result, output.slides),
+    )
   }
 
   const handleTranscriptionCompleted = async (transcription: TranscriptionResult) => {
-    if (!project) return
+    await updateCurrentProject((currentProject) =>
+      updateProjectTranscription(currentProject, transcription),
+    )
+  }
 
-    const nextProject = updateProjectTranscription(project, transcription)
-    await saveProject(nextProject)
-    setProject(nextProject)
+  const handleOcrSlideCompleted = async (slideId: string, ocr: SlideOcrResult) => {
+    await updateCurrentProject((currentProject) =>
+      updateProjectSlideOcr(currentProject, slideId, ocr),
+    )
   }
 
   const handleOpenGenerateNotes = () => {
@@ -55,7 +78,14 @@ function App() {
   }
 
   if (step === 'generate-notes' && project) {
-    return <GenerateNotesPage project={project} onBack={() => setStep('detect-slides')} onCompleted={handleTranscriptionCompleted} />
+    return (
+      <GenerateNotesPage
+        project={project}
+        onBack={() => setStep('detect-slides')}
+        onCompleted={handleTranscriptionCompleted}
+        onOcrSlideCompleted={handleOcrSlideCompleted}
+      />
+    )
   }
 
   if (step === 'detect-slides' && project) {

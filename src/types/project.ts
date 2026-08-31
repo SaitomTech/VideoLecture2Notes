@@ -58,6 +58,14 @@ export type TranscriptionResult = {
   inputFingerprint: string
 }
 
+export type SlideOcrResult = {
+  rawText: string
+  title?: string | null
+  terms?: string[]
+  model: string
+  inputFingerprint?: string
+}
+
 export type ProjectSettings = {
   slideDetection: {
     sampleIntervalMs: number
@@ -82,12 +90,7 @@ export type SlideData = {
   image: {
     representativeFramePath?: string
   }
-  ocr?: {
-    rawText: string
-    title?: string | null
-    terms?: string[]
-    model: string
-  }
+  ocr?: SlideOcrResult
   transcript?: {
     raw: string
     corrected?: string

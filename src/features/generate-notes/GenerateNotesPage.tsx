@@ -3,6 +3,9 @@ import { useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
 import type { MediaProject, TranscriptionResult } from '../../types/project'
+import { OcrPanel } from '../ocr/components/OcrPanel'
+import { useOcr } from '../ocr/hooks/useOcr'
+import type { OcrSlideCompleted } from '../ocr/ocr'
 import { TranscriptionSettings } from './components/TranscriptionSettings'
 import { TranscriptionStatus } from './components/TranscriptionStatus'
 import { TranscriptPreview } from './components/TranscriptPreview'
@@ -13,16 +16,21 @@ type GenerateNotesPageProps = {
   project: MediaProject
   onBack: () => void
   onCompleted: (result: TranscriptionResult) => void | Promise<void>
+  onOcrSlideCompleted: OcrSlideCompleted
 }
 
-export function GenerateNotesPage({ project, onBack, onCompleted }: GenerateNotesPageProps) {
+export function GenerateNotesPage({ project, onBack, onCompleted, onOcrSlideCompleted }: GenerateNotesPageProps) {
   const [language, setLanguage] = useState<TranscriptionLanguage>(
     project.transcription?.language === 'ja' || project.transcription?.language === 'en'
       ? project.transcription.language
       : 'auto',
   )
   const transcription = useTranscription(project, onCompleted)
+  const ocr = useOcr(project, onOcrSlideCompleted)
   const handleTranscribe = () => transcription.transcribe(language)
+  const hasOcrResult = project.slides.some((slide) => Boolean(slide.ocr))
+  const isOcrRunning = ocr.status === 'running'
+  const isProcessing = transcription.status === 'running' || isOcrRunning
 
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
@@ -40,7 +48,7 @@ export function GenerateNotesPage({ project, onBack, onCompleted }: GenerateNote
             className="inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-[#71807b] transition hover:bg-[#e2eee8] hover:text-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50"
             type="button"
             onClick={onBack}
-            disabled={transcription.status === 'running'}
+            disabled={isProcessing}
           >
             <ArrowLeft size={15} strokeWidth={1.8} />
             スライド検出に戻る
@@ -63,6 +71,7 @@ export function GenerateNotesPage({ project, onBack, onCompleted }: GenerateNote
             <TranscriptionSettings
               language={language}
               status={transcription.status}
+              disabled={isOcrRunning}
               onLanguageChange={setLanguage}
               onTranscribe={handleTranscribe}
             />
@@ -71,9 +80,14 @@ export function GenerateNotesPage({ project, onBack, onCompleted }: GenerateNote
               stage={transcription.stage}
               stageProgress={transcription.stageProgress}
               error={transcription.error}
+              disabled={isOcrRunning}
               onRetry={handleTranscribe}
             />
-            {transcription.status === 'completed' && (
+            <OcrPanel
+              ocr={ocr}
+              disabled={transcription.status === 'running'}
+            />
+            {(transcription.status === 'completed' || hasOcrResult) && (
               <TranscriptPreview slides={project.slides} />
             )}
           </div>

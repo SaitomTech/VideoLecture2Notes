@@ -6,6 +6,7 @@ import type { TranscriptionStatus } from '../hooks/useTranscription'
 type TranscriptionSettingsProps = {
   language: TranscriptionLanguage
   status: TranscriptionStatus
+  disabled?: boolean
   onLanguageChange: (language: TranscriptionLanguage) => void
   onTranscribe: () => void | Promise<void>
 }
@@ -13,11 +14,13 @@ type TranscriptionSettingsProps = {
 export function TranscriptionSettings({
   language,
   status,
+  disabled = false,
   onLanguageChange,
   onTranscribe,
 }: TranscriptionSettingsProps) {
   const isRunning = status === 'running'
   const isCompleted = status === 'completed'
+  const isDisabled = isRunning || disabled
 
   return (
     <section aria-labelledby="transcription-settings-heading">
@@ -32,7 +35,7 @@ export function TranscriptionSettings({
           className="inline-flex items-center justify-center gap-2 rounded-[9px] bg-[#1d6b50] px-4 py-3 text-xs font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] transition hover:bg-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           type="button"
           onClick={() => void onTranscribe()}
-          disabled={isRunning}
+          disabled={isDisabled}
         >
           <RefreshCw size={14} className={isRunning ? 'animate-spin' : ''} />
           {isRunning ? '文字起こし中…' : isCompleted ? '再文字起こし' : '文字起こしを開始'}
@@ -46,7 +49,7 @@ export function TranscriptionSettings({
             className="mt-2 w-full rounded-[8px] border border-[#b7cbc0] bg-[#fbfcfa] px-3 py-2.5 text-sm text-[#18211f] outline-none focus:border-[#1d6b50] focus:ring-2 focus:ring-[#1d6b50]/20 disabled:opacity-50"
             value={language}
             onChange={(event) => onLanguageChange(event.target.value as TranscriptionLanguage)}
-            disabled={isRunning}
+            disabled={isDisabled}
             aria-label="話し言葉の言語"
           >
             <option value="auto">自動判定</option>

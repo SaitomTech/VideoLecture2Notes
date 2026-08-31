@@ -7,6 +7,7 @@ import {
   type MediaProject,
   type SlideData,
   type SlideDetectionResult,
+  type SlideOcrResult,
   type TranscriptionResult,
 } from '../../types/project'
 
@@ -97,6 +98,32 @@ export function updateProjectTranscription(
     ...project,
     transcription,
     slides: assignTranscriptToSlides(project.slides, transcription.segments, transcription.model),
+    article: undefined,
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+export function updateProjectSlideOcr(
+  project: MediaProject,
+  slideId: string,
+  ocr: SlideOcrResult,
+): MediaProject {
+  return {
+    ...project,
+    slides: project.slides.map((slide) => {
+      if (slide.id !== slideId) return slide
+
+      return {
+        ...slide,
+        ocr,
+        transcript: slide.transcript
+          ? {
+              raw: slide.transcript.raw,
+              model: slide.transcript.model,
+            }
+          : undefined,
+      }
+    }),
     article: undefined,
     updatedAt: new Date().toISOString(),
   }
