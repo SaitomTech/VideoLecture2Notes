@@ -1,5 +1,4 @@
 import { Command } from '@tauri-apps/plugin-shell'
-import type { OcrModelPaths } from '../ocr/modelManager'
 
 const STARTUP_TIMEOUT_MS = 120_000
 const HEALTH_POLL_INTERVAL_MS = 250
@@ -7,6 +6,11 @@ const HEALTH_POLL_INTERVAL_MS = 250
 type LlamaServerSession = {
   baseUrl: string
   stop: () => Promise<void>
+}
+
+export type LlamaModelPaths = {
+  modelPath: string
+  mmprojPath?: string
 }
 
 function choosePort() {
@@ -33,14 +37,13 @@ async function waitForHealth(
   throw new Error(`llama-serverの準備に時間がかかりすぎています。${getStderr().trim()}`)
 }
 
-async function startLlamaServer(model: OcrModelPaths): Promise<LlamaServerSession> {
+async function startLlamaServer(model: LlamaModelPaths): Promise<LlamaServerSession> {
   const port = choosePort()
   const baseUrl = `http://127.0.0.1:${port}`
   const command = Command.sidecar('binaries/llama-server', [
     '--model',
     model.modelPath,
-    '--mmproj',
-    model.mmprojPath,
+    ...(model.mmprojPath ? ['--mmproj', model.mmprojPath] : []),
     '--host',
     '127.0.0.1',
     '--port',
@@ -50,6 +53,8 @@ async function startLlamaServer(model: OcrModelPaths): Promise<LlamaServerSessio
     '--n-gpu-layers',
     'all',
     '--flash-attn',
+    'off',
+    '--reasoning',
     'off',
     '--fit',
     'off',
@@ -101,7 +106,7 @@ async function startLlamaServer(model: OcrModelPaths): Promise<LlamaServerSessio
 }
 
 export async function withLlamaServer<T>(
-  model: OcrModelPaths,
+  model: LlamaModelPaths,
   work: (baseUrl: string) => Promise<T>,
 ) {
   const server = await startLlamaServer(model)

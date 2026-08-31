@@ -3,6 +3,9 @@ import { useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
 import type { MediaProject, TranscriptionResult } from '../../types/project'
+import { CorrectionPanel } from '../correction/components/CorrectionPanel'
+import { useCorrection } from '../correction/hooks/useCorrection'
+import type { CorrectionSlideCompleted } from '../correction/correction'
 import { OcrPanel } from '../ocr/components/OcrPanel'
 import { useOcr } from '../ocr/hooks/useOcr'
 import type { OcrSlideCompleted } from '../ocr/ocr'
@@ -17,9 +20,16 @@ type GenerateNotesPageProps = {
   onBack: () => void
   onCompleted: (result: TranscriptionResult) => void | Promise<void>
   onOcrSlideCompleted: OcrSlideCompleted
+  onCorrectionSlideCompleted: CorrectionSlideCompleted
 }
 
-export function GenerateNotesPage({ project, onBack, onCompleted, onOcrSlideCompleted }: GenerateNotesPageProps) {
+export function GenerateNotesPage({
+  project,
+  onBack,
+  onCompleted,
+  onOcrSlideCompleted,
+  onCorrectionSlideCompleted,
+}: GenerateNotesPageProps) {
   const [language, setLanguage] = useState<TranscriptionLanguage>(
     project.transcription?.language === 'ja' || project.transcription?.language === 'en'
       ? project.transcription.language
@@ -27,10 +37,12 @@ export function GenerateNotesPage({ project, onBack, onCompleted, onOcrSlideComp
   )
   const transcription = useTranscription(project, onCompleted)
   const ocr = useOcr(project, onOcrSlideCompleted)
+  const correction = useCorrection(project, onCorrectionSlideCompleted)
   const handleTranscribe = () => transcription.transcribe(language)
   const hasOcrResult = project.slides.some((slide) => Boolean(slide.ocr))
   const isOcrRunning = ocr.status === 'running'
-  const isProcessing = transcription.status === 'running' || isOcrRunning
+  const isCorrectionRunning = correction.status === 'running'
+  const isProcessing = transcription.status === 'running' || isOcrRunning || isCorrectionRunning
 
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
@@ -71,7 +83,7 @@ export function GenerateNotesPage({ project, onBack, onCompleted, onOcrSlideComp
             <TranscriptionSettings
               language={language}
               status={transcription.status}
-              disabled={isOcrRunning}
+              disabled={isOcrRunning || isCorrectionRunning}
               onLanguageChange={setLanguage}
               onTranscribe={handleTranscribe}
             />
@@ -80,12 +92,16 @@ export function GenerateNotesPage({ project, onBack, onCompleted, onOcrSlideComp
               stage={transcription.stage}
               stageProgress={transcription.stageProgress}
               error={transcription.error}
-              disabled={isOcrRunning}
+              disabled={isOcrRunning || isCorrectionRunning}
               onRetry={handleTranscribe}
             />
             <OcrPanel
               ocr={ocr}
-              disabled={transcription.status === 'running'}
+              disabled={transcription.status === 'running' || isCorrectionRunning}
+            />
+            <CorrectionPanel
+              correction={correction}
+              disabled={transcription.status === 'running' || isOcrRunning}
             />
             {(transcription.status === 'completed' || hasOcrResult) && (
               <TranscriptPreview slides={project.slides} />

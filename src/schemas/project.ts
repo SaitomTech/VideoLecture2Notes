@@ -71,6 +71,13 @@ const SlideDataSchema = z.object({
   transcript: z.object({
     raw: z.string(),
     corrected: z.string().optional(),
+    corrections: z.array(z.object({
+      before: z.string(),
+      after: z.string(),
+      reason: z.string().optional(),
+    })).optional(),
+    correctionModel: z.string().optional(),
+    correctionInputFingerprint: z.string().optional(),
     articleBody: z.string().optional(),
     model: z.string(),
   }).optional(),

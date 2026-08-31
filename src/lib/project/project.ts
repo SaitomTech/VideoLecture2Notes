@@ -8,6 +8,7 @@ import {
   type SlideData,
   type SlideDetectionResult,
   type SlideOcrResult,
+  type TranscriptCorrectionResult,
   type TranscriptionResult,
 } from '../../types/project'
 
@@ -122,6 +123,33 @@ export function updateProjectSlideOcr(
               model: slide.transcript.model,
             }
           : undefined,
+      }
+    }),
+    article: undefined,
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+export function updateProjectSlideCorrection(
+  project: MediaProject,
+  slideId: string,
+  correction: TranscriptCorrectionResult,
+): MediaProject {
+  return {
+    ...project,
+    slides: project.slides.map((slide) => {
+      if (slide.id !== slideId || !slide.transcript) return slide
+
+      return {
+        ...slide,
+        transcript: {
+          ...slide.transcript,
+          corrected: correction.corrected,
+          corrections: correction.corrections,
+          correctionModel: correction.model,
+          correctionInputFingerprint: correction.inputFingerprint,
+          articleBody: undefined,
+        },
       }
     }),
     article: undefined,
