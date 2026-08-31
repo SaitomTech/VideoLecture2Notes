@@ -43,6 +43,21 @@ export type SlideDetectionResult = {
   detectedAt: string
 }
 
+export type TranscriptSegment = {
+  startMs: number
+  endMs: number
+  text: string
+}
+
+export type TranscriptionResult = {
+  model: string
+  language?: string
+  audioPath: string
+  segments: TranscriptSegment[]
+  transcribedAt: string
+  inputFingerprint: string
+}
+
 export type ProjectSettings = {
   slideDetection: {
     sampleIntervalMs: number
@@ -89,6 +104,7 @@ export type MediaProject = {
   settings: ProjectSettings
   slides: SlideData[]
   slideDetection?: SlideDetectionResult
+  transcription?: TranscriptionResult
   article?: unknown
   createdAt: string
   updatedAt: string

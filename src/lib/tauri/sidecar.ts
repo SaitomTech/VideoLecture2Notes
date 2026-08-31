@@ -1,6 +1,6 @@
 import { Command } from '@tauri-apps/plugin-shell'
 
-export type SidecarName = 'binaries/ffmpeg' | 'binaries/ffprobe'
+export type SidecarName = 'binaries/ffmpeg' | 'binaries/ffprobe' | 'binaries/whisper-cli'
 
 export function executeSidecar(name: SidecarName, args: string[]) {
   return Command.sidecar(name, args).execute()

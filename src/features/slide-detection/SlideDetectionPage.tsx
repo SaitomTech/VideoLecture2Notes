@@ -1,4 +1,4 @@
-import { ArrowLeft, Check } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
@@ -13,9 +13,10 @@ type SlideDetectionPageProps = {
   project: MediaProject
   onBack: () => void
   onCompleted: (output: SlideDetectionOutput) => void | Promise<void>
+  onContinue: () => void
 }
 
-export function SlideDetectionPage({ project, onBack, onCompleted }: SlideDetectionPageProps) {
+export function SlideDetectionPage({ project, onBack, onCompleted, onContinue }: SlideDetectionPageProps) {
   const durationMs = project.source.metadata.durationMs
   const [reviewBoundaries, setReviewBoundaries] = useState<SlideBoundary[] | null>(
     () => project.slideDetection?.boundaries ?? null,
@@ -160,6 +161,19 @@ export function SlideDetectionPage({ project, onBack, onCompleted }: SlideDetect
               >
                 <Check size={13} />
                 {isSavingReview ? '保存中…' : '修正を保存'}
+              </button>
+            </div>
+          )}
+
+          {output && isCompleted && !hasUnsavedReview && (
+            <div className="flex justify-end border-t border-[#d8e1dc] px-5 py-4">
+              <button
+                className="inline-flex items-center gap-2 rounded-[9px] bg-[#1d6b50] px-4 py-3 text-xs font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] transition hover:bg-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2"
+                type="button"
+                onClick={onContinue}
+              >
+                文字起こしへ
+                <ArrowRight size={14} />
               </button>
             </div>
           )}

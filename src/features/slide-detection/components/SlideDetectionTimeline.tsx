@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState, type MouseEvent } from 'react'
 import type { SlideBoundary, SlideData } from '../../../types/project'
 import { MINIMUM_BOUNDARY_GAP_MS } from '../detection'
-import { formatTimestamp, slideDuration, timelinePosition } from '../utils'
+import { formatTimestamp } from '../../../lib/time'
+import { slideDuration, timelinePosition } from '../utils'
 
 type SlideDetectionTimelineProps = {
   boundaries: SlideBoundary[]

@@ -1,8 +1,8 @@
 import { Trash2 } from 'lucide-react'
 import { useEffect, useRef } from 'react'
+import { SlideThumbnail } from '../../../components/SlideThumbnail'
+import { formatTimestamp } from '../../../lib/time'
 import type { SlideBoundary, SlideData } from '../../../types/project'
-import { formatTimestamp } from '../utils'
-import { SlideThumbnail } from './SlideThumbnail'
 
 type SlideSegmentListProps = {
   boundaries: SlideBoundary[]
