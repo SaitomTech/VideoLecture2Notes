@@ -26,6 +26,8 @@
         "scope": [
           "$HOME",
           "$HOME/**/*",
+          "$APPLOCALDATA/projects",
+          "$APPLOCALDATA/projects/**/*",
           "/Volumes",
           "/Volumes/**/*"
         ]
