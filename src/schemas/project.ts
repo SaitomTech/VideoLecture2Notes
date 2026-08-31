@@ -109,7 +109,9 @@ export const MediaProjectSchema = z.object({
   slides: z.array(SlideDataSchema),
   slideDetection: SlideDetectionResultSchema.optional(),
   transcription: TranscriptionResultSchema.optional(),
-  article: z.unknown().optional(),
+  article: z.object({
+    title: z.string(),
+  }).optional(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 })

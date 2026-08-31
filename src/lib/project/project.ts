@@ -2,6 +2,7 @@ import type { SelectedVideo } from '../../features/import/types'
 import { assignTranscriptToSlides } from '../pipeline/assignTranscriptToSlides'
 import {
   PROJECT_VERSION,
+  type ArticleDraft,
   type ArticleFormattingResult,
   type CropRegion,
   type MediaMetadata,
@@ -45,6 +46,9 @@ export function createMediaProject(video: SelectedVideo, metadata: MediaMetadata
     },
     settings: DEFAULT_SETTINGS,
     slides: [],
+    article: {
+      title: video.name.replace(/\.[^.]+$/, ''),
+    },
     createdAt: now,
     updatedAt: now,
   }
@@ -64,7 +68,6 @@ export function updateProjectCrop(project: MediaProject, crop: CropRegion): Medi
       ? {
           slides: [],
           slideDetection: undefined,
-          article: undefined,
         }
       : {}),
     updatedAt: new Date().toISOString(),
@@ -80,7 +83,6 @@ export function updateProjectSlideDetection(project: MediaProject, result: Slide
     ...project,
     slideDetection: result,
     slides: nextSlides,
-    article: undefined,
     settings: {
       ...project.settings,
       slideDetection: {
@@ -100,7 +102,6 @@ export function updateProjectTranscription(
     ...project,
     transcription,
     slides: assignTranscriptToSlides(project.slides, transcription.segments, transcription.model),
-    article: undefined,
     updatedAt: new Date().toISOString(),
   }
 }
@@ -126,7 +127,6 @@ export function updateProjectSlideOcr(
           : undefined,
       }
     }),
-    article: undefined,
     updatedAt: new Date().toISOString(),
   }
 }
@@ -155,7 +155,6 @@ export function updateProjectSlideCorrection(
         },
       }
     }),
-    article: undefined,
     updatedAt: new Date().toISOString(),
   }
 }
@@ -180,7 +179,29 @@ export function updateProjectSlideArticle(
         },
       }
     }),
-    article: undefined,
     updatedAt: new Date().toISOString(),
+  }
+}
+
+export function updateProjectArticleDraft(project: MediaProject, draft: ArticleDraft): MediaProject {
+  const title = draft.title.trim() || project.article?.title || project.source.name.replace(/\.[^.]+$/, '')
+  const updatedAt = new Date().toISOString()
+
+  return {
+    ...project,
+    article: { title },
+    slides: project.slides.map((slide) => {
+      const body = draft.bodies[slide.id]
+      if (body === undefined || !slide.transcript || body === slide.transcript.articleBody) return slide
+
+      return {
+        ...slide,
+        transcript: {
+          ...slide.transcript,
+          articleBody: body,
+        },
+      }
+    }),
+    updatedAt,
   }
 }
