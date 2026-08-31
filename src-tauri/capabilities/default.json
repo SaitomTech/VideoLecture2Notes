@@ -12,10 +12,52 @@
     {
       "identifier": "fs:allow-stat",
       "allow": [
-        { "path": "$HOME" },
-        { "path": "$HOME/**/*" },
-        { "path": "/Volumes" },
-        { "path": "/Volumes/**/*" }
+        {
+          "path": "$HOME"
+        },
+        {
+          "path": "$HOME/**/*"
+        },
+        {
+          "path": "/Volumes"
+        },
+        {
+          "path": "/Volumes/**/*"
+        }
+      ]
+    },
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "binaries/ffmpeg",
+          "sidecar": true,
+          "args": true
+        },
+        {
+          "name": "binaries/ffprobe",
+          "sidecar": true,
+          "args": true
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-mkdir",
+      "allow": [
+        { "path": "$APPLOCALDATA/projects" },
+        { "path": "$APPLOCALDATA/projects/**/*" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-read-text-file",
+      "allow": [
+        { "path": "$APPLOCALDATA/projects/**/*" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [
+        { "path": "$APPLOCALDATA/projects/**/*" }
       ]
     }
   ]
