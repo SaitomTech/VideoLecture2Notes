@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { getUserErrorMessage } from '../../../lib/errors'
-import type { MediaProject } from '../../../types/project'
+import type { TextModelId } from '../../../lib/llama/textModel'
+import type { CorrectionMode, MediaProject } from '../../../types/project'
 import {
-  hasCurrentCorrection,
-  runCorrection,
+  DEFAULT_CORRECTION_MODE,
   type CorrectionProgress,
   type CorrectionSlideCompleted,
   type CorrectionStage,
+  hasCurrentCorrection,
+  runCorrection,
 } from '../correction'
-import type { TextModelId } from '../../../lib/llama/textModel'
 
 export type CorrectionStatus = 'idle' | 'running' | 'completed' | 'error'
 
@@ -16,9 +17,12 @@ export function useCorrection(
   project: MediaProject,
   onSlideCompleted: CorrectionSlideCompleted,
   modelId: TextModelId,
+  correctionMode: CorrectionMode = DEFAULT_CORRECTION_MODE,
 ) {
   const targetSlides = project.slides.filter((slide) => slide.transcript?.raw.trim())
-  const completedFromProject = targetSlides.filter((slide) => hasCurrentCorrection(slide, modelId)).length
+  const completedFromProject = targetSlides.filter(
+    (slide) => hasCurrentCorrection(slide, modelId, correctionMode),
+  ).length
   const isUpToDate = completedFromProject === targetSlides.length && targetSlides.length > 0
   const [status, setStatus] = useState<CorrectionStatus>('idle')
   const [stage, setStage] = useState<CorrectionStage>('preparing-model')
@@ -29,6 +33,13 @@ export function useCorrection(
   })
   const [error, setError] = useState<string | null>(null)
 
+  function reset() {
+    setStatus('idle')
+    setError(null)
+    setProgress({ completed: 0, total: 0, stageProgress: null })
+    setStage('preparing-model')
+  }
+
   async function correct(force = false) {
     setStatus('running')
     setError(null)
@@ -36,6 +47,7 @@ export function useCorrection(
       await runCorrection({
         project,
         modelId,
+        correctionMode,
         onStage: setStage,
         onProgress: setProgress,
         onSlideCompleted,
@@ -66,7 +78,7 @@ export function useCorrection(
   const visibleStatus =
     status === 'running' || status === 'error' ? status : isUpToDate ? 'completed' : 'idle'
 
-  return { status: visibleStatus, stage, progress: visibleProgress, error, correct }
+  return { status: visibleStatus, stage, progress: visibleProgress, error, correct, reset }
 }
 
 export type CorrectionController = ReturnType<typeof useCorrection>

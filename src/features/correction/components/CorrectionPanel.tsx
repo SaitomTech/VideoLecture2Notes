@@ -1,10 +1,14 @@
 import { AlertTriangle, Check, FilePenLine, RefreshCw } from 'lucide-react'
 import type { TextModel } from '../../../lib/llama/textModel'
+import type { CorrectionMode } from '../../../types/project'
+import { CORRECTION_MODES } from '../correction'
 import type { CorrectionController } from '../hooks/useCorrection'
 
 type CorrectionPanelProps = {
   correction: CorrectionController
   model: TextModel
+  correctionMode: CorrectionMode
+  onCorrectionModeChange: (mode: CorrectionMode) => void
   disabled?: boolean
 }
 
@@ -24,7 +28,13 @@ function progressRatio(correction: CorrectionController) {
   return correction.progress.total > 0 ? correction.progress.completed / correction.progress.total : 0
 }
 
-export function CorrectionPanel({ correction, model, disabled = false }: CorrectionPanelProps) {
+export function CorrectionPanel({
+  correction,
+  model,
+  correctionMode,
+  onCorrectionModeChange,
+  disabled = false,
+}: CorrectionPanelProps) {
   const isRunning = correction.status === 'running'
   const isCompleted = correction.status === 'completed'
   const total = correction.progress.total
@@ -58,7 +68,11 @@ export function CorrectionPanel({ correction, model, disabled = false }: Correct
               {statusLabel}
             </span>
           </div>
-          <p className="mt-1 text-xs text-[#71807b]">スライドの文字を補助資料にして、発話の誤変換や表記を整えます。</p>
+          <p className="mt-1 text-xs text-[#71807b]">
+            {correctionMode === 'slide-aligned'
+              ? 'スライドの正式な用語・表記を優先して、発話の誤変換を整えます。'
+              : 'スライドの文字を補助資料にして、発話の誤変換や表記を整えます。'}
+          </p>
         </div>
         <button
           className="inline-flex items-center justify-center gap-2 rounded-[9px] border border-[#b7cbc0] bg-[#fbfcfa] px-4 py-3 text-xs font-semibold text-[#1d6b50] transition hover:border-[#1d6b50] hover:bg-[#e2eee8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -71,7 +85,26 @@ export function CorrectionPanel({ correction, model, disabled = false }: Correct
         </button>
       </div>
 
-      <div className="mt-5 grid gap-4 rounded-[12px] border border-[#d8e1dc] bg-[#f7faf7] p-4 md:grid-cols-2 md:p-5">
+      <div className="mt-5 grid gap-4 rounded-[12px] border border-[#d8e1dc] bg-[#f7faf7] p-4 md:grid-cols-3 md:p-5">
+        <label className="block text-xs text-[#71807b]" htmlFor="correction-mode">
+          <span className="block font-semibold text-[#18211f]">補正方針</span>
+          <select
+            id="correction-mode"
+            className="mt-2 w-full rounded-[8px] border border-[#b7cbc0] bg-[#fbfcfa] px-3 py-2 text-[11px] text-[#18211f] outline-none focus:border-[#1d6b50] focus:ring-2 focus:ring-[#1d6b50]/20 disabled:cursor-not-allowed disabled:opacity-50"
+            value={correctionMode}
+            onChange={(event) => onCorrectionModeChange(event.target.value as CorrectionMode)}
+            disabled={disabled || isRunning}
+          >
+            {CORRECTION_MODES.map((mode) => (
+              <option key={mode.id} value={mode.id}>
+                {mode.label}
+              </option>
+            ))}
+          </select>
+          <span className="mt-1 block text-[10px] text-[#9aa6a1]">
+            {CORRECTION_MODES.find((mode) => mode.id === correctionMode)?.description}
+          </span>
+        </label>
         <div className="text-xs text-[#71807b]">
           <span className="block font-semibold text-[#18211f]">使用モデル</span>
           <p className="mt-2 font-mono text-[11px] text-[#1d6b50]">{model.label}</p>

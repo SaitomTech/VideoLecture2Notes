@@ -3,12 +3,13 @@ import { useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
 import { getTextModel, type TextModelId } from '../../lib/llama/textModel'
-import type { MediaProject, TranscriptionResult } from '../../types/project'
+import type { CorrectionMode, MediaProject, TranscriptionResult } from '../../types/project'
 import type { ArticleSlideCompleted } from '../article/article'
 import { ArticlePreview } from '../article/components/ArticlePreview'
 import { ArticleFormattingPanel } from '../article/components/ArticleFormattingPanel'
 import { useArticleFormatting } from '../article/hooks/useArticleFormatting'
 import { CorrectionPanel } from '../correction/components/CorrectionPanel'
+import { DEFAULT_CORRECTION_MODE } from '../correction/correction'
 import { useCorrection } from '../correction/hooks/useCorrection'
 import type { CorrectionSlideCompleted } from '../correction/correction'
 import { OcrPanel } from '../ocr/components/OcrPanel'
@@ -49,17 +50,33 @@ export function GenerateNotesPage({
     .map((slide) => slide.transcript?.correctionModel ?? slide.transcript?.articleModel)
     .find((modelId): modelId is string => Boolean(modelId))
   const [textModelId, setTextModelId] = useState<TextModelId>(() => getTextModel(storedTextModelId).id)
+  const storedCorrectionMode = project.slides
+    .map((slide) => slide.transcript?.correctionMode)
+    .find((mode): mode is CorrectionMode => mode !== undefined)
+  const [correctionMode, setCorrectionMode] = useState<CorrectionMode>(
+    storedCorrectionMode ?? DEFAULT_CORRECTION_MODE,
+  )
   const textModel = getTextModel(textModelId)
   const transcription = useTranscription(project, onCompleted)
   const ocr = useOcr(project, onOcrSlideCompleted)
-  const correction = useCorrection(project, onCorrectionSlideCompleted, textModelId)
-  const article = useArticleFormatting(project, onArticleSlideCompleted, textModelId)
+  const correction = useCorrection(project, onCorrectionSlideCompleted, textModelId, correctionMode)
+  const article = useArticleFormatting(project, onArticleSlideCompleted, textModelId, correctionMode)
   const handleTranscribe = () => transcription.transcribe(language)
   const hasOcrResult = project.slides.some((slide) => Boolean(slide.ocr))
   const isOcrRunning = ocr.status === 'running'
   const isCorrectionRunning = correction.status === 'running'
   const isArticleRunning = article.status === 'running'
   const isProcessing = transcription.status === 'running' || isOcrRunning || isCorrectionRunning || isArticleRunning
+  const handleTextModelChange = (nextModelId: TextModelId) => {
+    correction.reset()
+    article.reset()
+    setTextModelId(nextModelId)
+  }
+  const handleCorrectionModeChange = (nextMode: CorrectionMode) => {
+    correction.reset()
+    article.reset()
+    setCorrectionMode(nextMode)
+  }
 
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
@@ -115,7 +132,7 @@ export function GenerateNotesPage({
             <TextModelSelector
               value={textModelId}
               disabled={isProcessing}
-              onChange={setTextModelId}
+              onChange={handleTextModelChange}
             />
             <OcrPanel
               ocr={ocr}
@@ -124,6 +141,8 @@ export function GenerateNotesPage({
             <CorrectionPanel
               correction={correction}
               model={textModel}
+              correctionMode={correctionMode}
+              onCorrectionModeChange={handleCorrectionModeChange}
               disabled={transcription.status === 'running' || isOcrRunning || isArticleRunning}
             />
             <ArticleFormattingPanel
