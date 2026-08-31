@@ -23,6 +23,11 @@ export type ModelDownloadProgress = {
   totalBytes: number
 }
 
+export function modelProgressRatio(progress: ModelDownloadProgress) {
+  const fileProgress = progress.totalBytes > 0 ? progress.receivedBytes / progress.totalBytes : 0
+  return Math.min(1, (progress.fileIndex - 1 + fileProgress) / progress.fileCount)
+}
+
 type EnsureModelFilesInput = {
   directory: string
   files: readonly ModelFile[]

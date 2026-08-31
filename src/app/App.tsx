@@ -6,13 +6,20 @@ import { SlideDetectionPage } from '../features/slide-detection/SlideDetectionPa
 import {
   createMediaProject,
   updateProjectCrop,
+  updateProjectSlideCorrection,
   updateProjectSlideDetection,
   updateProjectSlideOcr,
   updateProjectTranscription,
 } from '../lib/project/project'
 import { saveProject } from '../lib/storage/projectStorage'
 import type { SelectedVideo } from '../features/import/types'
-import type { CropRegion, MediaProject, SlideOcrResult, TranscriptionResult } from '../types/project'
+import type {
+  CropRegion,
+  MediaProject,
+  SlideOcrResult,
+  TranscriptCorrectionResult,
+  TranscriptionResult,
+} from '../types/project'
 import type { SlideDetectionOutput } from '../features/slide-detection/types'
 
 type AppStep = 'import' | 'crop' | 'detect-slides' | 'generate-notes'
@@ -72,6 +79,15 @@ function App() {
     )
   }
 
+  const handleCorrectionSlideCompleted = async (
+    slideId: string,
+    correction: TranscriptCorrectionResult,
+  ) => {
+    await updateCurrentProject((currentProject) =>
+      updateProjectSlideCorrection(currentProject, slideId, correction),
+    )
+  }
+
   const handleOpenGenerateNotes = () => {
     if (!project?.slideDetection) return
     setStep('generate-notes')
@@ -84,6 +100,7 @@ function App() {
         onBack={() => setStep('detect-slides')}
         onCompleted={handleTranscriptionCompleted}
         onOcrSlideCompleted={handleOcrSlideCompleted}
+        onCorrectionSlideCompleted={handleCorrectionSlideCompleted}
       />
     )
   }

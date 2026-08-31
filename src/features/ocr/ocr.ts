@@ -1,10 +1,11 @@
 import { readFile } from '@tauri-apps/plugin-fs'
+import { completeChat } from '../../lib/llama/chat'
 import { withLlamaServer } from '../../lib/llama/server'
 import {
   DEFAULT_OCR_MODEL,
   ensureOcrModel,
 } from '../../lib/ocr/modelManager'
-import type { ModelDownloadProgress } from '../../lib/models/download'
+import { modelProgressRatio } from '../../lib/models/download'
 import type { MediaProject, SlideData, SlideOcrResult } from '../../types/project'
 
 const OCR_PROMPT_VERSION = 'text-recognition-v1'
@@ -32,32 +33,12 @@ type RunOcrInput = {
   force?: boolean
 }
 
-type LlamaChatResponse = {
-  choices?: Array<{
-    message?: {
-      content?: unknown
-    }
-  }>
-}
-
 function toBase64(bytes: Uint8Array) {
   let binary = ''
   for (let offset = 0; offset < bytes.length; offset += 0x8000) {
     binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000))
   }
   return btoa(binary)
-}
-
-function contentToText(content: unknown) {
-  if (typeof content === 'string') return content
-  if (!Array.isArray(content)) return ''
-
-  return content
-    .map((part) => {
-      if (!part || typeof part !== 'object' || !('text' in part)) return ''
-      return typeof part.text === 'string' ? part.text : ''
-    })
-    .join('')
 }
 
 function throwIfAborted(signal?: AbortSignal) {
@@ -81,41 +62,21 @@ async function recognizeSlide(baseUrl: string, slide: SlideData, signal?: AbortS
   if (!imagePath) throw new Error(`Slide ${slide.index + 1}の代表画像がありません。`)
 
   const image = toBase64(await readFile(imagePath))
-  const response = await fetch(`${baseUrl}/v1/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: DEFAULT_OCR_MODEL.id,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${image}` } },
-            { type: 'text', text: OCR_PROMPT },
-          ],
-        },
-      ],
-      temperature: 0.02,
-      max_tokens: 2048,
-      stream: false,
-    }),
+  return completeChat(baseUrl, {
+    model: DEFAULT_OCR_MODEL.id,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${image}` } },
+          { type: 'text', text: OCR_PROMPT },
+        ],
+      },
+    ],
+    temperature: 0.02,
+    maxTokens: 2048,
     signal,
   })
-
-  if (!response.ok) {
-    const detail = await response.text().catch(() => '')
-    throw new Error(`Slide ${slide.index + 1}のOCRに失敗しました (HTTP ${response.status})${detail ? `: ${detail}` : ''}`)
-  }
-
-  const result = (await response.json()) as LlamaChatResponse
-  const text = contentToText(result.choices?.[0]?.message?.content).trim()
-  if (!text) throw new Error(`Slide ${slide.index + 1}のOCR結果が空でした。`)
-  return text
-}
-
-function modelProgress(progress: ModelDownloadProgress) {
-  const fileProgress = progress.totalBytes > 0 ? progress.receivedBytes / progress.totalBytes : 0
-  return Math.min(1, (progress.fileIndex - 1 + fileProgress) / progress.fileCount)
 }
 
 export async function runOcr({
@@ -151,7 +112,7 @@ export async function runOcr({
   onStage?.('preparing-model')
   const model = await ensureOcrModel({
     signal,
-    onProgress: (progress) => report(modelProgress(progress)),
+    onProgress: (progress) => report(modelProgressRatio(progress)),
   })
 
   throwIfAborted(signal)
