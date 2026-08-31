@@ -1,10 +1,12 @@
 import { useRef, useState } from 'react'
+import { ArticleReviewPage } from '../features/article/ArticleReviewPage'
 import { CropPage } from '../features/crop/CropPage'
 import { GenerateNotesPage } from '../features/generate-notes/GenerateNotesPage'
 import { ImportPage } from '../features/import/ImportPage'
 import { SlideDetectionPage } from '../features/slide-detection/SlideDetectionPage'
 import {
   createMediaProject,
+  updateProjectArticleDraft,
   updateProjectCrop,
   updateProjectSlideArticle,
   updateProjectSlideCorrection,
@@ -15,6 +17,7 @@ import {
 import { saveProject } from '../lib/storage/projectStorage'
 import type { SelectedVideo } from '../features/import/types'
 import type {
+  ArticleDraft,
   ArticleFormattingResult,
   CropRegion,
   MediaProject,
@@ -24,7 +27,7 @@ import type {
 } from '../types/project'
 import type { SlideDetectionOutput } from '../features/slide-detection/types'
 
-type AppStep = 'import' | 'crop' | 'detect-slides' | 'generate-notes'
+type AppStep = 'import' | 'crop' | 'detect-slides' | 'generate-notes' | 'article-review'
 
 function App() {
   const [step, setStep] = useState<AppStep>('import')
@@ -99,9 +102,23 @@ function App() {
     )
   }
 
+  const handleSaveArticle = async (draft: ArticleDraft) => {
+    await updateCurrentProject((currentProject) => updateProjectArticleDraft(currentProject, draft))
+  }
+
   const handleOpenGenerateNotes = () => {
     if (!project?.slideDetection) return
     setStep('generate-notes')
+  }
+
+  if (step === 'article-review' && project) {
+    return (
+      <ArticleReviewPage
+        project={project}
+        onBack={() => setStep('generate-notes')}
+        onSave={handleSaveArticle}
+      />
+    )
   }
 
   if (step === 'generate-notes' && project) {
@@ -113,6 +130,7 @@ function App() {
         onOcrSlideCompleted={handleOcrSlideCompleted}
         onCorrectionSlideCompleted={handleCorrectionSlideCompleted}
         onArticleSlideCompleted={handleArticleSlideCompleted}
+        onOpenArticleReview={() => setStep('article-review')}
       />
     )
   }

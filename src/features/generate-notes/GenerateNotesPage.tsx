@@ -26,6 +26,7 @@ type GenerateNotesPageProps = {
   onOcrSlideCompleted: OcrSlideCompleted
   onCorrectionSlideCompleted: CorrectionSlideCompleted
   onArticleSlideCompleted: ArticleSlideCompleted
+  onOpenArticleReview: () => void
 }
 
 export function GenerateNotesPage({
@@ -35,6 +36,7 @@ export function GenerateNotesPage({
   onOcrSlideCompleted,
   onCorrectionSlideCompleted,
   onArticleSlideCompleted,
+  onOpenArticleReview,
 }: GenerateNotesPageProps) {
   const [language, setLanguage] = useState<TranscriptionLanguage>(
     project.transcription?.language === 'ja' || project.transcription?.language === 'en'
@@ -119,7 +121,7 @@ export function GenerateNotesPage({
               <TranscriptPreview slides={project.slides} />
             )}
             {article.formattedSlides.length > 0 && (
-              <ArticlePreview slides={article.formattedSlides} />
+              <ArticlePreview slides={article.formattedSlides} onEdit={onOpenArticleReview} />
             )}
           </div>
         </div>

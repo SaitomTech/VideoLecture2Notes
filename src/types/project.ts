@@ -85,6 +85,15 @@ export type ArticleFormattingResult = {
   inputFingerprint: string
 }
 
+export type ArticleData = {
+  title: string
+}
+
+export type ArticleDraft = {
+  title: string
+  bodies: Record<string, string>
+}
+
 export type ProjectSettings = {
   slideDetection: {
     sampleIntervalMs: number
@@ -132,7 +141,7 @@ export type MediaProject = {
   slides: SlideData[]
   slideDetection?: SlideDetectionResult
   transcription?: TranscriptionResult
-  article?: unknown
+  article?: ArticleData
   createdAt: string
   updatedAt: string
 }
