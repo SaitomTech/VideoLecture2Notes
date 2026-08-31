@@ -10,7 +10,12 @@ import {
 } from '../../lib/llama/textModel'
 import { modelProgressRatio } from '../../lib/models/download'
 import { hasCurrentCorrection } from '../correction/correction'
-import type { ArticleFormattingResult, MediaProject, SlideData } from '../../types/project'
+import type {
+  ArticleFormattingResult,
+  CorrectionMode,
+  MediaProject,
+  SlideData,
+} from '../../types/project'
 
 const ARTICLE_PROMPT_VERSION = 'article-formatting-v1'
 
@@ -45,6 +50,7 @@ export type ArticleSlideCompleted = (
 type RunArticleFormattingInput = {
   project: MediaProject
   modelId: TextModelId
+  correctionMode?: CorrectionMode
   onStage?: (stage: ArticleFormattingStage) => void
   onProgress?: (progress: ArticleFormattingProgress) => void
   onSlideCompleted: ArticleSlideCompleted
@@ -79,8 +85,12 @@ export function hasCurrentArticle(
   )
 }
 
-export function articleTargetSlides(project: MediaProject, modelId?: TextModelId) {
-  return project.slides.filter((slide) => hasCurrentCorrection(slide, modelId))
+export function articleTargetSlides(
+  project: MediaProject,
+  modelId?: TextModelId,
+  correctionMode?: CorrectionMode,
+) {
+  return project.slides.filter((slide) => hasCurrentCorrection(slide, modelId, correctionMode))
 }
 
 function parseArticle(text: string, slide: SlideData, modelId: TextModelId): ArticleFormattingResult {
@@ -144,6 +154,7 @@ async function formatSlide(
 export async function runArticleFormatting({
   project,
   modelId,
+  correctionMode,
   onStage,
   onProgress,
   onSlideCompleted,
@@ -151,7 +162,7 @@ export async function runArticleFormatting({
   force = false,
 }: RunArticleFormattingInput) {
   const textModel = getTextModel(modelId)
-  const targetSlides = articleTargetSlides(project, modelId)
+  const targetSlides = articleTargetSlides(project, modelId, correctionMode)
   if (targetSlides.length === 0) {
     throw new UserFacingError(
       '記事に整形する補正済み文字起こしがありません。先に文字起こしの補正を実行してください。',

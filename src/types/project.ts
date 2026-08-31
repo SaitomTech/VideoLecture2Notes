@@ -72,10 +72,13 @@ export type TranscriptCorrection = {
   reason?: string
 }
 
+export type CorrectionMode = 'transcript-first' | 'slide-aligned'
+
 export type TranscriptCorrectionResult = {
   corrected: string
   corrections: TranscriptCorrection[]
   model: string
+  mode: CorrectionMode
   inputFingerprint: string
 }
 
@@ -124,6 +127,7 @@ export type SlideData = {
     corrected?: string
     corrections?: TranscriptCorrection[]
     correctionModel?: string
+    correctionMode?: CorrectionMode
     correctionInputFingerprint?: string
     articleBody?: string
     articleModel?: string

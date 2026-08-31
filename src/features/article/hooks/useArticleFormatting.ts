@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { getUserErrorMessage } from '../../../lib/errors'
 import type { TextModelId } from '../../../lib/llama/textModel'
-import type { MediaProject } from '../../../types/project'
+import type { CorrectionMode, MediaProject } from '../../../types/project'
 import {
   articleTargetSlides,
   hasCurrentArticle,
@@ -17,8 +17,9 @@ export function useArticleFormatting(
   project: MediaProject,
   onSlideCompleted: ArticleSlideCompleted,
   modelId: TextModelId,
+  correctionMode?: CorrectionMode,
 ) {
-  const targetSlides = articleTargetSlides(project, modelId)
+  const targetSlides = articleTargetSlides(project, modelId, correctionMode)
   const formattedSlides = targetSlides.filter((slide) => hasCurrentArticle(slide, modelId))
   const completedFromProject = formattedSlides.length
   const isUpToDate = completedFromProject === targetSlides.length && targetSlides.length > 0
@@ -31,6 +32,13 @@ export function useArticleFormatting(
   })
   const [error, setError] = useState<string | null>(null)
 
+  function reset() {
+    setStatus('idle')
+    setError(null)
+    setProgress({ completed: 0, total: 0, stageProgress: null })
+    setStage('preparing-model')
+  }
+
   async function format(force = false) {
     setStatus('running')
     setError(null)
@@ -38,6 +46,7 @@ export function useArticleFormatting(
       await runArticleFormatting({
         project,
         modelId,
+        correctionMode,
         onStage: setStage,
         onProgress: setProgress,
         onSlideCompleted,
@@ -75,6 +84,7 @@ export function useArticleFormatting(
     error,
     formattedSlides,
     format,
+    reset,
   }
 }
 

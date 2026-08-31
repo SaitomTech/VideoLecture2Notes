@@ -148,6 +148,7 @@ export function updateProjectSlideCorrection(
           corrected: correction.corrected,
           corrections: correction.corrections,
           correctionModel: correction.model,
+          correctionMode: correction.mode,
           correctionInputFingerprint: correction.inputFingerprint,
           articleBody: undefined,
           articleModel: undefined,
