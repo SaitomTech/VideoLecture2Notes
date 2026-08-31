@@ -77,7 +77,9 @@ const SlideDataSchema = z.object({
       reason: z.string().optional(),
     })).optional(),
     correctionModel: z.string().optional(),
-    correctionMode: z.enum(['transcript-first', 'slide-aligned']).optional(),
+    correctionMode: z
+      .enum(['transcript-first', 'slide-aligned', 'slide-faithful', 'slide-authoritative'])
+      .optional(),
     correctionInputFingerprint: z.string().optional(),
     articleBody: z.string().optional(),
     articleModel: z.string().optional(),
