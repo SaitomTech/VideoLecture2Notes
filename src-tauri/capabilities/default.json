@@ -57,7 +57,11 @@
         { "path": "$APPLOCALDATA/projects" },
         { "path": "$APPLOCALDATA/projects/**/*" },
         { "path": "$APPLOCALDATA/models" },
-        { "path": "$APPLOCALDATA/models/**/*" }
+        { "path": "$APPLOCALDATA/models/**/*" },
+        { "path": "$HOME" },
+        { "path": "$HOME/**/*" },
+        { "path": "/Volumes" },
+        { "path": "/Volumes/**/*" }
       ]
     },
     {
@@ -69,7 +73,11 @@
     {
       "identifier": "fs:allow-write-text-file",
       "allow": [
-        { "path": "$APPLOCALDATA/projects/**/*" }
+        { "path": "$APPLOCALDATA/projects/**/*" },
+        { "path": "$HOME" },
+        { "path": "$HOME/**/*" },
+        { "path": "/Volumes" },
+        { "path": "/Volumes/**/*" }
       ]
     },
     {
@@ -82,7 +90,11 @@
     {
       "identifier": "fs:allow-write-file",
       "allow": [
-        { "path": "$APPLOCALDATA/models/**/*" }
+        { "path": "$APPLOCALDATA/models/**/*" },
+        { "path": "$HOME" },
+        { "path": "$HOME/**/*" },
+        { "path": "/Volumes" },
+        { "path": "/Volumes/**/*" }
       ]
     },
     {

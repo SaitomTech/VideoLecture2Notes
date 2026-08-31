@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { ArticleReviewPage } from '../features/article/ArticleReviewPage'
 import { CropPage } from '../features/crop/CropPage'
+import { ExportPage } from '../features/export/ExportPage'
 import { GenerateNotesPage } from '../features/generate-notes/GenerateNotesPage'
 import { ImportPage } from '../features/import/ImportPage'
 import { SlideDetectionPage } from '../features/slide-detection/SlideDetectionPage'
@@ -27,7 +28,7 @@ import type {
 } from '../types/project'
 import type { SlideDetectionOutput } from '../features/slide-detection/types'
 
-type AppStep = 'import' | 'crop' | 'detect-slides' | 'generate-notes' | 'article-review'
+type AppStep = 'import' | 'crop' | 'detect-slides' | 'generate-notes' | 'article-review' | 'export'
 
 function App() {
   const [step, setStep] = useState<AppStep>('import')
@@ -117,8 +118,13 @@ function App() {
         project={project}
         onBack={() => setStep('generate-notes')}
         onSave={handleSaveArticle}
+        onExport={() => setStep('export')}
       />
     )
+  }
+
+  if (step === 'export' && project) {
+    return <ExportPage project={project} onBack={() => setStep('article-review')} />
   }
 
   if (step === 'generate-notes' && project) {
