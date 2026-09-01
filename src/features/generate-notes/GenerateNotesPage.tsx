@@ -4,8 +4,7 @@ import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
 import { getTextModel, type TextModelId } from '../../lib/llama/textModel'
 import { getOcrModel, type OcrModelId } from '../../lib/ocr/modelManager'
-import type { CorrectionLevel, MediaProject, TranscriptionResult } from '../../types/project'
-import { DEFAULT_CORRECTION_LEVEL } from '../correction/correction'
+import type { MediaProject, TranscriptionResult } from '../../types/project'
 import { AnalysisResultPreview } from '../content-processing/components/AnalysisResultPreview'
 import {
   ContentProcessingPanel,
@@ -55,12 +54,6 @@ export function GenerateNotesPage({
   const [textModelId, setTextModelId] = useState<TextModelId>(
     () => getTextModel(storedTextModelId).id,
   )
-  const storedCorrectionLevel = project.slides
-    .map((slide) => slide.transcript?.correctionLevel)
-    .find((level): level is CorrectionLevel => level !== undefined)
-  const [correctionLevel, setCorrectionLevel] = useState<CorrectionLevel>(
-    storedCorrectionLevel ?? DEFAULT_CORRECTION_LEVEL,
-  )
   const textModel = getTextModel(textModelId)
   const transcription = useTranscription(project, onCompleted)
   const ocr = useOcr(project, onOcrSlideCompleted, ocrModelId)
@@ -68,7 +61,6 @@ export function GenerateNotesPage({
     project,
     onContentSlideCompleted,
     textModelId,
-    correctionLevel,
   )
   const handleTranscribe = () => transcription.transcribe(language)
   const isOcrRunning = ocr.status === 'running'
@@ -78,11 +70,6 @@ export function GenerateNotesPage({
     processing.reset()
     setTextModelId(nextModelId)
   }
-  const handleCorrectionLevelChange = (nextLevel: CorrectionLevel) => {
-    processing.reset()
-    setCorrectionLevel(nextLevel)
-  }
-
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
       <AppHeader />
@@ -180,9 +167,7 @@ export function GenerateNotesPage({
                     processing={processing}
                     model={textModel}
                     modelId={textModelId}
-                    level={correctionLevel}
                     onModelChange={handleTextModelChange}
-                    onLevelChange={handleCorrectionLevelChange}
                     disabled={transcription.status === 'running' || isOcrRunning}
                   />
                   <div className="mt-6">

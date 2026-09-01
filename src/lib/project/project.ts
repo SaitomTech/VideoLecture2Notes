@@ -143,8 +143,8 @@ export function updateProjectSlideContent(
       return {
         ...slide,
         transcript: {
-          ...slide.transcript,
-          correctionLevel: result.article.level,
+          raw: slide.transcript.raw,
+          model: slide.transcript.model,
           articleBody: result.article.body,
           articleModel: result.article.model,
           articleInputFingerprint: result.article.inputFingerprint,

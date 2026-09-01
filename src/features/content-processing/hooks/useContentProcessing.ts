@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { getUserErrorMessage } from '../../../lib/errors'
 import type { TextModelId } from '../../../lib/llama/textModel'
-import type { CorrectionLevel, MediaProject } from '../../../types/project'
+import type { MediaProject } from '../../../types/project'
 import {
   hasCurrentContent,
   runContentProcessing,
@@ -16,11 +16,10 @@ export function useContentProcessing(
   project: MediaProject,
   onSlideCompleted: ContentProcessingSlideCompleted,
   modelId: TextModelId,
-  level: CorrectionLevel,
 ) {
   const targetSlides = project.slides.filter((slide) => slide.transcript?.raw.trim())
   const completedFromProject = targetSlides.filter((slide) =>
-    hasCurrentContent(slide, modelId, level),
+    hasCurrentContent(slide, modelId),
   ).length
   const isUpToDate = completedFromProject === targetSlides.length && targetSlides.length > 0
   const [status, setStatus] = useState<ContentProcessingStatus>('idle')
@@ -51,7 +50,6 @@ export function useContentProcessing(
       await runContentProcessing({
         project,
         modelId,
-        level,
         signal: controller.signal,
         onStage: setStage,
         onProgress: setProgress,
