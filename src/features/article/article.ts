@@ -1,11 +1,11 @@
-import { DEFAULT_TEXT_MODEL } from '../../lib/llama/textModel'
+import { DEFAULT_ARTICLE_MODEL_ID } from '../../lib/article/articleModel'
 import type { SlideData } from '../../types/project'
 
-const ARTICLE_PROMPT_VERSION = 'content-processing-v9-server-reasoning-off'
+const ARTICLE_PROMPT_VERSION = 'content-processing-v10-provider-aware'
 
 export function articleInputFingerprint(
   slide: SlideData,
-  modelId = slide.transcript?.articleModel ?? DEFAULT_TEXT_MODEL.id,
+  modelId = slide.transcript?.articleModel ?? DEFAULT_ARTICLE_MODEL_ID,
 ) {
   return JSON.stringify([
     slide.id,
@@ -16,14 +16,10 @@ export function articleInputFingerprint(
   ])
 }
 
-export function hasCurrentArticle(
-  slide: SlideData,
-  modelId?: string,
-) {
-  const articleModelId = modelId ?? slide.transcript?.articleModel ?? DEFAULT_TEXT_MODEL.id
+export function hasCurrentArticle(slide: SlideData, modelId?: string) {
+  const articleModelId = modelId ?? slide.transcript?.articleModel ?? DEFAULT_ARTICLE_MODEL_ID
   return (
     Boolean(slide.transcript?.articleBody?.trim()) &&
-    slide.transcript?.articleInputFingerprint ===
-      articleInputFingerprint(slide, articleModelId)
+    slide.transcript?.articleInputFingerprint === articleInputFingerprint(slide, articleModelId)
   )
 }
