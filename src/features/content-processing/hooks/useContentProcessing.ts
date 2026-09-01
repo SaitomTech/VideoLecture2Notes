@@ -91,7 +91,7 @@ export function useContentProcessing(
           total: targetSlides.length,
           stageProgress: isUpToDate ? 1 : null,
         }
-  const visibleStatus =
+  const visibleStatus: ContentProcessingStatus =
     status === 'running' || status === 'cancelled' || status === 'error'
       ? status
       : isUpToDate
