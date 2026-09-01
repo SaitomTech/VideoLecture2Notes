@@ -1,17 +1,13 @@
 import { RefreshCw, Square } from 'lucide-react'
 import { ProcessingStatusRow } from '../../../components/ProcessingStatusRow'
 import { TEXT_MODELS, type TextModel, type TextModelId } from '../../../lib/llama/textModel'
-import type { CorrectionLevel } from '../../../types/project'
-import { CORRECTION_LEVELS } from '../../correction/correction'
 import type { ContentProcessingController } from '../hooks/useContentProcessing'
 
 type ContentProcessingPanelProps = {
   processing: ContentProcessingController
   model: TextModel
   modelId: TextModelId
-  level: CorrectionLevel
   onModelChange: (modelId: TextModelId) => void
-  onLevelChange: (level: CorrectionLevel) => void
   disabled?: boolean
 }
 
@@ -42,16 +38,12 @@ export function ContentProcessingPanel({
   processing,
   model,
   modelId,
-  level,
   onModelChange,
-  onLevelChange,
   disabled = false,
 }: ContentProcessingPanelProps) {
   const isRunning = processing.status === 'running'
   const isCompleted = processing.status === 'completed'
   const total = processing.progress.total
-  const selectedLevel = CORRECTION_LEVELS.find((item) => item.id === level)
-
   return (
     <section aria-labelledby="content-processing-heading">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -84,27 +76,7 @@ export function ContentProcessingPanel({
         </button>
       </div>
 
-      <div className="mt-4 grid gap-4 rounded-[12px] border border-[#d8e1dc] bg-[#f7faf7] p-4 md:grid-cols-2 md:p-5">
-        <label className="block text-xs text-[#71807b]" htmlFor="article-generation-level">
-          <span className="block font-semibold text-[#18211f]">本文生成レベル</span>
-          <select
-            id="article-generation-level"
-            className="mt-2 w-full rounded-[8px] border border-[#b7cbc0] bg-[#fbfcfa] px-3 py-2.5 text-sm text-[#18211f] outline-none focus:border-[#1d6b50] focus:ring-2 focus:ring-[#1d6b50]/20 disabled:cursor-not-allowed disabled:opacity-50"
-            value={level}
-            onChange={(event) => onLevelChange(event.target.value as CorrectionLevel)}
-            disabled={disabled || isRunning}
-          >
-            {CORRECTION_LEVELS.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-          <span className="mt-1 block text-[10px] text-[#9aa6a1]">
-            {selectedLevel?.description}
-          </span>
-        </label>
-
+      <div className="mt-4 rounded-[12px] border border-[#d8e1dc] bg-[#f7faf7] p-4 md:p-5">
         <label className="block text-xs text-[#71807b]" htmlFor="article-generation-model">
           <span className="block font-semibold text-[#18211f]">使用モデル</span>
           <select

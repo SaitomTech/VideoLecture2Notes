@@ -63,14 +63,11 @@ const SlideDataSchema = z.object({
   }),
   ocr: z.object({
     rawText: z.string(),
-    title: z.string().nullable().optional(),
-    terms: z.array(z.string()).optional(),
     model: z.string(),
     inputFingerprint: z.string().optional(),
   }).optional(),
   transcript: z.object({
     raw: z.string(),
-    correctionLevel: z.enum(['lv1', 'lv2', 'lv3', 'lv4', 'lv5']).optional(),
     articleBody: z.string().optional(),
     articleModel: z.string().optional(),
     articleInputFingerprint: z.string().optional(),
