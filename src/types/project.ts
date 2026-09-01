@@ -72,17 +72,13 @@ export type TranscriptCorrection = {
   reason?: string
 }
 
-export type CorrectionMode =
-  | 'transcript-first'
-  | 'slide-aligned'
-  | 'slide-faithful'
-  | 'slide-authoritative'
+export type CorrectionLevel = 'lv1' | 'lv2' | 'lv3' | 'lv4' | 'lv5'
 
 export type TranscriptCorrectionResult = {
   corrected: string
   corrections: TranscriptCorrection[]
   model: string
-  mode: CorrectionMode
+  level: CorrectionLevel
   inputFingerprint: string
 }
 
@@ -90,6 +86,11 @@ export type ArticleFormattingResult = {
   body: string
   model: string
   inputFingerprint: string
+}
+
+export type ContentProcessingResult = {
+  correction: TranscriptCorrectionResult
+  article: ArticleFormattingResult
 }
 
 export type ArticleData = {
@@ -131,7 +132,7 @@ export type SlideData = {
     corrected?: string
     corrections?: TranscriptCorrection[]
     correctionModel?: string
-    correctionMode?: CorrectionMode
+    correctionLevel?: CorrectionLevel
     correctionInputFingerprint?: string
     articleBody?: string
     articleModel?: string

@@ -3,14 +3,13 @@ import { assignTranscriptToSlides } from '../pipeline/assignTranscriptToSlides'
 import {
   PROJECT_VERSION,
   type ArticleDraft,
-  type ArticleFormattingResult,
+  type ContentProcessingResult,
   type CropRegion,
   type MediaMetadata,
   type MediaProject,
   type SlideData,
   type SlideDetectionResult,
   type SlideOcrResult,
-  type TranscriptCorrectionResult,
   type TranscriptionResult,
 } from '../../types/project'
 
@@ -131,10 +130,10 @@ export function updateProjectSlideOcr(
   }
 }
 
-export function updateProjectSlideCorrection(
+export function updateProjectSlideContent(
   project: MediaProject,
   slideId: string,
-  correction: TranscriptCorrectionResult,
+  result: ContentProcessingResult,
 ): MediaProject {
   return {
     ...project,
@@ -145,38 +144,14 @@ export function updateProjectSlideCorrection(
         ...slide,
         transcript: {
           ...slide.transcript,
-          corrected: correction.corrected,
-          corrections: correction.corrections,
-          correctionModel: correction.model,
-          correctionMode: correction.mode,
-          correctionInputFingerprint: correction.inputFingerprint,
-          articleBody: undefined,
-          articleModel: undefined,
-          articleInputFingerprint: undefined,
-        },
-      }
-    }),
-    updatedAt: new Date().toISOString(),
-  }
-}
-
-export function updateProjectSlideArticle(
-  project: MediaProject,
-  slideId: string,
-  article: ArticleFormattingResult,
-): MediaProject {
-  return {
-    ...project,
-    slides: project.slides.map((slide) => {
-      if (slide.id !== slideId || !slide.transcript) return slide
-
-      return {
-        ...slide,
-        transcript: {
-          ...slide.transcript,
-          articleBody: article.body,
-          articleModel: article.model,
-          articleInputFingerprint: article.inputFingerprint,
+          corrected: result.correction.corrected,
+          corrections: result.correction.corrections,
+          correctionModel: result.correction.model,
+          correctionLevel: result.correction.level,
+          correctionInputFingerprint: result.correction.inputFingerprint,
+          articleBody: result.article.body,
+          articleModel: result.article.model,
+          articleInputFingerprint: result.article.inputFingerprint,
         },
       }
     }),

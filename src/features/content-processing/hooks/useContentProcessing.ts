@@ -1,32 +1,31 @@
 import { useState } from 'react'
 import { getUserErrorMessage } from '../../../lib/errors'
 import type { TextModelId } from '../../../lib/llama/textModel'
-import type { CorrectionMode, MediaProject } from '../../../types/project'
+import type { CorrectionLevel, MediaProject } from '../../../types/project'
 import {
-  DEFAULT_CORRECTION_MODE,
-  type CorrectionProgress,
-  type CorrectionSlideCompleted,
-  type CorrectionStage,
-  hasCurrentCorrection,
-  runCorrection,
-} from '../correction'
+  hasCurrentContent,
+  runContentProcessing,
+  type ContentProcessingProgress,
+  type ContentProcessingSlideCompleted,
+  type ContentProcessingStage,
+} from '../contentProcessing'
 
-export type CorrectionStatus = 'idle' | 'running' | 'completed' | 'error'
+export type ContentProcessingStatus = 'idle' | 'running' | 'completed' | 'error'
 
-export function useCorrection(
+export function useContentProcessing(
   project: MediaProject,
-  onSlideCompleted: CorrectionSlideCompleted,
+  onSlideCompleted: ContentProcessingSlideCompleted,
   modelId: TextModelId,
-  correctionMode: CorrectionMode = DEFAULT_CORRECTION_MODE,
+  level: CorrectionLevel,
 ) {
   const targetSlides = project.slides.filter((slide) => slide.transcript?.raw.trim())
   const completedFromProject = targetSlides.filter(
-    (slide) => hasCurrentCorrection(slide, modelId, correctionMode),
+    (slide) => hasCurrentContent(slide, modelId, level),
   ).length
   const isUpToDate = completedFromProject === targetSlides.length && targetSlides.length > 0
-  const [status, setStatus] = useState<CorrectionStatus>('idle')
-  const [stage, setStage] = useState<CorrectionStage>('preparing-model')
-  const [progress, setProgress] = useState<CorrectionProgress>({
+  const [status, setStatus] = useState<ContentProcessingStatus>('idle')
+  const [stage, setStage] = useState<ContentProcessingStage>('preparing-model')
+  const [progress, setProgress] = useState<ContentProcessingProgress>({
     completed: 0,
     total: 0,
     stageProgress: null,
@@ -40,14 +39,14 @@ export function useCorrection(
     setStage('preparing-model')
   }
 
-  async function correct(force = false) {
+  async function process(force = false) {
     setStatus('running')
     setError(null)
     try {
-      await runCorrection({
+      await runContentProcessing({
         project,
         modelId,
-        correctionMode,
+        level,
         onStage: setStage,
         onProgress: setProgress,
         onSlideCompleted,
@@ -55,13 +54,13 @@ export function useCorrection(
       })
       setProgress((current) => ({ ...current, completed: current.total, stageProgress: 1 }))
       setStatus('completed')
-    } catch (correctionError) {
-      console.error(correctionError)
+    } catch (processingError) {
+      console.error(processingError)
       setStatus('error')
       setError(
         getUserErrorMessage(
-          correctionError,
-          '文字起こしの補正を完了できませんでした。アプリを再起動して、再試行してください。',
+          processingError,
+          '発話と記事本文の生成を完了できませんでした。アプリを再起動して、再試行してください。',
         ),
       )
     }
@@ -78,7 +77,14 @@ export function useCorrection(
   const visibleStatus =
     status === 'running' || status === 'error' ? status : isUpToDate ? 'completed' : 'idle'
 
-  return { status: visibleStatus, stage, progress: visibleProgress, error, correct, reset }
+  return {
+    status: visibleStatus,
+    stage,
+    progress: visibleProgress,
+    error,
+    process,
+    reset,
+  }
 }
 
-export type CorrectionController = ReturnType<typeof useCorrection>
+export type ContentProcessingController = ReturnType<typeof useContentProcessing>
