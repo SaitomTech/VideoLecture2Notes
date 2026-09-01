@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { getUserErrorMessage, withUserFacingError } from '../../../lib/errors'
+import type { WhisperModelId } from '../../../lib/whisper/modelManager'
 import type { MediaProject, TranscriptionResult } from '../../../types/project'
 import {
   runTranscription,
@@ -11,16 +12,19 @@ export type TranscriptionStatus = 'idle' | 'running' | 'completed' | 'cancelled'
 
 export function useTranscription(
   project: MediaProject,
+  modelId: WhisperModelId,
   onCompleted: (result: TranscriptionResult) => void | Promise<void>,
 ) {
+  const hasCurrentTranscription = project.transcription?.model === modelId
   const [status, setStatus] = useState<TranscriptionStatus>(
-    project.transcription ? 'completed' : 'idle',
+    hasCurrentTranscription ? 'completed' : 'idle',
   )
   const [stage, setStage] = useState<TranscriptionStage>('preparing-model')
   const [stageProgress, setStageProgress] = useState<number | null>(
-    project.transcription ? 1 : null,
+    hasCurrentTranscription ? 1 : null,
   )
   const [error, setError] = useState<string | null>(null)
+  const [operationModelId, setOperationModelId] = useState<WhisperModelId>(modelId)
   const activeController = useRef<AbortController | null>(null)
 
   async function transcribe(language: TranscriptionLanguage) {
@@ -28,6 +32,7 @@ export function useTranscription(
 
     const controller = new AbortController()
     activeController.current = controller
+    setOperationModelId(modelId)
     setStatus('running')
     setStage('preparing-model')
     setStageProgress(null)
@@ -37,6 +42,7 @@ export function useTranscription(
       const result = await runTranscription({
         project,
         language,
+        modelId,
         signal: controller.signal,
         onStage: (nextStage) => {
           setStage(nextStage)
@@ -78,11 +84,24 @@ export function useTranscription(
     activeController.current?.abort()
   }
 
+  const isOperationForSelectedModel = operationModelId === modelId
+  const visibleStatus = isOperationForSelectedModel
+    ? status
+    : hasCurrentTranscription
+      ? 'completed'
+      : 'idle'
+  const visibleStageProgress = isOperationForSelectedModel
+    ? stageProgress
+    : hasCurrentTranscription
+      ? 1
+      : null
+  const visibleError = isOperationForSelectedModel ? error : null
+
   return {
-    status,
+    status: visibleStatus,
     stage,
-    stageProgress,
-    error,
+    stageProgress: visibleStageProgress,
+    error: visibleError,
     transcribe,
     cancel,
   }
