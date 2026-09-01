@@ -1,8 +1,8 @@
+import { invoke } from '@tauri-apps/api/core'
 import { appLocalDataDir, join } from '@tauri-apps/api/path'
 import {
   BaseDirectory,
   exists,
-  readFile,
   remove,
   rename,
   writeFile,
@@ -36,9 +36,7 @@ type EnsureModelFilesInput = {
 }
 
 async function sha256(path: string) {
-  const contents = await readFile(path, { baseDir: BaseDirectory.AppLocalData })
-  const digest = await crypto.subtle.digest('SHA-256', contents)
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
+  return invoke<string>('sha256_app_local_file', { relativePath: path })
 }
 
 async function downloadFile(
@@ -53,6 +51,15 @@ async function downloadFile(
   const partPath = `${path}.part`
 
   if (await exists(partPath, { baseDir: BaseDirectory.AppLocalData })) {
+    const partialFileHash = await sha256(partPath)
+    if (partialFileHash === file.sha256) {
+      await rename(partPath, path, {
+        oldPathBaseDir: BaseDirectory.AppLocalData,
+        newPathBaseDir: BaseDirectory.AppLocalData,
+      })
+      return
+    }
+
     await remove(partPath, { baseDir: BaseDirectory.AppLocalData })
   }
 
