@@ -4,6 +4,7 @@ import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
 import { getTextModel, type TextModelId } from '../../lib/llama/textModel'
 import { getOcrModel, type OcrModelId } from '../../lib/ocr/modelManager'
+import { getWhisperModel, type WhisperModelId } from '../../lib/whisper/modelManager'
 import type { MediaProject, TranscriptionResult } from '../../types/project'
 import { AnalysisResultPreview } from '../content-processing/components/AnalysisResultPreview'
 import {
@@ -42,6 +43,9 @@ export function GenerateNotesPage({
       ? project.transcription.language
       : 'auto',
   )
+  const [whisperModelId, setWhisperModelId] = useState<WhisperModelId>(() =>
+    getWhisperModel(project.transcription?.model).id,
+  )
   const storedOcrModelId = project.slides
     .map((slide) => slide.ocr?.model)
     .find((modelId): modelId is string => Boolean(modelId))
@@ -55,7 +59,7 @@ export function GenerateNotesPage({
     () => getTextModel(storedTextModelId).id,
   )
   const textModel = getTextModel(textModelId)
-  const transcription = useTranscription(project, onCompleted)
+  const transcription = useTranscription(project, whisperModelId, onCompleted)
   const ocr = useOcr(project, onOcrSlideCompleted, ocrModelId)
   const processing = useContentProcessing(
     project,
@@ -144,9 +148,11 @@ export function GenerateNotesPage({
                 <div>
                   <TranscriptionSettings
                     language={language}
+                    modelId={whisperModelId}
                     status={transcription.status}
                     disabled={isOcrRunning || isContentProcessing}
                     onLanguageChange={setLanguage}
+                    onModelChange={setWhisperModelId}
                     onTranscribe={handleTranscribe}
                     onCancel={transcription.cancel}
                   />

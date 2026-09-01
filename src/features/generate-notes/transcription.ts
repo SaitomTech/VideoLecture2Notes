@@ -2,7 +2,11 @@ import { extractAudio } from '../../lib/media/ffmpeg'
 import { UserFacingError, withUserFacingError } from '../../lib/errors'
 import { getAudioAssetPath } from '../../lib/storage/projectAssets'
 import { fileExists } from '../../lib/tauri/filesystem'
-import { DEFAULT_WHISPER_MODEL, ensureWhisperModel } from '../../lib/whisper/modelManager'
+import {
+  ensureWhisperModel,
+  getWhisperModel,
+  type WhisperModelId,
+} from '../../lib/whisper/modelManager'
 import { runWhisper } from '../../lib/whisper/whisper'
 import type { MediaProject, TranscriptionResult } from '../../types/project'
 
@@ -12,6 +16,7 @@ export type TranscriptionStage = 'preparing-model' | 'extracting-audio' | 'trans
 type RunTranscriptionInput = {
   project: MediaProject
   language: TranscriptionLanguage
+  modelId: WhisperModelId
   onStage?: (stage: TranscriptionStage) => void
   onProgress?: (progress: number | null) => void
   signal?: AbortSignal
@@ -21,7 +26,7 @@ function throwIfAborted(signal?: AbortSignal) {
   if (signal?.aborted) throw new DOMException('処理を中止しました。', 'AbortError')
 }
 
-function inputFingerprint(project: MediaProject, language: TranscriptionLanguage) {
+function inputFingerprint(project: MediaProject, modelId: WhisperModelId, language: string) {
   const metadata = project.source.metadata
   return [
     project.source.path,
@@ -29,7 +34,7 @@ function inputFingerprint(project: MediaProject, language: TranscriptionLanguage
     metadata.durationMs,
     metadata.width,
     metadata.height,
-    DEFAULT_WHISPER_MODEL.id,
+    modelId,
     language,
   ].join(':')
 }
@@ -37,10 +42,13 @@ function inputFingerprint(project: MediaProject, language: TranscriptionLanguage
 export async function runTranscription({
   project,
   language,
+  modelId,
   onStage,
   onProgress,
   signal,
 }: RunTranscriptionInput): Promise<TranscriptionResult> {
+  const model = getWhisperModel(modelId)
+  const effectiveLanguage = model.languageSupport === 'ja' ? 'ja' : language
   throwIfAborted(signal)
   onStage?.('preparing-model')
   onProgress?.(null)
@@ -48,6 +56,7 @@ export async function runTranscription({
     '文字起こしモデルを準備できませんでした。通信状況と空き容量を確認して、再試行してください。',
     () =>
       ensureWhisperModel({
+        modelId,
         signal,
         onProgress: ({ receivedBytes, totalBytes }) => {
           onProgress?.(totalBytes > 0 ? receivedBytes / totalBytes : null)
@@ -79,18 +88,18 @@ export async function runTranscription({
         projectId: project.id,
         audioPath,
         modelPath,
-        language,
+        language: effectiveLanguage,
         onProgress,
         signal,
       }),
   )
 
   return {
-    model: DEFAULT_WHISPER_MODEL.id,
-    language: rawTranscript.language ?? language,
+    model: model.id,
+    language: rawTranscript.language ?? effectiveLanguage,
     audioPath,
     segments: rawTranscript.segments,
     transcribedAt: new Date().toISOString(),
-    inputFingerprint: inputFingerprint(project, language),
+    inputFingerprint: inputFingerprint(project, model.id, effectiveLanguage),
   }
 }
