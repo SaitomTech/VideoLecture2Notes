@@ -29,6 +29,7 @@ type RepresentativeFrameInput = {
 type ExtractAudioInput = {
   path: string
   outputPath: string
+  signal?: AbortSignal
 }
 
 function outputText(value: string | Uint8Array) {
@@ -36,7 +37,11 @@ function outputText(value: string | Uint8Array) {
 }
 
 /** Samples 9x8 grayscale frames so slide detection does not need to materialize a cropped video. */
-export async function sampleVideoFrames({ path, crop, sampleIntervalMs }: SampleVideoFramesInput): Promise<FrameHash[]> {
+export async function sampleVideoFrames({
+  path,
+  crop,
+  sampleIntervalMs,
+}: SampleVideoFramesInput): Promise<FrameHash[]> {
   const frameWidth = 9
   const frameHeight = 8
   const frameSize = frameWidth * frameHeight
@@ -80,7 +85,12 @@ export async function sampleVideoFrames({ path, crop, sampleIntervalMs }: Sample
   return frames
 }
 
-export async function extractRepresentativeFrame({ path, crop, timestampMs, outputPath }: RepresentativeFrameInput) {
+export async function extractRepresentativeFrame({
+  path,
+  crop,
+  timestampMs,
+  outputPath,
+}: RepresentativeFrameInput) {
   const output = await executeSidecar('binaries/ffmpeg', [
     '-hide_banner',
     '-v',
@@ -109,25 +119,29 @@ export async function extractRepresentativeFrame({ path, crop, timestampMs, outp
   return outputPath
 }
 
-export async function extractAudio({ path, outputPath }: ExtractAudioInput) {
-  const output = await executeSidecar('binaries/ffmpeg', [
-    '-hide_banner',
-    '-v',
-    'error',
-    '-i',
-    path,
-    '-vn',
-    '-sn',
-    '-dn',
-    '-ac',
-    '1',
-    '-ar',
-    '16000',
-    '-c:a',
-    'pcm_s16le',
-    '-y',
-    outputPath,
-  ])
+export async function extractAudio({ path, outputPath, signal }: ExtractAudioInput) {
+  const output = await executeSidecar(
+    'binaries/ffmpeg',
+    [
+      '-hide_banner',
+      '-v',
+      'error',
+      '-i',
+      path,
+      '-vn',
+      '-sn',
+      '-dn',
+      '-ac',
+      '1',
+      '-ar',
+      '16000',
+      '-c:a',
+      'pcm_s16le',
+      '-y',
+      outputPath,
+    ],
+    { signal },
+  )
 
   if (output.code !== 0) {
     const detail = output.stderr.trim()

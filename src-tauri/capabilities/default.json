@@ -56,6 +56,11 @@
       "identifier": "shell:allow-spawn",
       "allow": [
         {
+          "name": "binaries/ffmpeg",
+          "sidecar": true,
+          "args": true
+        },
+        {
           "name": "binaries/whisper-cli",
           "sidecar": true,
           "args": true
