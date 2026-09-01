@@ -3,22 +3,18 @@ import { useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
 import { getTextModel, type TextModelId } from '../../lib/llama/textModel'
-import type { CorrectionMode, MediaProject, TranscriptionResult } from '../../types/project'
-import type { ArticleSlideCompleted } from '../article/article'
-import { ArticlePreview } from '../article/components/ArticlePreview'
-import { ArticleFormattingPanel } from '../article/components/ArticleFormattingPanel'
-import { useArticleFormatting } from '../article/hooks/useArticleFormatting'
-import { CorrectionPanel } from '../correction/components/CorrectionPanel'
-import { DEFAULT_CORRECTION_MODE } from '../correction/correction'
-import { useCorrection } from '../correction/hooks/useCorrection'
-import type { CorrectionSlideCompleted } from '../correction/correction'
+import type { CorrectionLevel, MediaProject, TranscriptionResult } from '../../types/project'
+import { DEFAULT_CORRECTION_LEVEL } from '../correction/correction'
+import { AnalysisResultPreview } from '../content-processing/components/AnalysisResultPreview'
+import { ContentProcessingPanel } from '../content-processing/components/ContentProcessingPanel'
+import type { ContentProcessingSlideCompleted } from '../content-processing/contentProcessing'
+import { useContentProcessing } from '../content-processing/hooks/useContentProcessing'
 import { OcrPanel } from '../ocr/components/OcrPanel'
 import { useOcr } from '../ocr/hooks/useOcr'
 import type { OcrSlideCompleted } from '../ocr/ocr'
 import { TranscriptionSettings } from './components/TranscriptionSettings'
 import { TranscriptionStatus } from './components/TranscriptionStatus'
 import { TextModelSelector } from './components/TextModelSelector'
-import { TranscriptPreview } from './components/TranscriptPreview'
 import { useTranscription } from './hooks/useTranscription'
 import type { TranscriptionLanguage } from './transcription'
 
@@ -27,8 +23,7 @@ type GenerateNotesPageProps = {
   onBack: () => void
   onCompleted: (result: TranscriptionResult) => void | Promise<void>
   onOcrSlideCompleted: OcrSlideCompleted
-  onCorrectionSlideCompleted: CorrectionSlideCompleted
-  onArticleSlideCompleted: ArticleSlideCompleted
+  onContentSlideCompleted: ContentProcessingSlideCompleted
   onOpenArticleReview: () => void
 }
 
@@ -37,8 +32,7 @@ export function GenerateNotesPage({
   onBack,
   onCompleted,
   onOcrSlideCompleted,
-  onCorrectionSlideCompleted,
-  onArticleSlideCompleted,
+  onContentSlideCompleted,
   onOpenArticleReview,
 }: GenerateNotesPageProps) {
   const [language, setLanguage] = useState<TranscriptionLanguage>(
@@ -50,32 +44,29 @@ export function GenerateNotesPage({
     .map((slide) => slide.transcript?.correctionModel ?? slide.transcript?.articleModel)
     .find((modelId): modelId is string => Boolean(modelId))
   const [textModelId, setTextModelId] = useState<TextModelId>(() => getTextModel(storedTextModelId).id)
-  const storedCorrectionMode = project.slides
-    .map((slide) => slide.transcript?.correctionMode)
-    .find((mode): mode is CorrectionMode => mode !== undefined)
-  const [correctionMode, setCorrectionMode] = useState<CorrectionMode>(
-    storedCorrectionMode ?? DEFAULT_CORRECTION_MODE,
+  const storedCorrectionLevel = project.slides
+    .map((slide) => slide.transcript?.correctionLevel)
+    .find((level): level is CorrectionLevel => level !== undefined)
+  const [correctionLevel, setCorrectionLevel] = useState<CorrectionLevel>(
+    storedCorrectionLevel ?? DEFAULT_CORRECTION_LEVEL,
   )
   const textModel = getTextModel(textModelId)
   const transcription = useTranscription(project, onCompleted)
   const ocr = useOcr(project, onOcrSlideCompleted)
-  const correction = useCorrection(project, onCorrectionSlideCompleted, textModelId, correctionMode)
-  const article = useArticleFormatting(project, onArticleSlideCompleted, textModelId, correctionMode)
+  const processing = useContentProcessing(project, onContentSlideCompleted, textModelId, correctionLevel)
   const handleTranscribe = () => transcription.transcribe(language)
   const hasOcrResult = project.slides.some((slide) => Boolean(slide.ocr))
   const isOcrRunning = ocr.status === 'running'
-  const isCorrectionRunning = correction.status === 'running'
-  const isArticleRunning = article.status === 'running'
-  const isProcessing = transcription.status === 'running' || isOcrRunning || isCorrectionRunning || isArticleRunning
+  const isContentProcessing = processing.status === 'running'
+  const isProcessing = transcription.status === 'running' || isOcrRunning || isContentProcessing
+  const hasTranscriptResult = project.slides.some((slide) => Boolean(slide.transcript))
   const handleTextModelChange = (nextModelId: TextModelId) => {
-    correction.reset()
-    article.reset()
+    processing.reset()
     setTextModelId(nextModelId)
   }
-  const handleCorrectionModeChange = (nextMode: CorrectionMode) => {
-    correction.reset()
-    article.reset()
-    setCorrectionMode(nextMode)
+  const handleCorrectionLevelChange = (nextLevel: CorrectionLevel) => {
+    processing.reset()
+    setCorrectionLevel(nextLevel)
   }
 
   return (
@@ -117,7 +108,7 @@ export function GenerateNotesPage({
             <TranscriptionSettings
               language={language}
               status={transcription.status}
-              disabled={isOcrRunning || isCorrectionRunning || isArticleRunning}
+              disabled={isOcrRunning || isContentProcessing}
               onLanguageChange={setLanguage}
               onTranscribe={handleTranscribe}
             />
@@ -126,7 +117,7 @@ export function GenerateNotesPage({
               stage={transcription.stage}
               stageProgress={transcription.stageProgress}
               error={transcription.error}
-              disabled={isOcrRunning || isCorrectionRunning || isArticleRunning}
+              disabled={isOcrRunning || isContentProcessing}
               onRetry={handleTranscribe}
             />
             <TextModelSelector
@@ -136,25 +127,17 @@ export function GenerateNotesPage({
             />
             <OcrPanel
               ocr={ocr}
-              disabled={transcription.status === 'running' || isCorrectionRunning || isArticleRunning}
+              disabled={transcription.status === 'running' || isContentProcessing}
             />
-            <CorrectionPanel
-              correction={correction}
+            <ContentProcessingPanel
+              processing={processing}
               model={textModel}
-              correctionMode={correctionMode}
-              onCorrectionModeChange={handleCorrectionModeChange}
-              disabled={transcription.status === 'running' || isOcrRunning || isArticleRunning}
+              level={correctionLevel}
+              onLevelChange={handleCorrectionLevelChange}
+              disabled={transcription.status === 'running' || isOcrRunning}
             />
-            <ArticleFormattingPanel
-              formatting={article}
-              model={textModel}
-              disabled={transcription.status === 'running' || isOcrRunning || isCorrectionRunning}
-            />
-            {(transcription.status === 'completed' || hasOcrResult) && (
-              <TranscriptPreview slides={project.slides} />
-            )}
-            {article.formattedSlides.length > 0 && (
-              <ArticlePreview slides={article.formattedSlides} onEdit={onOpenArticleReview} />
+            {(transcription.status === 'completed' || hasOcrResult || hasTranscriptResult) && (
+              <AnalysisResultPreview slides={project.slides} onEdit={onOpenArticleReview} />
             )}
           </div>
         </div>

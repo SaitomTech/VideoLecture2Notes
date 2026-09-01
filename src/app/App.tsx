@@ -9,8 +9,7 @@ import {
   createMediaProject,
   updateProjectArticleDraft,
   updateProjectCrop,
-  updateProjectSlideArticle,
-  updateProjectSlideCorrection,
+  updateProjectSlideContent,
   updateProjectSlideDetection,
   updateProjectSlideOcr,
   updateProjectTranscription,
@@ -19,11 +18,10 @@ import { saveProject } from '../lib/storage/projectStorage'
 import type { SelectedVideo } from '../features/import/types'
 import type {
   ArticleDraft,
-  ArticleFormattingResult,
+  ContentProcessingResult,
   CropRegion,
   MediaProject,
   SlideOcrResult,
-  TranscriptCorrectionResult,
   TranscriptionResult,
 } from '../types/project'
 import type { SlideDetectionOutput } from '../features/slide-detection/types'
@@ -85,21 +83,12 @@ function App() {
     )
   }
 
-  const handleCorrectionSlideCompleted = async (
+  const handleContentSlideCompleted = async (
     slideId: string,
-    correction: TranscriptCorrectionResult,
+    result: ContentProcessingResult,
   ) => {
     await updateCurrentProject((currentProject) =>
-      updateProjectSlideCorrection(currentProject, slideId, correction),
-    )
-  }
-
-  const handleArticleSlideCompleted = async (
-    slideId: string,
-    article: ArticleFormattingResult,
-  ) => {
-    await updateCurrentProject((currentProject) =>
-      updateProjectSlideArticle(currentProject, slideId, article),
+      updateProjectSlideContent(currentProject, slideId, result),
     )
   }
 
@@ -134,8 +123,7 @@ function App() {
         onBack={() => setStep('detect-slides')}
         onCompleted={handleTranscriptionCompleted}
         onOcrSlideCompleted={handleOcrSlideCompleted}
-        onCorrectionSlideCompleted={handleCorrectionSlideCompleted}
-        onArticleSlideCompleted={handleArticleSlideCompleted}
+        onContentSlideCompleted={handleContentSlideCompleted}
         onOpenArticleReview={() => setStep('article-review')}
       />
     )
