@@ -16,7 +16,6 @@ export function ArticleSectionEditor({
   onBodyChange,
 }: ArticleSectionEditorProps) {
   const rawTranscript = slide.transcript?.raw.trim() || 'この区間に発話はありません。'
-  const correctedTranscript = slide.transcript?.corrected?.trim() || '補正済みの発話はありません。'
   const ocrText = slide.ocr?.rawText.trim() || 'OCR結果はありません。'
 
   return (
@@ -51,14 +50,10 @@ export function ArticleSectionEditor({
         <summary className="cursor-pointer text-xs font-semibold text-[#71807b] outline-none marker:text-[#1d6b50] focus-visible:text-[#1d6b50]">
           元データを確認
         </summary>
-        <div className="mt-4 grid gap-4 text-xs leading-6 text-[#53615b] md:grid-cols-3">
+        <div className="mt-4 grid gap-4 text-xs leading-6 text-[#53615b] md:grid-cols-2">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">raw 発話</p>
             <p className="mt-1 whitespace-pre-wrap">{rawTranscript}</p>
-          </div>
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">補正済みの発話</p>
-            <p className="mt-1 whitespace-pre-wrap">{correctedTranscript}</p>
           </div>
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">スライド内の文字</p>

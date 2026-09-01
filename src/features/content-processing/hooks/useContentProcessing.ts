@@ -70,7 +70,7 @@ export function useContentProcessing(
         setError(
           getUserErrorMessage(
             processingError,
-            '発話と記事本文の生成を完了できませんでした。アプリを再起動して、再試行してください。',
+            '記事本文の生成を完了できませんでした。アプリを再起動して、再試行してください。',
           ),
         )
       }

@@ -5,26 +5,24 @@ import { withLlamaServer } from '../../lib/llama/server'
 import { ensureTextModel, getTextModel, type TextModelId } from '../../lib/llama/textModel'
 import { modelProgressRatio } from '../../lib/models/download'
 import { articleInputFingerprint, hasCurrentArticle } from '../article/article'
-import { CORRECTION_LEVELS, correctionInputFingerprint } from '../correction/correction'
+import { CORRECTION_LEVELS } from '../correction/correction'
 import type {
   ArticleFormattingResult,
   ContentProcessingResult,
   CorrectionLevel,
   MediaProject,
   SlideData,
-  TranscriptCorrectionResult,
 } from '../../types/project'
 
 const COMMON_PROMPT = [
   '/no_think',
-  'あなたは動画講義の文字起こしと記事本文を編集する専門家です。',
-  'RAW TRANSCRIPTとSLIDE OCRを使い、補正済み発話と記事本文を同時に作成してください。',
+  'あなたは動画講義の文字起こしをもとに記事本文を編集する専門家です。',
+  'RAW TRANSCRIPTとSLIDE OCRを使い、このSlideの記事本文だけを作成してください。',
   '返答はJSONオブジェクトのみとし、次の形式にしてください。',
-  '{"correctedTranscript":"補正済みの発話","corrections":[{"before":"補正前","after":"補正後","reason":"理由"}],"articleBody":"記事本文"}',
-  'correctedTranscriptは、補正後の発話記録です。',
-  'articleBodyは、correctedTranscriptをもとにしたこのSlideの記事本文です。',
+  '{"articleBody":"記事本文"}',
+  'articleBodyは、このSlideで扱われた内容を読みやすい記事本文に整えたものです。',
   '単語レベルではSLIDE OCRを完全な正として扱ってください。固有名詞、製品名、サービス名、技術用語、略語、英単語、数値、単位などは、RAW TRANSCRIPTが自然に見えても、スライドに明確な表記があれば必ずスライド表記へ積極的に置き換えてください。',
-  'この単語レベルの置換ルールはcorrectedTranscriptとarticleBodyの両方に適用してください。',
+  'スライドに書かれた単語の表記を保持したまま、articleBodyの文章へ反映してください。',
   'articleBodyには見出しや前置きを追加しないでください。',
   '日本語で出力してください。',
 ].join('\n')
@@ -34,12 +32,12 @@ const LEVEL_PROMPT_RULES: Record<CorrectionLevel, string[]> = {
     'RAW TRANSCRIPTの内容と文の構造は維持してください。ただし、単語レベルでは共通ルールに従い、スライド表記を必ず正として扱ってください。',
     '固有名詞、製品名、技術用語、英単語、数値などは、明らかな誤変換に限らず、スライドに明確な表記がある場合は積極的に置き換えてください。',
     '日本語は句読点、助詞、明らかな文法ミスを軽く整えるだけにしてください。',
-    'articleBodyも要約や情報追加をせず、補正済み発話を段落に整える程度にしてください。',
+    'articleBodyも要約や情報追加をせず、発話を段落に整える程度にしてください。',
   ],
   lv2: [
     'スライドの正式な用語・表記を優先し、RAW TRANSCRIPTの文の意味を維持したまま軽く整えてください。',
     '技術用語、略語、数値、単位、固有名詞は積極的にスライド表記へ合わせてください。',
-    'articleBodyは補正済み発話を読みやすい段落に整理し、軽微な重複やフィラーを整えてください。',
+    'articleBodyは発話を読みやすい段落に整理し、軽微な重複やフィラーを整えてください。',
   ],
   lv3: [
     'スライドを用語と短い事実関係の判断における優先資料として扱ってください。',
@@ -55,23 +53,12 @@ const LEVEL_PROMPT_RULES: Record<CorrectionLevel, string[]> = {
   lv5: [
     'スライドのテキストを、その区間で扱われた内容の正規化された基準として扱ってください。',
     'RAW TRANSCRIPTは参考程度に使い、用語、数値、主張がスライドと異なる場合はスライドを優先してください。',
-    'correctedTranscriptはスライドに忠実な発話記録として、欠落した短い語句や文をスライドの直接的な根拠に基づいて再構成して構いません。',
     'articleBodyはスライドの内容を正として、RAW TRANSCRIPTに依存せず、スライド中心に一から書き直して構いません。',
     'ただし、スライドに明記されていない推測、例、理由、結論は追加せず、スライド全体の単純な書き写しや長文の要約にも変換しないでください。',
   ],
 }
 
 const ContentResponseSchema = z.object({
-  correctedTranscript: z.string().trim().min(1),
-  corrections: z
-    .array(
-      z.object({
-        before: z.string().trim().min(1),
-        after: z.string(),
-        reason: z.string().trim().optional(),
-      }),
-    )
-    .default([]),
   articleBody: z.string().trim().min(1),
 })
 
@@ -107,7 +94,6 @@ function systemPromptFor(level: CorrectionLevel) {
   return [
     COMMON_PROMPT,
     ...LEVEL_PROMPT_RULES[level],
-    '単語レベルの置換も含めて補正が不要な場合に限り、correctedTranscriptはRAW TRANSCRIPTと同じにし、correctionsは空配列にしてください。',
     'スライドやRAW TRANSCRIPTに根拠のない情報を追加しないでください。',
     `この処理は${CORRECTION_LEVELS.find((item) => item.id === level)?.label ?? level}として実行しています。`,
   ].join('\n')
@@ -131,32 +117,16 @@ function parseContentResponse(
   if (!slide.transcript) throw new Error(`Slide ${slide.index + 1}に発話データがありません。`)
 
   const result = ContentResponseSchema.safeParse(parseJsonResponse(text))
-  if (!result.success) throw new Error('発話と記事本文の形式が不正です。')
+  if (!result.success) throw new Error('記事本文の形式が不正です。')
 
-  const correction: TranscriptCorrectionResult = {
-    corrected: result.data.correctedTranscript,
-    corrections: result.data.corrections,
-    model: modelId,
-    level,
-    inputFingerprint: correctionInputFingerprint(slide, modelId, level),
-  }
-  const correctedSlide: SlideData = {
-    ...slide,
-    transcript: {
-      ...slide.transcript,
-      corrected: correction.corrected,
-      correctionModel: correction.model,
-      correctionLevel: correction.level,
-      correctionInputFingerprint: correction.inputFingerprint,
-    },
-  }
   const article: ArticleFormattingResult = {
     body: result.data.articleBody,
     model: modelId,
-    inputFingerprint: articleInputFingerprint(correctedSlide, modelId),
+    level,
+    inputFingerprint: articleInputFingerprint(slide, modelId, level),
   }
 
-  return { correction, article }
+  return { article }
 }
 
 async function processSlide(
@@ -167,7 +137,7 @@ async function processSlide(
   signal?: AbortSignal,
 ) {
   return withUserFacingError(
-    `Slide ${slide.index + 1}の発話と記事本文を生成できませんでした。再試行してください。`,
+    `Slide ${slide.index + 1}の記事本文を生成できませんでした。再試行してください。`,
     async () => {
       const response = await completeChat(baseUrl, {
         model: modelId,

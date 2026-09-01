@@ -1,7 +1,4 @@
-import { DEFAULT_TEXT_MODEL } from '../../lib/llama/textModel'
-import type { CorrectionLevel, SlideData } from '../../types/project'
-
-const CORRECTION_PROMPT_VERSION = 'content-processing-v2'
+import type { CorrectionLevel } from '../../types/project'
 
 export const CORRECTION_LEVELS = [
   {
@@ -32,31 +29,3 @@ export const CORRECTION_LEVELS = [
 ] as const satisfies ReadonlyArray<{ id: CorrectionLevel; label: string; description: string }>
 
 export const DEFAULT_CORRECTION_LEVEL: CorrectionLevel = 'lv1'
-
-export function correctionInputFingerprint(
-  slide: SlideData,
-  modelId = slide.transcript?.correctionModel ?? DEFAULT_TEXT_MODEL.id,
-  level = slide.transcript?.correctionLevel ?? DEFAULT_CORRECTION_LEVEL,
-) {
-  return JSON.stringify([
-    slide.id,
-    slide.transcript?.raw ?? '',
-    slide.ocr?.rawText ?? '',
-    slide.ocr?.title ?? null,
-    slide.ocr?.terms ?? [],
-    modelId,
-    level,
-    CORRECTION_PROMPT_VERSION,
-  ])
-}
-
-export function hasCurrentCorrection(
-  slide: SlideData,
-  modelId = slide.transcript?.correctionModel ?? DEFAULT_TEXT_MODEL.id,
-  level = slide.transcript?.correctionLevel ?? DEFAULT_CORRECTION_LEVEL,
-) {
-  return (
-    Boolean(slide.transcript?.corrected?.trim()) &&
-    slide.transcript?.correctionInputFingerprint === correctionInputFingerprint(slide, modelId, level)
-  )
-}
