@@ -2,12 +2,16 @@ import { readFile } from '@tauri-apps/plugin-fs'
 import { UserFacingError, withUserFacingError } from '../../lib/errors'
 import { completeChat } from '../../lib/llama/chat'
 import { withLlamaServer } from '../../lib/llama/server'
-import { DEFAULT_OCR_MODEL, ensureOcrModel } from '../../lib/ocr/modelManager'
+import {
+  DEFAULT_OCR_MODEL,
+  ensureOcrModel,
+  getOcrModel,
+  type OcrModelId,
+} from '../../lib/ocr/modelManager'
 import { modelProgressRatio } from '../../lib/models/download'
 import type { MediaProject, SlideData, SlideOcrResult } from '../../types/project'
 
-const OCR_PROMPT_VERSION = 'text-recognition-v1'
-const OCR_PROMPT = 'Text Recognition:'
+const OCR_PROMPT_VERSION = 'text-recognition-v4'
 
 export type OcrStage = 'preparing-model' | 'recognizing'
 
@@ -26,6 +30,7 @@ type RunOcrInput = {
   onSlideCompleted?: OcrSlideCompleted
   signal?: AbortSignal
   force?: boolean
+  modelId?: OcrModelId
 }
 
 function toBase64(bytes: Uint8Array) {
@@ -40,36 +45,45 @@ function throwIfAborted(signal?: AbortSignal) {
   if (signal?.aborted) throw new DOMException('OCRを中止しました。', 'AbortError')
 }
 
-export function ocrInputFingerprint(slide: SlideData) {
+export function ocrInputFingerprint(
+  slide: SlideData,
+  modelId: OcrModelId = DEFAULT_OCR_MODEL.id,
+) {
   return JSON.stringify([
     slide.id,
     slide.image.representativeFramePath ?? '',
     slide.startMs,
     slide.endMs,
     slide.detection.hash ?? '',
-    DEFAULT_OCR_MODEL.id,
+    modelId,
     OCR_PROMPT_VERSION,
   ])
 }
 
-async function recognizeSlide(baseUrl: string, slide: SlideData, signal?: AbortSignal) {
+async function recognizeSlide(
+  baseUrl: string,
+  slide: SlideData,
+  modelId: OcrModelId,
+  signal?: AbortSignal,
+) {
   const imagePath = slide.image.representativeFramePath
   if (!imagePath) throw new UserFacingError(`Slide ${slide.index + 1}の代表画像がありません。`)
 
+  const model = getOcrModel(modelId)
   const image = toBase64(await readFile(imagePath))
   return completeChat(baseUrl, {
-    model: DEFAULT_OCR_MODEL.id,
+    model: model.id,
     messages: [
       {
         role: 'user',
         content: [
           { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${image}` } },
-          { type: 'text', text: OCR_PROMPT },
+          { type: 'text', text: model.prompt },
         ],
       },
     ],
     temperature: 0.02,
-    maxTokens: 2048,
+    maxTokens: 8192,
     signal,
   })
 }
@@ -81,6 +95,7 @@ export async function runOcr({
   onSlideCompleted,
   signal,
   force = false,
+  modelId = DEFAULT_OCR_MODEL.id,
 }: RunOcrInput) {
   const slides = project.slides
   if (slides.length === 0) {
@@ -94,7 +109,9 @@ export async function runOcr({
 
   const pendingSlides = force
     ? slides
-    : slides.filter((slide) => slide.ocr?.inputFingerprint !== ocrInputFingerprint(slide))
+    : slides.filter(
+        (slide) => slide.ocr?.inputFingerprint !== ocrInputFingerprint(slide, modelId),
+      )
   let completed = slides.length - pendingSlides.length
   const report = (stageProgress: number | null) => {
     onProgress?.({
@@ -113,6 +130,7 @@ export async function runOcr({
     'OCRモデルを準備できませんでした。通信状況と空き容量を確認して、再試行してください。',
     () =>
       ensureOcrModel({
+        modelId,
         signal,
         onProgress: (progress) => report(modelProgressRatio(progress)),
       }),
@@ -128,18 +146,18 @@ export async function runOcr({
         model,
         async (baseUrl) => {
           for (const slide of pendingSlides) {
-            const fingerprint = ocrInputFingerprint(slide)
+            const fingerprint = ocrInputFingerprint(slide, modelId)
             throwIfAborted(signal)
             const rawText = await withUserFacingError(
               `Slide ${slide.index + 1}の文字を読み取れませんでした。再試行してください。`,
-              () => recognizeSlide(baseUrl, slide, signal),
+              () => recognizeSlide(baseUrl, slide, modelId, signal),
             )
             await withUserFacingError(
               `Slide ${slide.index + 1}のOCR結果を保存できませんでした。空き容量を確認して、再試行してください。`,
               async () => {
                 await onSlideCompleted?.(slide.id, {
                   rawText,
-                  model: DEFAULT_OCR_MODEL.id,
+                  model: modelId,
                   inputFingerprint: fingerprint,
                 })
               },

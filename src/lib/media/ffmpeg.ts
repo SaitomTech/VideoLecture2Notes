@@ -102,7 +102,7 @@ export async function extractRepresentativeFrame({
     '-an',
     '-sn',
     '-vf',
-    `crop=${crop.width}:${crop.height}:${crop.x}:${crop.y},scale=480:-2:flags=lanczos`,
+    `crop=${crop.width}:${crop.height}:${crop.x}:${crop.y},scale=1280:-2:flags=lanczos`,
     '-frames:v',
     '1',
     '-q:v',

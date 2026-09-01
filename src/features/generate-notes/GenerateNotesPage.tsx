@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
 import { getTextModel, type TextModelId } from '../../lib/llama/textModel'
+import { getOcrModel, type OcrModelId } from '../../lib/ocr/modelManager'
 import type { CorrectionLevel, MediaProject, TranscriptionResult } from '../../types/project'
 import { DEFAULT_CORRECTION_LEVEL } from '../correction/correction'
 import { AnalysisResultPreview } from '../content-processing/components/AnalysisResultPreview'
@@ -42,6 +43,12 @@ export function GenerateNotesPage({
       ? project.transcription.language
       : 'auto',
   )
+  const storedOcrModelId = project.slides
+    .map((slide) => slide.ocr?.model)
+    .find((modelId): modelId is string => Boolean(modelId))
+  const [ocrModelId, setOcrModelId] = useState<OcrModelId>(
+    () => getOcrModel(storedOcrModelId).id,
+  )
   const storedTextModelId = project.slides
     .map((slide) => slide.transcript?.articleModel)
     .find((modelId): modelId is string => Boolean(modelId))
@@ -56,7 +63,7 @@ export function GenerateNotesPage({
   )
   const textModel = getTextModel(textModelId)
   const transcription = useTranscription(project, onCompleted)
-  const ocr = useOcr(project, onOcrSlideCompleted)
+  const ocr = useOcr(project, onOcrSlideCompleted, ocrModelId)
   const processing = useContentProcessing(
     project,
     onContentSlideCompleted,
@@ -135,6 +142,8 @@ export function GenerateNotesPage({
                 <div>
                   <OcrPanel
                     ocr={ocr}
+                    modelId={ocrModelId}
+                    onModelChange={setOcrModelId}
                     disabled={transcription.status === 'running' || isContentProcessing}
                   />
                   <div className="mt-6">
