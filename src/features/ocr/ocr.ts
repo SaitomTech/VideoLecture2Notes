@@ -124,27 +124,32 @@ export async function runOcr({
   await withUserFacingError(
     'OCRエンジンを起動または実行できませんでした。アプリを再起動して、再試行してください。',
     () =>
-      withLlamaServer(model, async (baseUrl) => {
-        for (const slide of pendingSlides) {
-          const fingerprint = ocrInputFingerprint(slide)
-          throwIfAborted(signal)
-          const rawText = await withUserFacingError(
-            `Slide ${slide.index + 1}の文字を読み取れませんでした。再試行してください。`,
-            () => recognizeSlide(baseUrl, slide, signal),
-          )
-          await withUserFacingError(
-            `Slide ${slide.index + 1}のOCR結果を保存できませんでした。空き容量を確認して、再試行してください。`,
-            async () => {
-              await onSlideCompleted?.(slide.id, {
-                rawText,
-                model: DEFAULT_OCR_MODEL.id,
-                inputFingerprint: fingerprint,
-              })
-            },
-          )
-          completed += 1
-          report(null)
-        }
-      }),
+      withLlamaServer(
+        model,
+        async (baseUrl) => {
+          for (const slide of pendingSlides) {
+            const fingerprint = ocrInputFingerprint(slide)
+            throwIfAborted(signal)
+            const rawText = await withUserFacingError(
+              `Slide ${slide.index + 1}の文字を読み取れませんでした。再試行してください。`,
+              () => recognizeSlide(baseUrl, slide, signal),
+            )
+            await withUserFacingError(
+              `Slide ${slide.index + 1}のOCR結果を保存できませんでした。空き容量を確認して、再試行してください。`,
+              async () => {
+                await onSlideCompleted?.(slide.id, {
+                  rawText,
+                  model: DEFAULT_OCR_MODEL.id,
+                  inputFingerprint: fingerprint,
+                })
+              },
+            )
+            throwIfAborted(signal)
+            completed += 1
+            report(null)
+          }
+        },
+        signal,
+      ),
   )
 }

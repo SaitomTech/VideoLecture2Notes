@@ -20,22 +20,33 @@ function choosePort() {
   return 40_000 + (((bytes[0] << 8) | bytes[1]) % 10_000)
 }
 
-async function waitForHealth(baseUrl: string, getStderr: () => string) {
+function throwIfAborted(signal?: AbortSignal) {
+  if (signal?.aborted) throw new DOMException('処理を中止しました。', 'AbortError')
+}
+
+async function waitForHealth(baseUrl: string, getStderr: () => string, signal?: AbortSignal) {
   const deadline = Date.now() + STARTUP_TIMEOUT_MS
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(`${baseUrl}/health`, { cache: 'no-store' })
+      throwIfAborted(signal)
+      const response = await fetch(`${baseUrl}/health`, { cache: 'no-store', signal })
       if (response.ok) return
-    } catch {
+    } catch (error) {
+      if (signal?.aborted) throw error
       // llama-server is still loading or the port is not ready yet.
     }
+    throwIfAborted(signal)
     await new Promise((resolve) => setTimeout(resolve, HEALTH_POLL_INTERVAL_MS))
   }
 
   throw new Error(`llama-serverの準備に時間がかかりすぎています。${getStderr().trim()}`)
 }
 
-async function startLlamaServer(model: LlamaModelPaths): Promise<LlamaServerSession> {
+async function startLlamaServer(
+  model: LlamaModelPaths,
+  signal?: AbortSignal,
+): Promise<LlamaServerSession> {
+  throwIfAborted(signal)
   const port = choosePort()
   const baseUrl = `http://127.0.0.1:${port}`
   const command = Command.sidecar('binaries/llama-server', [
@@ -90,7 +101,7 @@ async function startLlamaServer(model: LlamaModelPaths): Promise<LlamaServerSess
     })
   }
   try {
-    await Promise.race([waitForHealth(baseUrl, () => stderr), startupFailure])
+    await Promise.race([waitForHealth(baseUrl, () => stderr, signal), startupFailure])
   } catch (error) {
     await child.kill().catch(() => undefined)
     throw error
@@ -113,9 +124,11 @@ async function startLlamaServer(model: LlamaModelPaths): Promise<LlamaServerSess
 export async function withLlamaServer<T>(
   model: LlamaModelPaths,
   work: (baseUrl: string) => Promise<T>,
+  signal?: AbortSignal,
 ) {
-  const server = await startLlamaServer(model)
+  const server = await startLlamaServer(model, signal)
   try {
+    throwIfAborted(signal)
     return await work(server.baseUrl)
   } finally {
     await server.stop()

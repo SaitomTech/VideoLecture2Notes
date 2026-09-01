@@ -28,6 +28,7 @@ type RunWhisperInput = {
   modelPath: string
   language: string
   onProgress?: (progress: number) => void
+  signal?: AbortSignal
 }
 
 function parseTimestamp(value: unknown) {
@@ -44,8 +45,7 @@ function parseTimestamp(value: unknown) {
 }
 
 function parseSegment(segment: WhisperJsonSegment): TranscriptSegment | null {
-  const startMs =
-    parseTimestamp(segment.offsets?.from) ?? parseTimestamp(segment.timestamps?.from)
+  const startMs = parseTimestamp(segment.offsets?.from) ?? parseTimestamp(segment.timestamps?.from)
   const endMs = parseTimestamp(segment.offsets?.to) ?? parseTimestamp(segment.timestamps?.to)
   const text = typeof segment.text === 'string' ? segment.text.trim() : ''
   if (startMs === null || endMs === null || !text || endMs < startMs) return null
@@ -80,6 +80,7 @@ export async function runWhisper({
   modelPath,
   language,
   onProgress,
+  signal,
 }: RunWhisperInput) {
   const outputPath = await getRawTranscriptAssetPath(projectId)
   const parseProgress = createProgressParser(onProgress)
@@ -97,7 +98,7 @@ export async function runWhisper({
       outputBasePath(outputPath),
       '--print-progress',
     ],
-    { onStdout: parseProgress, onStderr: parseProgress },
+    { onStdout: parseProgress, onStderr: parseProgress, signal },
   )
 
   if (output.code !== 0) {

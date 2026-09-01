@@ -14,7 +14,6 @@ import { useOcr } from '../ocr/hooks/useOcr'
 import type { OcrSlideCompleted } from '../ocr/ocr'
 import { TranscriptionSettings } from './components/TranscriptionSettings'
 import { TranscriptionStatus } from './components/TranscriptionStatus'
-import { TextModelSelector } from './components/TextModelSelector'
 import { useTranscription } from './hooks/useTranscription'
 import type { TranscriptionLanguage } from './transcription'
 
@@ -43,7 +42,9 @@ export function GenerateNotesPage({
   const storedTextModelId = project.slides
     .map((slide) => slide.transcript?.correctionModel ?? slide.transcript?.articleModel)
     .find((modelId): modelId is string => Boolean(modelId))
-  const [textModelId, setTextModelId] = useState<TextModelId>(() => getTextModel(storedTextModelId).id)
+  const [textModelId, setTextModelId] = useState<TextModelId>(
+    () => getTextModel(storedTextModelId).id,
+  )
   const storedCorrectionLevel = project.slides
     .map((slide) => slide.transcript?.correctionLevel)
     .find((level): level is CorrectionLevel => level !== undefined)
@@ -53,7 +54,12 @@ export function GenerateNotesPage({
   const textModel = getTextModel(textModelId)
   const transcription = useTranscription(project, onCompleted)
   const ocr = useOcr(project, onOcrSlideCompleted)
-  const processing = useContentProcessing(project, onContentSlideCompleted, textModelId, correctionLevel)
+  const processing = useContentProcessing(
+    project,
+    onContentSlideCompleted,
+    textModelId,
+    correctionLevel,
+  )
   const handleTranscribe = () => transcription.transcribe(language)
   const hasOcrResult = project.slides.some((slide) => Boolean(slide.ocr))
   const isOcrRunning = ocr.status === 'running'
@@ -77,9 +83,11 @@ export function GenerateNotesPage({
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">04 / GENERATE NOTES</p>
-            <h1 className="mt-1 text-[27px] font-bold tracking-[-0.06em]">文字起こし</h1>
-            <p className="mt-1 text-xs text-[#71807b]">発話をSlideの区間ごとに整理します。</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
+              04 / GENERATE NOTES
+            </p>
+            <h1 className="mt-1 text-[27px] font-bold tracking-[-0.06em]">ノートを生成</h1>
+            <p className="mt-1 text-xs text-[#71807b]">OCR、文字起こし、本文生成を順に実行します。</p>
           </div>
           <button
             className="inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-[#71807b] transition hover:bg-[#e2eee8] hover:text-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50"
@@ -95,22 +103,31 @@ export function GenerateNotesPage({
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d8e1dc] px-5 py-3.5">
             <div className="min-w-0">
-              <p className="truncate text-xs font-semibold text-[#18211f]" title={project.source.path}>
+              <p
+                className="truncate text-xs font-semibold text-[#18211f]"
+                title={project.source.path}
+              >
                 {project.source.name}
               </p>
               <p className="mt-0.5 font-mono text-[10px] text-[#71807b]">
-                {project.slides.length} slides · {Math.round(project.source.metadata.durationMs / 1000)}秒
+                {project.slides.length} slides ·{' '}
+                {Math.round(project.source.metadata.durationMs / 1000)}秒
               </p>
             </div>
           </div>
 
           <div className="p-5 md:p-7">
+            <OcrPanel
+              ocr={ocr}
+              disabled={transcription.status === 'running' || isContentProcessing}
+            />
             <TranscriptionSettings
               language={language}
               status={transcription.status}
               disabled={isOcrRunning || isContentProcessing}
               onLanguageChange={setLanguage}
               onTranscribe={handleTranscribe}
+              onCancel={transcription.cancel}
             />
             <TranscriptionStatus
               status={transcription.status}
@@ -120,19 +137,12 @@ export function GenerateNotesPage({
               disabled={isOcrRunning || isContentProcessing}
               onRetry={handleTranscribe}
             />
-            <TextModelSelector
-              value={textModelId}
-              disabled={isProcessing}
-              onChange={handleTextModelChange}
-            />
-            <OcrPanel
-              ocr={ocr}
-              disabled={transcription.status === 'running' || isContentProcessing}
-            />
             <ContentProcessingPanel
               processing={processing}
               model={textModel}
+              modelId={textModelId}
               level={correctionLevel}
+              onModelChange={handleTextModelChange}
               onLevelChange={handleCorrectionLevelChange}
               disabled={transcription.status === 'running' || isOcrRunning}
             />

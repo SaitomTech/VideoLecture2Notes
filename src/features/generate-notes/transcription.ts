@@ -14,6 +14,11 @@ type RunTranscriptionInput = {
   language: TranscriptionLanguage
   onStage?: (stage: TranscriptionStage) => void
   onProgress?: (progress: number | null) => void
+  signal?: AbortSignal
+}
+
+function throwIfAborted(signal?: AbortSignal) {
+  if (signal?.aborted) throw new DOMException('処理を中止しました。', 'AbortError')
 }
 
 function inputFingerprint(project: MediaProject, language: TranscriptionLanguage) {
@@ -34,19 +39,23 @@ export async function runTranscription({
   language,
   onStage,
   onProgress,
+  signal,
 }: RunTranscriptionInput): Promise<TranscriptionResult> {
+  throwIfAborted(signal)
   onStage?.('preparing-model')
   onProgress?.(null)
   const modelPath = await withUserFacingError(
     '文字起こしモデルを準備できませんでした。通信状況と空き容量を確認して、再試行してください。',
     () =>
       ensureWhisperModel({
+        signal,
         onProgress: ({ receivedBytes, totalBytes }) => {
           onProgress?.(totalBytes > 0 ? receivedBytes / totalBytes : null)
         },
       }),
   )
 
+  throwIfAborted(signal)
   onStage?.('extracting-audio')
   onProgress?.(null)
   const audioError =
@@ -54,12 +63,13 @@ export async function runTranscription({
   const audioPath = await withUserFacingError(audioError, async () => {
     const path = await getAudioAssetPath(project.id)
     if (!(await fileExists(path))) {
-      await extractAudio({ path: project.source.path, outputPath: path })
+      await extractAudio({ path: project.source.path, outputPath: path, signal })
     }
     if (!(await fileExists(path))) throw new UserFacingError(audioError)
     return path
   })
 
+  throwIfAborted(signal)
   onStage?.('transcribing')
   onProgress?.(null)
   const rawTranscript = await withUserFacingError(
@@ -71,6 +81,7 @@ export async function runTranscription({
         modelPath,
         language,
         onProgress,
+        signal,
       }),
   )
 

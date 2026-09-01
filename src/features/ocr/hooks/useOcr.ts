@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { getUserErrorMessage } from '../../../lib/errors'
 import type { MediaProject } from '../../../types/project'
 import {
@@ -9,7 +9,7 @@ import {
   type OcrStage,
 } from '../ocr'
 
-export type OcrStatus = 'idle' | 'running' | 'completed' | 'error'
+export type OcrStatus = 'idle' | 'running' | 'completed' | 'cancelled' | 'error'
 
 export function useOcr(project: MediaProject, onSlideCompleted: OcrSlideCompleted) {
   const initialCompleted = project.slides.filter(
@@ -25,13 +25,19 @@ export function useOcr(project: MediaProject, onSlideCompleted: OcrSlideComplete
     stageProgress: initialCompleted === project.slides.length ? 1 : null,
   })
   const [error, setError] = useState<string | null>(null)
+  const activeController = useRef<AbortController | null>(null)
 
   async function recognize(force = false) {
+    if (activeController.current) return
+
+    const controller = new AbortController()
+    activeController.current = controller
     setStatus('running')
     setError(null)
     try {
       await runOcr({
         project,
+        signal: controller.signal,
         onStage: setStage,
         onProgress: setProgress,
         onSlideCompleted,
@@ -40,18 +46,29 @@ export function useOcr(project: MediaProject, onSlideCompleted: OcrSlideComplete
       setProgress((current) => ({ ...current, completed: current.total, stageProgress: 1 }))
       setStatus('completed')
     } catch (ocrError) {
-      console.error(ocrError)
-      setStatus('error')
-      setError(
-        getUserErrorMessage(
-          ocrError,
-          'スライドOCRを完了できませんでした。アプリを再起動して、再試行してください。',
-        ),
-      )
+      if (controller.signal.aborted) {
+        setStatus('cancelled')
+        setError(null)
+      } else {
+        console.error(ocrError)
+        setStatus('error')
+        setError(
+          getUserErrorMessage(
+            ocrError,
+            'スライドOCRを完了できませんでした。アプリを再起動して、再試行してください。',
+          ),
+        )
+      }
+    } finally {
+      if (activeController.current === controller) activeController.current = null
     }
   }
 
-  return { status, stage, progress, error, recognize }
+  function cancel() {
+    activeController.current?.abort()
+  }
+
+  return { status, stage, progress, error, recognize, cancel }
 }
 
 export type OcrController = ReturnType<typeof useOcr>

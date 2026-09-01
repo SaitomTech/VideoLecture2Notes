@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { getUserErrorMessage } from '../../../lib/errors'
 import type { TextModelId } from '../../../lib/llama/textModel'
 import type { CorrectionLevel, MediaProject } from '../../../types/project'
@@ -10,7 +10,7 @@ import {
   type ContentProcessingStage,
 } from '../contentProcessing'
 
-export type ContentProcessingStatus = 'idle' | 'running' | 'completed' | 'error'
+export type ContentProcessingStatus = 'idle' | 'running' | 'completed' | 'cancelled' | 'error'
 
 export function useContentProcessing(
   project: MediaProject,
@@ -19,8 +19,8 @@ export function useContentProcessing(
   level: CorrectionLevel,
 ) {
   const targetSlides = project.slides.filter((slide) => slide.transcript?.raw.trim())
-  const completedFromProject = targetSlides.filter(
-    (slide) => hasCurrentContent(slide, modelId, level),
+  const completedFromProject = targetSlides.filter((slide) =>
+    hasCurrentContent(slide, modelId, level),
   ).length
   const isUpToDate = completedFromProject === targetSlides.length && targetSlides.length > 0
   const [status, setStatus] = useState<ContentProcessingStatus>('idle')
@@ -31,6 +31,7 @@ export function useContentProcessing(
     stageProgress: null,
   })
   const [error, setError] = useState<string | null>(null)
+  const activeController = useRef<AbortController | null>(null)
 
   function reset() {
     setStatus('idle')
@@ -40,6 +41,10 @@ export function useContentProcessing(
   }
 
   async function process(force = false) {
+    if (activeController.current) return
+
+    const controller = new AbortController()
+    activeController.current = controller
     setStatus('running')
     setError(null)
     try {
@@ -47,6 +52,7 @@ export function useContentProcessing(
         project,
         modelId,
         level,
+        signal: controller.signal,
         onStage: setStage,
         onProgress: setProgress,
         onSlideCompleted,
@@ -55,19 +61,30 @@ export function useContentProcessing(
       setProgress((current) => ({ ...current, completed: current.total, stageProgress: 1 }))
       setStatus('completed')
     } catch (processingError) {
-      console.error(processingError)
-      setStatus('error')
-      setError(
-        getUserErrorMessage(
-          processingError,
-          '発話と記事本文の生成を完了できませんでした。アプリを再起動して、再試行してください。',
-        ),
-      )
+      if (controller.signal.aborted) {
+        setStatus('cancelled')
+        setError(null)
+      } else {
+        console.error(processingError)
+        setStatus('error')
+        setError(
+          getUserErrorMessage(
+            processingError,
+            '発話と記事本文の生成を完了できませんでした。アプリを再起動して、再試行してください。',
+          ),
+        )
+      }
+    } finally {
+      if (activeController.current === controller) activeController.current = null
     }
   }
 
+  function cancel() {
+    activeController.current?.abort()
+  }
+
   const visibleProgress =
-    status === 'running'
+    status === 'running' || status === 'cancelled'
       ? progress
       : {
           completed: completedFromProject,
@@ -75,7 +92,11 @@ export function useContentProcessing(
           stageProgress: isUpToDate ? 1 : null,
         }
   const visibleStatus =
-    status === 'running' || status === 'error' ? status : isUpToDate ? 'completed' : 'idle'
+    status === 'running' || status === 'cancelled' || status === 'error'
+      ? status
+      : isUpToDate
+        ? 'completed'
+        : 'idle'
 
   return {
     status: visibleStatus,
@@ -83,6 +104,7 @@ export function useContentProcessing(
     progress: visibleProgress,
     error,
     process,
+    cancel,
     reset,
   }
 }
