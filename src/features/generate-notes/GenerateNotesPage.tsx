@@ -6,10 +6,13 @@ import { getTextModel, type TextModelId } from '../../lib/llama/textModel'
 import type { CorrectionLevel, MediaProject, TranscriptionResult } from '../../types/project'
 import { DEFAULT_CORRECTION_LEVEL } from '../correction/correction'
 import { AnalysisResultPreview } from '../content-processing/components/AnalysisResultPreview'
-import { ContentProcessingPanel } from '../content-processing/components/ContentProcessingPanel'
+import {
+  ContentProcessingPanel,
+  ContentProcessingStatus,
+} from '../content-processing/components/ContentProcessingPanel'
 import type { ContentProcessingSlideCompleted } from '../content-processing/contentProcessing'
 import { useContentProcessing } from '../content-processing/hooks/useContentProcessing'
-import { OcrPanel } from '../ocr/components/OcrPanel'
+import { OcrPanel, OcrStatus } from '../ocr/components/OcrPanel'
 import { useOcr } from '../ocr/hooks/useOcr'
 import type { OcrSlideCompleted } from '../ocr/ocr'
 import { TranscriptionSettings } from './components/TranscriptionSettings'
@@ -61,11 +64,9 @@ export function GenerateNotesPage({
     correctionLevel,
   )
   const handleTranscribe = () => transcription.transcribe(language)
-  const hasOcrResult = project.slides.some((slide) => Boolean(slide.ocr))
   const isOcrRunning = ocr.status === 'running'
   const isContentProcessing = processing.status === 'running'
   const isProcessing = transcription.status === 'running' || isOcrRunning || isContentProcessing
-  const hasTranscriptResult = project.slides.some((slide) => Boolean(slide.transcript))
   const handleTextModelChange = (nextModelId: TextModelId) => {
     processing.reset()
     setTextModelId(nextModelId)
@@ -117,38 +118,75 @@ export function GenerateNotesPage({
           </div>
 
           <div className="p-5 md:p-7">
-            <OcrPanel
-              ocr={ocr}
-              disabled={transcription.status === 'running' || isContentProcessing}
-            />
-            <TranscriptionSettings
-              language={language}
-              status={transcription.status}
-              disabled={isOcrRunning || isContentProcessing}
-              onLanguageChange={setLanguage}
-              onTranscribe={handleTranscribe}
-              onCancel={transcription.cancel}
-            />
-            <TranscriptionStatus
-              status={transcription.status}
-              stage={transcription.stage}
-              stageProgress={transcription.stageProgress}
-              error={transcription.error}
-              disabled={isOcrRunning || isContentProcessing}
-              onRetry={handleTranscribe}
-            />
-            <ContentProcessingPanel
-              processing={processing}
-              model={textModel}
-              modelId={textModelId}
-              level={correctionLevel}
-              onModelChange={handleTextModelChange}
-              onLevelChange={handleCorrectionLevelChange}
-              disabled={transcription.status === 'running' || isOcrRunning}
-            />
-            {(transcription.status === 'completed' || hasOcrResult || hasTranscriptResult) && (
-              <AnalysisResultPreview slides={project.slides} onEdit={onOpenArticleReview} />
-            )}
+            <section aria-labelledby="analysis-settings-heading">
+              <div>
+                <h2
+                  id="analysis-settings-heading"
+                  className="text-[21px] font-bold tracking-[-0.05em]"
+                >
+                  1. 解析の設定・実行
+                </h2>
+                <p className="mt-1 text-xs text-[#71807b]">
+                  3つの処理に必要な設定を確認して、順番に実行します。解析結果は下の「2. 解析結果の確認」で確認できます。
+                </p>
+              </div>
+
+              <div className="mt-6 space-y-10">
+                <div>
+                  <OcrPanel
+                    ocr={ocr}
+                    disabled={transcription.status === 'running' || isContentProcessing}
+                  />
+                  <div className="mt-6">
+                    <OcrStatus
+                      ocr={ocr}
+                      disabled={transcription.status === 'running' || isContentProcessing}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <TranscriptionSettings
+                    language={language}
+                    status={transcription.status}
+                    disabled={isOcrRunning || isContentProcessing}
+                    onLanguageChange={setLanguage}
+                    onTranscribe={handleTranscribe}
+                    onCancel={transcription.cancel}
+                  />
+                  <div className="mt-6">
+                    <TranscriptionStatus
+                      status={transcription.status}
+                      stage={transcription.stage}
+                      stageProgress={transcription.stageProgress}
+                      error={transcription.error}
+                      disabled={isOcrRunning || isContentProcessing}
+                      onRetry={handleTranscribe}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <ContentProcessingPanel
+                    processing={processing}
+                    model={textModel}
+                    modelId={textModelId}
+                    level={correctionLevel}
+                    onModelChange={handleTextModelChange}
+                    onLevelChange={handleCorrectionLevelChange}
+                    disabled={transcription.status === 'running' || isOcrRunning}
+                  />
+                  <div className="mt-6">
+                    <ContentProcessingStatus
+                      processing={processing}
+                      disabled={transcription.status === 'running' || isOcrRunning}
+                    />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <AnalysisResultPreview slides={project.slides} onEdit={onOpenArticleReview} />
           </div>
         </div>
       </section>

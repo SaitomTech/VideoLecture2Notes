@@ -26,14 +26,14 @@ export function TranscriptionSettings({
 
   return (
     <section aria-labelledby="transcription-settings-heading">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2
+          <h3
             id="transcription-settings-heading"
-            className="text-[21px] font-bold tracking-[-0.05em]"
+            className="text-[15px] font-semibold text-[#18211f]"
           >
-            文字起こし設定
-          </h2>
+            音声データから文字を抽出
+          </h3>
           <p className="mt-1 text-xs text-[#71807b]">
             音声をMac内で解析し、Slideの区間へ割り当てます。
           </p>
@@ -50,7 +50,7 @@ export function TranscriptionSettings({
         </button>
       </div>
 
-      <div className="mt-5 grid gap-4 rounded-[12px] border border-[#d8e1dc] bg-[#f7faf7] p-4 md:grid-cols-2 md:p-5">
+      <div className="mt-4 grid gap-4 rounded-[12px] border border-[#d8e1dc] bg-[#f7faf7] p-4 md:grid-cols-2 md:p-5">
         <label className="block text-xs text-[#71807b]">
           <span className="block font-semibold text-[#18211f]">話し言葉の言語</span>
           <select
