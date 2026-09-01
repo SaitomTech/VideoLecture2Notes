@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { getUserErrorMessage } from '../../../lib/errors'
-import type { TextModelId } from '../../../lib/llama/textModel'
+import type { ArticleModelId } from '../../../lib/article/articleModel'
 import type { MediaProject } from '../../../types/project'
 import {
   hasCurrentContent,
@@ -15,7 +15,7 @@ export type ContentProcessingStatus = 'idle' | 'running' | 'completed' | 'cancel
 export function useContentProcessing(
   project: MediaProject,
   onSlideCompleted: ContentProcessingSlideCompleted,
-  modelId: TextModelId,
+  modelId: ArticleModelId,
 ) {
   const targetSlides = project.slides.filter((slide) => slide.transcript?.raw.trim())
   const completedFromProject = targetSlides.filter((slide) =>

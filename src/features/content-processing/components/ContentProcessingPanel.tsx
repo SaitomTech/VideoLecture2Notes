@@ -1,13 +1,19 @@
 import { RefreshCw, Square } from 'lucide-react'
 import { ProcessingStatusRow } from '../../../components/ProcessingStatusRow'
-import { TEXT_MODELS, type TextModel, type TextModelId } from '../../../lib/llama/textModel'
+import {
+  OPENAI_LUNA_MODEL,
+  type ArticleModel,
+  type ArticleModelId,
+} from '../../../lib/article/articleModel'
+import { TEXT_MODELS } from '../../../lib/llama/textModel'
 import type { ContentProcessingController } from '../hooks/useContentProcessing'
+import { OpenAiApiKeySettings } from './OpenAiApiKeySettings'
 
 type ContentProcessingPanelProps = {
   processing: ContentProcessingController
-  model: TextModel
-  modelId: TextModelId
-  onModelChange: (modelId: TextModelId) => void
+  model: ArticleModel
+  modelId: ArticleModelId
+  onModelChange: (modelId: ArticleModelId) => void
   disabled?: boolean
 }
 
@@ -18,6 +24,41 @@ const stageLabels = {
 
 function formatModelSize(bytes: number) {
   return `${(bytes / 1024 ** 3).toFixed(2)}GB`
+}
+
+function assertNever(value: never): never {
+  throw new Error(`未対応の本文生成プロバイダーです: ${JSON.stringify(value)}`)
+}
+
+function ArticleModelDetails({ model, disabled }: { model: ArticleModel; disabled: boolean }) {
+  switch (model.provider) {
+    case 'local':
+      return (
+        <>
+          <span className="mt-1 block text-[10px] text-[#9aa6a1]">
+            初回のみモデルをダウンロードします（約
+            {formatModelSize(model.model.totalSizeBytes)}）。
+          </span>
+          <span className="mt-2 block rounded-[8px] border border-[#d8e1dc] bg-[#fbfcfa] px-3 py-2 text-xs leading-5 text-[#52635c]">
+            {model.model.description}
+          </span>
+        </>
+      )
+    case 'openai':
+      return (
+        <>
+          <span className="mt-1 block text-[10px] leading-4 text-[#9a7a35]">
+            API利用料は設定したOpenAIアカウントに発生します。動画・音声・画像は送信しません。
+          </span>
+          <span className="mt-2 block rounded-[8px] border border-[#d8e1dc] bg-[#fbfcfa] px-3 py-2 text-xs leading-5 text-[#52635c]">
+            {model.description}
+          </span>
+          <OpenAiApiKeySettings disabled={disabled} />
+        </>
+      )
+    default:
+      return assertNever(model)
+  }
 }
 
 function progressRatio(processing: ContentProcessingController) {
@@ -48,10 +89,7 @@ export function ContentProcessingPanel({
     <section aria-labelledby="content-processing-heading">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h3
-            id="content-processing-heading"
-            className="text-[15px] font-semibold text-[#18211f]"
-          >
+          <h3 id="content-processing-heading" className="text-[15px] font-semibold text-[#18211f]">
             本文を生成
           </h3>
           <p className="mt-1 text-xs text-[#71807b]">
@@ -83,22 +121,22 @@ export function ContentProcessingPanel({
             id="article-generation-model"
             className="mt-2 w-full rounded-[8px] border border-[#b7cbc0] bg-[#fbfcfa] px-3 py-2.5 text-sm text-[#18211f] outline-none focus:border-[#1d6b50] focus:ring-2 focus:ring-[#1d6b50]/20 disabled:cursor-not-allowed disabled:opacity-50"
             value={modelId}
-            onChange={(event) => onModelChange(event.target.value as TextModelId)}
+            onChange={(event) => onModelChange(event.target.value as ArticleModelId)}
             disabled={disabled || isRunning}
           >
-            {TEXT_MODELS.map((textModel) => (
-              <option key={textModel.id} value={textModel.id}>
-                {textModel.label}
-              </option>
-            ))}
+            <optgroup label="ローカルモデル">
+              {TEXT_MODELS.map((textModel) => (
+                <option key={textModel.id} value={textModel.id}>
+                  {textModel.label}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="OpenAI API">
+              <option value={OPENAI_LUNA_MODEL.id}>{OPENAI_LUNA_MODEL.label}</option>
+            </optgroup>
           </select>
-          <span className="mt-1 block text-[10px] text-[#9aa6a1]">
-            初回のみモデルをダウンロードします（約{formatModelSize(model.totalSizeBytes)}）。
-          </span>
-          <span className="mt-2 block rounded-[8px] border border-[#d8e1dc] bg-[#fbfcfa] px-3 py-2 text-xs leading-5 text-[#52635c]">
-            {model.description}
-          </span>
         </label>
+        <ArticleModelDetails model={model} disabled={disabled || isRunning} />
       </div>
     </section>
   )
@@ -116,7 +154,9 @@ export function ContentProcessingStatus({
   const isCancelled = processing.status === 'cancelled'
   const progress = progressRatio(processing)
   const progressLabel =
-    isRunning && processing.stage === 'preparing-model' && processing.progress.stageProgress !== null
+    isRunning &&
+    processing.stage === 'preparing-model' &&
+    processing.progress.stageProgress !== null
       ? `モデル ${Math.round(processing.progress.stageProgress * 100)}%`
       : `${processing.progress.completed} / ${processing.progress.total} slides`
   const message = isRunning

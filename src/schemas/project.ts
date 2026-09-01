@@ -61,18 +61,27 @@ const SlideDataSchema = z.object({
   image: z.object({
     representativeFramePath: z.string().optional(),
   }),
-  ocr: z.object({
-    rawText: z.string(),
-    model: z.string(),
-    inputFingerprint: z.string().optional(),
-  }).optional(),
-  transcript: z.object({
-    raw: z.string(),
-    articleBody: z.string().optional(),
-    articleModel: z.string().optional(),
-    articleInputFingerprint: z.string().optional(),
-    model: z.string(),
-  }).optional(),
+  ocr: z
+    .object({
+      rawText: z.string(),
+      model: z.string(),
+      inputFingerprint: z.string().optional(),
+    })
+    .optional(),
+  transcript: z
+    .object({
+      raw: z.string(),
+      articleBody: z.string().optional(),
+      articleModel: z.string().optional(),
+      articleInputFingerprint: z.string().optional(),
+      articleProvider: z.enum(['local', 'openai']).optional(),
+      articleInputTokens: z.number().int().nonnegative().optional(),
+      articleOutputTokens: z.number().int().nonnegative().optional(),
+      articleRequestId: z.string().optional(),
+      articleGeneratedAt: z.iso.datetime().optional(),
+      model: z.string(),
+    })
+    .optional(),
 })
 
 export const MediaProjectSchema = z.object({
@@ -99,9 +108,11 @@ export const MediaProjectSchema = z.object({
   slides: z.array(SlideDataSchema),
   slideDetection: SlideDetectionResultSchema.optional(),
   transcription: TranscriptionResultSchema.optional(),
-  article: z.object({
-    title: z.string(),
-  }).optional(),
+  article: z
+    .object({
+      title: z.string(),
+    })
+    .optional(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 })

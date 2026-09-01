@@ -68,6 +68,13 @@ export type ArticleFormattingResult = {
   body: string
   model: string
   inputFingerprint: string
+  provider?: 'local' | 'openai'
+  usage?: {
+    inputTokens: number
+    outputTokens: number
+  }
+  requestId?: string
+  generatedAt?: string
 }
 
 export type ContentProcessingResult = {
@@ -113,6 +120,11 @@ export type SlideData = {
     articleBody?: string
     articleModel?: string
     articleInputFingerprint?: string
+    articleProvider?: 'local' | 'openai'
+    articleInputTokens?: number
+    articleOutputTokens?: number
+    articleRequestId?: string
+    articleGeneratedAt?: string
     model: string
   }
 }

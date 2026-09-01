@@ -6,6 +6,8 @@ use std::{
 };
 use tauri::Manager;
 
+mod openai;
+
 #[tauri::command]
 async fn sha256_app_local_file(
     app: tauri::AppHandle,
@@ -75,7 +77,15 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![sha256_app_local_file])
+        .invoke_handler(tauri::generate_handler![
+            sha256_app_local_file,
+            openai::get_openai_api_key_status,
+            openai::validate_and_save_openai_api_key,
+            openai::test_openai_connection,
+            openai::delete_openai_api_key,
+            openai::generate_openai_article,
+            openai::cancel_openai_request,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

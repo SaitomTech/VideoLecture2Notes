@@ -2,7 +2,7 @@ import { ArrowLeft } from 'lucide-react'
 import { useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
-import { getTextModel, type TextModelId } from '../../lib/llama/textModel'
+import { getArticleModel, type ArticleModelId } from '../../lib/article/articleModel'
 import { getOcrModel, type OcrModelId } from '../../lib/ocr/modelManager'
 import { getWhisperModel, type WhisperModelId } from '../../lib/whisper/modelManager'
 import type { MediaProject, TranscriptionResult } from '../../types/project'
@@ -43,34 +43,28 @@ export function GenerateNotesPage({
       ? project.transcription.language
       : 'auto',
   )
-  const [whisperModelId, setWhisperModelId] = useState<WhisperModelId>(() =>
-    getWhisperModel(project.transcription?.model).id,
+  const [whisperModelId, setWhisperModelId] = useState<WhisperModelId>(
+    () => getWhisperModel(project.transcription?.model).id,
   )
   const storedOcrModelId = project.slides
     .map((slide) => slide.ocr?.model)
     .find((modelId): modelId is string => Boolean(modelId))
-  const [ocrModelId, setOcrModelId] = useState<OcrModelId>(
-    () => getOcrModel(storedOcrModelId).id,
-  )
+  const [ocrModelId, setOcrModelId] = useState<OcrModelId>(() => getOcrModel(storedOcrModelId).id)
   const storedTextModelId = project.slides
     .map((slide) => slide.transcript?.articleModel)
     .find((modelId): modelId is string => Boolean(modelId))
-  const [textModelId, setTextModelId] = useState<TextModelId>(
-    () => getTextModel(storedTextModelId).id,
+  const [textModelId, setTextModelId] = useState<ArticleModelId>(
+    () => getArticleModel(storedTextModelId).id,
   )
-  const textModel = getTextModel(textModelId)
+  const textModel = getArticleModel(textModelId)
   const transcription = useTranscription(project, whisperModelId, onCompleted)
   const ocr = useOcr(project, onOcrSlideCompleted, ocrModelId)
-  const processing = useContentProcessing(
-    project,
-    onContentSlideCompleted,
-    textModelId,
-  )
+  const processing = useContentProcessing(project, onContentSlideCompleted, textModelId)
   const handleTranscribe = () => transcription.transcribe(language)
   const isOcrRunning = ocr.status === 'running'
   const isContentProcessing = processing.status === 'running'
   const isProcessing = transcription.status === 'running' || isOcrRunning || isContentProcessing
-  const handleTextModelChange = (nextModelId: TextModelId) => {
+  const handleTextModelChange = (nextModelId: ArticleModelId) => {
     processing.reset()
     setTextModelId(nextModelId)
   }
@@ -86,7 +80,9 @@ export function GenerateNotesPage({
               04 / GENERATE NOTES
             </p>
             <h1 className="mt-1 text-[27px] font-bold tracking-[-0.06em]">ノートを生成</h1>
-            <p className="mt-1 text-xs text-[#71807b]">OCR、文字起こし、本文生成を順に実行します。</p>
+            <p className="mt-1 text-xs text-[#71807b]">
+              OCR、文字起こし、本文生成を順に実行します。
+            </p>
           </div>
           <button
             className="inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-[#71807b] transition hover:bg-[#e2eee8] hover:text-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50"
@@ -125,7 +121,8 @@ export function GenerateNotesPage({
                   1. 解析の設定・実行
                 </h2>
                 <p className="mt-1 text-xs text-[#71807b]">
-                  3つの処理に必要な設定を確認して、順番に実行します。解析結果は下の「2. 解析結果の確認」で確認できます。
+                  3つの処理に必要な設定を確認して、順番に実行します。解析結果は下の「2.
+                  解析結果の確認」で確認できます。
                 </p>
               </div>
 

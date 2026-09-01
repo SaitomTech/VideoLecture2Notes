@@ -73,7 +73,11 @@ export function updateProjectCrop(project: MediaProject, crop: CropRegion): Medi
   }
 }
 
-export function updateProjectSlideDetection(project: MediaProject, result: SlideDetectionResult, slides: SlideData[]): MediaProject {
+export function updateProjectSlideDetection(
+  project: MediaProject,
+  result: SlideDetectionResult,
+  slides: SlideData[],
+): MediaProject {
   const nextSlides = project.transcription
     ? assignTranscriptToSlides(slides, project.transcription.segments, project.transcription.model)
     : slides
@@ -148,6 +152,11 @@ export function updateProjectSlideContent(
           articleBody: result.article.body,
           articleModel: result.article.model,
           articleInputFingerprint: result.article.inputFingerprint,
+          articleProvider: result.article.provider,
+          articleInputTokens: result.article.usage?.inputTokens,
+          articleOutputTokens: result.article.usage?.outputTokens,
+          articleRequestId: result.article.requestId,
+          articleGeneratedAt: result.article.generatedAt,
         },
       }
     }),
@@ -155,8 +164,12 @@ export function updateProjectSlideContent(
   }
 }
 
-export function updateProjectArticleDraft(project: MediaProject, draft: ArticleDraft): MediaProject {
-  const title = draft.title.trim() || project.article?.title || project.source.name.replace(/\.[^.]+$/, '')
+export function updateProjectArticleDraft(
+  project: MediaProject,
+  draft: ArticleDraft,
+): MediaProject {
+  const title =
+    draft.title.trim() || project.article?.title || project.source.name.replace(/\.[^.]+$/, '')
   const updatedAt = new Date().toISOString()
 
   return {
@@ -164,7 +177,8 @@ export function updateProjectArticleDraft(project: MediaProject, draft: ArticleD
     article: { title },
     slides: project.slides.map((slide) => {
       const body = draft.bodies[slide.id]
-      if (body === undefined || !slide.transcript || body === slide.transcript.articleBody) return slide
+      if (body === undefined || !slide.transcript || body === slide.transcript.articleBody)
+        return slide
 
       return {
         ...slide,
