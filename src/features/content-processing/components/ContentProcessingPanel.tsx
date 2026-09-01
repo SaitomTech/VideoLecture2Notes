@@ -95,6 +95,9 @@ export function ContentProcessingPanel({
           <span className="mt-1 block text-[10px] text-[#9aa6a1]">
             初回のみモデルをダウンロードします（約{formatModelSize(model.totalSizeBytes)}）。
           </span>
+          <span className="mt-2 block rounded-[8px] border border-[#d8e1dc] bg-[#fbfcfa] px-3 py-2 text-xs leading-5 text-[#52635c]">
+            {model.description}
+          </span>
         </label>
       </div>
     </section>
