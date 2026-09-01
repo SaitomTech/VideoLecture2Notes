@@ -1,8 +1,7 @@
 import { AlertTriangle, Check, FileText, RefreshCw, Square } from 'lucide-react'
-import type { TextModel, TextModelId } from '../../../lib/llama/textModel'
+import { TEXT_MODELS, type TextModel, type TextModelId } from '../../../lib/llama/textModel'
 import type { CorrectionLevel } from '../../../types/project'
 import { CORRECTION_LEVELS } from '../../correction/correction'
-import { TextModelSelector } from './TextModelSelector'
 import type { ContentProcessingController } from '../hooks/useContentProcessing'
 
 type ContentProcessingPanelProps = {
@@ -112,12 +111,6 @@ export function ContentProcessingPanel({
         </button>
       </div>
 
-      <TextModelSelector
-        value={modelId}
-        disabled={disabled || isRunning}
-        onChange={onModelChange}
-      />
-
       <div className="mt-5 grid gap-4 rounded-[12px] border border-[#d8e1dc] bg-[#f7faf7] p-4 md:grid-cols-3 md:p-5">
         <label className="block text-xs text-[#71807b]" htmlFor="article-generation-level">
           <span className="block font-semibold text-[#18211f]">本文生成レベル</span>
@@ -139,8 +132,22 @@ export function ContentProcessingPanel({
           </span>
         </label>
         <div className="text-xs text-[#71807b]">
-          <span className="block font-semibold text-[#18211f]">使用モデル</span>
-          <p className="mt-2 font-mono text-[11px] text-[#1d6b50]">{model.label}</p>
+          <label className="block font-semibold text-[#18211f]" htmlFor="article-generation-model">
+            使用モデル
+          </label>
+          <select
+            id="article-generation-model"
+            className="mt-2 w-full rounded-[8px] border border-[#b7cbc0] bg-[#fbfcfa] px-3 py-2 text-[11px] font-normal text-[#18211f] outline-none focus:border-[#1d6b50] focus:ring-2 focus:ring-[#1d6b50]/20 disabled:cursor-not-allowed disabled:opacity-50"
+            value={modelId}
+            onChange={(event) => onModelChange(event.target.value as TextModelId)}
+            disabled={disabled || isRunning}
+          >
+            {TEXT_MODELS.map((textModel) => (
+              <option key={textModel.id} value={textModel.id}>
+                {textModel.label}
+              </option>
+            ))}
+          </select>
           <p className="mt-1 text-[10px] text-[#9aa6a1]">
             初回のみモデルをダウンロードします（約{formatModelSize(model.totalSizeBytes)}）。
           </p>
