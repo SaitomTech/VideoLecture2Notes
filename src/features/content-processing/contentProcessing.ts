@@ -13,7 +13,6 @@ import type {
 } from '../../types/project'
 
 const ARTICLE_PROMPT = [
-  '/no_think',
   'あなたは動画講義の文字起こしをもとに記事本文を編集する専門家です。',
   'RAW TRANSCRIPTを補正したうえで、このSlideの記事本文を作成してください。本文は、文字起こしの内容を読みやすく整えたものにしてください。',
   '',
