@@ -23,14 +23,16 @@ const COMMON_PROMPT = [
   '{"correctedTranscript":"補正済みの発話","corrections":[{"before":"補正前","after":"補正後","reason":"理由"}],"articleBody":"記事本文"}',
   'correctedTranscriptは、補正後の発話記録です。',
   'articleBodyは、correctedTranscriptをもとにしたこのSlideの記事本文です。',
+  '単語レベルではSLIDE OCRを完全な正として扱ってください。固有名詞、製品名、サービス名、技術用語、略語、英単語、数値、単位などは、RAW TRANSCRIPTが自然に見えても、スライドに明確な表記があれば必ずスライド表記へ積極的に置き換えてください。',
+  'この単語レベルの置換ルールはcorrectedTranscriptとarticleBodyの両方に適用してください。',
   'articleBodyには見出しや前置きを追加しないでください。',
   '日本語で出力してください。',
 ].join('\n')
 
 const LEVEL_PROMPT_RULES: Record<CorrectionLevel, string[]> = {
   lv1: [
-    'スライドは用語確認の参考資料にとどめ、RAW TRANSCRIPTの内容と文の構造を維持してください。',
-    '固有名詞、製品名、技術用語、英単語、数値の明らかな誤変換だけを、スライド表記へ置き換えてください。',
+    'RAW TRANSCRIPTの内容と文の構造は維持してください。ただし、単語レベルでは共通ルールに従い、スライド表記を必ず正として扱ってください。',
+    '固有名詞、製品名、技術用語、英単語、数値などは、明らかな誤変換に限らず、スライドに明確な表記がある場合は積極的に置き換えてください。',
     '日本語は句読点、助詞、明らかな文法ミスを軽く整えるだけにしてください。',
     'articleBodyも要約や情報追加をせず、補正済み発話を段落に整える程度にしてください。',
   ],
@@ -105,7 +107,7 @@ function systemPromptFor(level: CorrectionLevel) {
   return [
     COMMON_PROMPT,
     ...LEVEL_PROMPT_RULES[level],
-    '補正不要ならcorrectedTranscriptはRAW TRANSCRIPTと同じにし、correctionsは空配列にしてください。',
+    '単語レベルの置換も含めて補正が不要な場合に限り、correctedTranscriptはRAW TRANSCRIPTと同じにし、correctionsは空配列にしてください。',
     'スライドやRAW TRANSCRIPTに根拠のない情報を追加しないでください。',
     `この処理は${CORRECTION_LEVELS.find((item) => item.id === level)?.label ?? level}として実行しています。`,
   ].join('\n')
