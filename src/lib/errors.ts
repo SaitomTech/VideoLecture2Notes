@@ -22,7 +22,26 @@ export function getUserErrorMessage(error: unknown, fallback: string) {
 }
 
 export function getErrorDetail(error: unknown, fallback = '不明なエラー') {
-  if (error instanceof Error && error.message.trim()) return error.message
-  if (typeof error === 'string' && error.trim()) return error
-  return fallback
+  const messages: string[] = []
+  const visited = new Set<unknown>()
+  let current: unknown = error
+
+  while (current && !visited.has(current)) {
+    visited.add(current)
+
+    if (current instanceof Error) {
+      if (current.message.trim()) messages.push(current.message.trim())
+      current = current.cause
+      continue
+    }
+
+    if (typeof current === 'string') {
+      if (current.trim()) messages.push(current.trim())
+      break
+    }
+
+    break
+  }
+
+  return [...new Set(messages)].join(' → ') || fallback
 }
