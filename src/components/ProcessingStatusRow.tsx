@@ -7,6 +7,7 @@ type ProcessingStatusRowProps = {
   progressLabel: string
   progressAriaLabel: string
   error?: string | null
+  errorDetail?: string | null
   onRetry?: () => void | Promise<void>
   retryDisabled?: boolean
 }
@@ -18,6 +19,7 @@ export function ProcessingStatusRow({
   progressLabel,
   progressAriaLabel,
   error,
+  errorDetail,
   onRetry,
   retryDisabled = false,
 }: ProcessingStatusRowProps) {
@@ -49,7 +51,17 @@ export function ProcessingStatusRow({
           className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-[#e4b4a7] bg-[#fff5f1] px-4 py-3 text-xs text-[#9d422d]"
           role="alert"
         >
-          <p className="min-w-0">{error}</p>
+          <div className="min-w-0">
+            <p>{error}</p>
+            {errorDetail && errorDetail !== error && (
+              <details className="mt-2 text-[10px]">
+                <summary className="cursor-pointer select-none font-semibold">詳細を表示</summary>
+                <pre className="mt-2 max-h-32 overflow-auto whitespace-pre-wrap break-words rounded bg-[#fffaf8] p-2 font-mono leading-5">
+                  {errorDetail}
+                </pre>
+              </details>
+            )}
+          </div>
           {onRetry && (
             <button
               className="inline-flex shrink-0 items-center gap-1.5 font-semibold text-[#9d422d] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b6533a]/30 disabled:cursor-not-allowed disabled:opacity-50"
