@@ -2,12 +2,15 @@ use sha2::{Digest, Sha256};
 use std::{
     fs::File,
     io::{BufReader, Read},
-    path::{Component, Path},
+    path::{Component, Path, PathBuf},
 };
 use tauri::Manager;
 
 #[tauri::command]
-fn sha256_app_local_file(app: tauri::AppHandle, relative_path: String) -> Result<String, String> {
+async fn sha256_app_local_file(
+    app: tauri::AppHandle,
+    relative_path: String,
+) -> Result<String, String> {
     let relative_path = Path::new(&relative_path);
     let is_unsafe_path = relative_path.is_absolute()
         || relative_path.components().any(|component| {
@@ -26,6 +29,13 @@ fn sha256_app_local_file(app: tauri::AppHandle, relative_path: String) -> Result
         .app_local_data_dir()
         .map_err(|error| format!("アプリデータディレクトリの取得に失敗しました: {error}"))?
         .join(relative_path);
+
+    tauri::async_runtime::spawn_blocking(move || sha256_file(path))
+        .await
+        .map_err(|error| format!("SHA-256検証スレッドが終了しました: {error}"))?
+}
+
+fn sha256_file(path: PathBuf) -> Result<String, String> {
     let file = File::open(&path).map_err(|error| {
         format!(
             "SHA-256検証用ファイルを開けませんでした ({}): {error}",
