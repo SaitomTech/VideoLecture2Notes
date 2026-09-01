@@ -70,15 +70,7 @@ const SlideDataSchema = z.object({
   }).optional(),
   transcript: z.object({
     raw: z.string(),
-    corrected: z.string().optional(),
-    corrections: z.array(z.object({
-      before: z.string(),
-      after: z.string(),
-      reason: z.string().optional(),
-    })).optional(),
-    correctionModel: z.string().optional(),
     correctionLevel: z.enum(['lv1', 'lv2', 'lv3', 'lv4', 'lv5']).optional(),
-    correctionInputFingerprint: z.string().optional(),
     articleBody: z.string().optional(),
     articleModel: z.string().optional(),
     articleInputFingerprint: z.string().optional(),

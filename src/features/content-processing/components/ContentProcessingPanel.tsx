@@ -17,7 +17,7 @@ type ContentProcessingPanelProps = {
 
 const stageLabels = {
   'preparing-model': '文章処理モデルを確認・準備中…',
-  processing: 'Slideごとに発話と本文を生成中…',
+  processing: 'Slideごとに本文を生成中…',
 } as const
 
 function formatModelSize(bytes: number) {
@@ -75,7 +75,7 @@ export function ContentProcessingPanel({
               id="content-processing-heading"
               className="text-[21px] font-bold tracking-[-0.05em]"
             >
-              発話と本文を生成
+              本文を生成
             </h2>
             <span
               className={`inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.08em] ${isCompleted ? 'text-[#1d6b50]' : processing.status === 'error' ? 'text-[#b6533a]' : 'text-[#9a7a35]'}`}
@@ -91,7 +91,7 @@ export function ContentProcessingPanel({
             </span>
           </div>
           <p className="mt-1 text-xs text-[#71807b]">
-            スライドと音声の文字起こしをもとに、補正済みの発話と記事本文をまとめて生成します。
+            スライドと音声の文字起こしをもとに、記事本文を生成します。
           </p>
         </div>
         <button
@@ -105,7 +105,7 @@ export function ContentProcessingPanel({
             void processing.process(isCompleted)
           }}
           disabled={disabled || (!isRunning && total === 0)}
-          aria-label={isRunning ? '発話と本文の生成を停止' : undefined}
+          aria-label={isRunning ? '本文の生成を停止' : undefined}
         >
           {isRunning ? <Square size={13} fill="currentColor" /> : <RefreshCw size={14} />}
           {isRunning ? '停止' : isCompleted ? '再生成' : '生成を開始'}
@@ -119,10 +119,10 @@ export function ContentProcessingPanel({
       />
 
       <div className="mt-5 grid gap-4 rounded-[12px] border border-[#d8e1dc] bg-[#f7faf7] p-4 md:grid-cols-3 md:p-5">
-        <label className="block text-xs text-[#71807b]" htmlFor="correction-level">
-          <span className="block font-semibold text-[#18211f]">補正レベル</span>
+        <label className="block text-xs text-[#71807b]" htmlFor="article-generation-level">
+          <span className="block font-semibold text-[#18211f]">本文生成レベル</span>
           <select
-            id="correction-level"
+            id="article-generation-level"
             className="mt-2 w-full rounded-[8px] border border-[#b7cbc0] bg-[#fbfcfa] px-3 py-2 text-[11px] text-[#18211f] outline-none focus:border-[#1d6b50] focus:ring-2 focus:ring-[#1d6b50]/20 disabled:cursor-not-allowed disabled:opacity-50"
             value={level}
             onChange={(event) => onLevelChange(event.target.value as CorrectionLevel)}
@@ -154,11 +154,11 @@ export function ContentProcessingPanel({
             {isRunning
               ? stageLabels[processing.stage]
               : isCompleted
-                ? '発話と記事本文をすべて生成しました。'
+                ? '記事本文をすべて生成しました。'
                 : isCancelled
                   ? '生成を停止しました。処理済みのSlideは保存されています。'
                   : processing.status === 'error'
-                    ? '発話と記事本文の生成を完了できませんでした。'
+                    ? '記事本文の生成を完了できませんでした。'
                     : total === 0
                       ? '先に文字起こしを実行してください。'
                       : 'まだ開始されていません。'}
@@ -168,7 +168,7 @@ export function ContentProcessingPanel({
 
       <div
         className="mt-4 h-1 overflow-hidden rounded-full bg-[#e2eee8]"
-        aria-label="発話と記事本文生成の進捗"
+        aria-label="記事本文生成の進捗"
       >
         {isRunning && progress === null ? (
           <div className="h-full w-1/3 animate-pulse rounded-full bg-[#1d6b50]" />

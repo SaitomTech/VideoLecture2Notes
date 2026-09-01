@@ -73,7 +73,7 @@ export function AnalysisResultPreview({ slides, onEdit }: AnalysisResultPreviewP
                 emptyLabel="この区間に発話はありません。"
               />
               <ResultBlock
-                label="本文（補正後）"
+                label="本文"
                 value={slide.transcript?.articleBody?.trim() ?? ''}
                 emptyLabel="本文はまだ生成されていません。"
               />

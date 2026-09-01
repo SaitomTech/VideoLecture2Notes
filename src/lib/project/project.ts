@@ -144,11 +144,7 @@ export function updateProjectSlideContent(
         ...slide,
         transcript: {
           ...slide.transcript,
-          corrected: result.correction.corrected,
-          corrections: result.correction.corrections,
-          correctionModel: result.correction.model,
-          correctionLevel: result.correction.level,
-          correctionInputFingerprint: result.correction.inputFingerprint,
+          correctionLevel: result.article.level,
           articleBody: result.article.body,
           articleModel: result.article.model,
           articleInputFingerprint: result.article.inputFingerprint,

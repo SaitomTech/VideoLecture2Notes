@@ -117,17 +117,6 @@ export function renderJson(document: ExportDocument) {
   return `${JSON.stringify(portableDocument, null, 2)}\n`
 }
 
-export function renderText(document: ExportDocument) {
-  const sections = document.sections.map((section) => {
-    const slideLabel = `Slide ${String(section.index + 1).padStart(2, '0')}`
-    const transcript = section.transcriptCorrected.trim() || section.transcriptRaw.trim() || '（発話なし）'
-
-    return `${slideLabel} · ${formatTimestamp(section.startMs)} — ${formatTimestamp(section.endMs)}\n${transcript}`
-  })
-
-  return `${sections.join('\n\n')}\n`
-}
-
 function formatSrtTimestamp(timestampMs: number) {
   const totalMilliseconds = Math.max(0, Math.round(timestampMs))
   const milliseconds = totalMilliseconds % 1000

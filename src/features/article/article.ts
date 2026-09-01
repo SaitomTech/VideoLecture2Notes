@@ -1,18 +1,22 @@
 import { DEFAULT_TEXT_MODEL } from '../../lib/llama/textModel'
-import { hasCurrentCorrection } from '../correction/correction'
+import { DEFAULT_CORRECTION_LEVEL } from '../correction/correction'
 import type { CorrectionLevel, SlideData } from '../../types/project'
 
-const ARTICLE_PROMPT_VERSION = 'content-processing-v1'
+const ARTICLE_PROMPT_VERSION = 'content-processing-v3'
 
 export function articleInputFingerprint(
   slide: SlideData,
   modelId = slide.transcript?.articleModel ?? DEFAULT_TEXT_MODEL.id,
+  level = slide.transcript?.correctionLevel ?? DEFAULT_CORRECTION_LEVEL,
 ) {
   return JSON.stringify([
     slide.id,
-    slide.transcript?.corrected ?? '',
-    slide.transcript?.correctionInputFingerprint ?? '',
+    slide.transcript?.raw ?? '',
+    slide.ocr?.rawText ?? '',
+    slide.ocr?.title ?? null,
+    slide.ocr?.terms ?? [],
     modelId,
+    level,
     ARTICLE_PROMPT_VERSION,
   ])
 }
@@ -23,11 +27,10 @@ export function hasCurrentArticle(
   level?: CorrectionLevel,
 ) {
   const articleModelId = modelId ?? slide.transcript?.articleModel ?? DEFAULT_TEXT_MODEL.id
-  const correctionModelId = modelId ?? slide.transcript?.correctionModel
-  const correctionLevel = level ?? slide.transcript?.correctionLevel
+  const articleLevel = level ?? slide.transcript?.correctionLevel ?? DEFAULT_CORRECTION_LEVEL
   return (
     Boolean(slide.transcript?.articleBody?.trim()) &&
-    hasCurrentCorrection(slide, correctionModelId, correctionLevel) &&
-    slide.transcript?.articleInputFingerprint === articleInputFingerprint(slide, articleModelId)
+    slide.transcript?.articleInputFingerprint ===
+      articleInputFingerprint(slide, articleModelId, articleLevel)
   )
 }

@@ -126,7 +126,7 @@ export function ExportPage({ project, onBack }: ExportPageProps) {
                 </div>
                 <span className="text-xs text-[#71807b]">複数選択できます</span>
               </div>
-              <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 {EXPORT_OPTIONS.map(({ format, label, filename, description }) => {
                   const unavailable = format === 'srt' && !hasTranscription
                   const checked = selectedFormats.includes(format)

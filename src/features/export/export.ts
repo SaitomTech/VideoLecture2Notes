@@ -2,7 +2,7 @@ import { join } from '@tauri-apps/api/path'
 import { copyFile, ensureDirectory, writeTextFile } from '../../lib/tauri/filesystem'
 import { hasCurrentArticle } from '../article/article'
 import type { MediaProject, TranscriptSegment } from '../../types/project'
-import { renderHtml, renderJson, renderMarkdown, renderSrt, renderText } from './renderers'
+import { renderHtml, renderJson, renderMarkdown, renderSrt } from './renderers'
 
 export const EXPORT_OPTIONS = [
   { format: 'html', label: 'HTML', filename: 'index.html', description: '画像付きの記事ページ' },
@@ -13,7 +13,6 @@ export const EXPORT_OPTIONS = [
     description: '画像付きのMarkdown',
   },
   { format: 'json', label: 'JSON', filename: 'notes.json', description: '編集・再利用用のデータ' },
-  { format: 'text', label: 'TXT', filename: 'transcript.txt', description: 'Slide別のテキスト' },
   {
     format: 'srt',
     label: 'SRT',
@@ -39,7 +38,6 @@ export type ExportSection = {
   sourceImagePath: string
   ocrText: string
   transcriptRaw: string
-  transcriptCorrected: string
   body: string
 }
 
@@ -55,7 +53,6 @@ const EXPORT_RENDERERS: Record<ExportFormat, (document: ExportDocument) => strin
   html: renderHtml,
   markdown: renderMarkdown,
   json: renderJson,
-  text: renderText,
   srt: renderSrt,
 }
 
@@ -103,7 +100,6 @@ function buildExportDocument(project: MediaProject): ExportDocument {
       sourceImagePath: slide.image.representativeFramePath as string,
       ocrText: slide.ocr?.rawText ?? '',
       transcriptRaw: slide.transcript?.raw ?? '',
-      transcriptCorrected: slide.transcript?.corrected ?? '',
       body: slide.transcript?.articleBody ?? '',
     })),
     transcriptSegments: project.transcription?.segments ?? [],

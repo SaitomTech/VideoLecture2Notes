@@ -18,7 +18,7 @@ export function TextModelSelector({ value, disabled = false, onChange }: TextMod
           <h2 id="text-model-heading" className="text-[21px] font-bold tracking-[-0.05em]">
             文章処理モデル
           </h2>
-          <p className="mt-1 text-xs text-[#71807b]">文字起こしの補正と記事本文の生成で共通して使用します。</p>
+          <p className="mt-1 text-xs text-[#71807b]">記事本文の生成に使用します。</p>
         </div>
         <label className="flex items-center gap-3 text-xs font-semibold text-[#71807b]" htmlFor="text-model">
           モデル

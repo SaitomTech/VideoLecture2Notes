@@ -40,7 +40,7 @@ export function GenerateNotesPage({
       : 'auto',
   )
   const storedTextModelId = project.slides
-    .map((slide) => slide.transcript?.correctionModel ?? slide.transcript?.articleModel)
+    .map((slide) => slide.transcript?.articleModel)
     .find((modelId): modelId is string => Boolean(modelId))
   const [textModelId, setTextModelId] = useState<TextModelId>(
     () => getTextModel(storedTextModelId).id,

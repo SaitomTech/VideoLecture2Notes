@@ -66,30 +66,16 @@ export type SlideOcrResult = {
   inputFingerprint?: string
 }
 
-export type TranscriptCorrection = {
-  before: string
-  after: string
-  reason?: string
-}
-
 export type CorrectionLevel = 'lv1' | 'lv2' | 'lv3' | 'lv4' | 'lv5'
 
-export type TranscriptCorrectionResult = {
-  corrected: string
-  corrections: TranscriptCorrection[]
+export type ArticleFormattingResult = {
+  body: string
   model: string
   level: CorrectionLevel
   inputFingerprint: string
 }
 
-export type ArticleFormattingResult = {
-  body: string
-  model: string
-  inputFingerprint: string
-}
-
 export type ContentProcessingResult = {
-  correction: TranscriptCorrectionResult
   article: ArticleFormattingResult
 }
 
@@ -129,11 +115,7 @@ export type SlideData = {
   ocr?: SlideOcrResult
   transcript?: {
     raw: string
-    corrected?: string
-    corrections?: TranscriptCorrection[]
-    correctionModel?: string
     correctionLevel?: CorrectionLevel
-    correctionInputFingerprint?: string
     articleBody?: string
     articleModel?: string
     articleInputFingerprint?: string
