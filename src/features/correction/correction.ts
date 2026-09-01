@@ -4,27 +4,17 @@ export const CORRECTION_LEVELS = [
   {
     id: 'lv1',
     label: 'Lv.1',
-    description: '単語の置換と、日本語の軽い調整だけを行います。',
+    description: '発話の文体・構造を保ち、表記と日本語だけを最小限に整えます。',
   },
   {
     id: 'lv2',
     label: 'Lv.2',
-    description: 'スライドの用語・表記を優先して、文を軽く整えます。',
+    description: '発話の文体・意味を保ち、フィラーや重複を整理して読みやすくします。',
   },
   {
     id: 'lv3',
     label: 'Lv.3',
-    description: '欠落した短い用語を補い、スライドに沿って文章を整えます。',
-  },
-  {
-    id: 'lv4',
-    label: 'Lv.4',
-    description: 'スライドを基準に、文単位の再構成まで行います。',
-  },
-  {
-    id: 'lv5',
-    label: 'Lv.5',
-    description: 'スライドを正として、本文をスライド中心に書き直します。',
+    description: '発話の文体を保ち、スライドを基準に対応する説明文へ再構成します。',
   },
 ] as const satisfies ReadonlyArray<{ id: CorrectionLevel; label: string; description: string }>
 

@@ -2,7 +2,7 @@ import { DEFAULT_TEXT_MODEL } from '../../lib/llama/textModel'
 import { DEFAULT_CORRECTION_LEVEL } from '../correction/correction'
 import type { CorrectionLevel, SlideData } from '../../types/project'
 
-const ARTICLE_PROMPT_VERSION = 'content-processing-v3'
+const ARTICLE_PROMPT_VERSION = 'content-processing-v6-style-aware-level-contract'
 
 export function articleInputFingerprint(
   slide: SlideData,
@@ -13,8 +13,6 @@ export function articleInputFingerprint(
     slide.id,
     slide.transcript?.raw ?? '',
     slide.ocr?.rawText ?? '',
-    slide.ocr?.title ?? null,
-    slide.ocr?.terms ?? [],
     modelId,
     level,
     ARTICLE_PROMPT_VERSION,
