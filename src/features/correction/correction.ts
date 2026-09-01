@@ -1,7 +1,7 @@
 import { DEFAULT_TEXT_MODEL } from '../../lib/llama/textModel'
 import type { CorrectionLevel, SlideData } from '../../types/project'
 
-const CORRECTION_PROMPT_VERSION = 'content-processing-v1'
+const CORRECTION_PROMPT_VERSION = 'content-processing-v2'
 
 export const CORRECTION_LEVELS = [
   {
