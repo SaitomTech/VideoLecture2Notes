@@ -1,7 +1,7 @@
 import { DEFAULT_TEXT_MODEL } from '../../lib/llama/textModel'
 import type { SlideData } from '../../types/project'
 
-const ARTICLE_PROMPT_VERSION = 'content-processing-v7-simple-rules'
+const ARTICLE_PROMPT_VERSION = 'content-processing-v8-plain-text-response'
 
 export function articleInputFingerprint(
   slide: SlideData,

@@ -56,5 +56,5 @@ export async function ensureTextModel({
     signal,
   })
 
-  return { modelPath }
+  return { modelPath, contextSize: 32_768 }
 }

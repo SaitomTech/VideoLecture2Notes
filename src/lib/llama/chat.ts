@@ -35,16 +35,47 @@ function contentToText(content: unknown) {
 }
 
 export function parseJsonResponse(text: string) {
-  const fencedJson = text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1] ?? text
-  const start = fencedJson.indexOf('{')
-  const end = fencedJson.lastIndexOf('}')
-  if (start < 0 || end <= start) throw new Error('JSON形式の応答を読み取れませんでした。')
+  const source = text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1] ?? text
 
-  try {
-    return JSON.parse(fencedJson.slice(start, end + 1)) as unknown
-  } catch {
-    throw new Error('JSON形式の応答を読み取れませんでした。')
+  for (let start = 0; start < source.length; start += 1) {
+    if (source[start] !== '{') continue
+
+    let depth = 0
+    let inString = false
+    let isEscaped = false
+
+    for (let end = start; end < source.length; end += 1) {
+      const character = source[end]
+
+      if (inString) {
+        if (isEscaped) {
+          isEscaped = false
+        } else if (character === '\\') {
+          isEscaped = true
+        } else if (character === '"') {
+          inString = false
+        }
+        continue
+      }
+
+      if (character === '"') {
+        inString = true
+      } else if (character === '{') {
+        depth += 1
+      } else if (character === '}') {
+        depth -= 1
+        if (depth === 0) {
+          try {
+            return JSON.parse(source.slice(start, end + 1)) as unknown
+          } catch {
+            break
+          }
+        }
+      }
+    }
   }
+
+  throw new Error('JSON形式の応答を読み取れませんでした。')
 }
 
 export async function completeChat(
