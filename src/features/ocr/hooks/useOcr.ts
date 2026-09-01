@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
-import { getUserErrorMessage } from '../../../lib/errors'
+import { getErrorDetail, getUserErrorMessage } from '../../../lib/errors'
+import { DEFAULT_OCR_MODEL, type OcrModelId } from '../../../lib/ocr/modelManager'
 import type { MediaProject } from '../../../types/project'
 import {
   ocrInputFingerprint,
@@ -11,9 +12,13 @@ import {
 
 export type OcrStatus = 'idle' | 'running' | 'completed' | 'cancelled' | 'error'
 
-export function useOcr(project: MediaProject, onSlideCompleted: OcrSlideCompleted) {
+export function useOcr(
+  project: MediaProject,
+  onSlideCompleted: OcrSlideCompleted,
+  modelId: OcrModelId = DEFAULT_OCR_MODEL.id,
+) {
   const initialCompleted = project.slides.filter(
-    (slide) => slide.ocr?.inputFingerprint === ocrInputFingerprint(slide),
+    (slide) => slide.ocr?.inputFingerprint === ocrInputFingerprint(slide, modelId),
   ).length
   const [status, setStatus] = useState<OcrStatus>(
     initialCompleted === project.slides.length && project.slides.length > 0 ? 'completed' : 'idle',
@@ -25,6 +30,7 @@ export function useOcr(project: MediaProject, onSlideCompleted: OcrSlideComplete
     stageProgress: initialCompleted === project.slides.length ? 1 : null,
   })
   const [error, setError] = useState<string | null>(null)
+  const [errorDetail, setErrorDetail] = useState<string | null>(null)
   const activeController = useRef<AbortController | null>(null)
 
   async function recognize(force = false) {
@@ -34,6 +40,7 @@ export function useOcr(project: MediaProject, onSlideCompleted: OcrSlideComplete
     activeController.current = controller
     setStatus('running')
     setError(null)
+    setErrorDetail(null)
     try {
       await runOcr({
         project,
@@ -42,6 +49,7 @@ export function useOcr(project: MediaProject, onSlideCompleted: OcrSlideComplete
         onProgress: setProgress,
         onSlideCompleted,
         force,
+        modelId,
       })
       setProgress((current) => ({ ...current, completed: current.total, stageProgress: 1 }))
       setStatus('completed')
@@ -49,8 +57,10 @@ export function useOcr(project: MediaProject, onSlideCompleted: OcrSlideComplete
       if (controller.signal.aborted) {
         setStatus('cancelled')
         setError(null)
+        setErrorDetail(null)
       } else {
-        console.error(ocrError)
+        const detail = getErrorDetail(ocrError)
+        console.error('[OCR]', detail, ocrError)
         setStatus('error')
         setError(
           getUserErrorMessage(
@@ -58,6 +68,7 @@ export function useOcr(project: MediaProject, onSlideCompleted: OcrSlideComplete
             'スライドOCRを完了できませんでした。アプリを再起動して、再試行してください。',
           ),
         )
+        setErrorDetail(detail)
       }
     } finally {
       if (activeController.current === controller) activeController.current = null
@@ -68,7 +79,7 @@ export function useOcr(project: MediaProject, onSlideCompleted: OcrSlideComplete
     activeController.current?.abort()
   }
 
-  return { status, stage, progress, error, recognize, cancel }
+  return { status, stage, progress, error, errorDetail, recognize, cancel }
 }
 
 export type OcrController = ReturnType<typeof useOcr>

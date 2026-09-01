@@ -12,6 +12,7 @@ type LlamaServerSession = {
 export type LlamaModelPaths = {
   modelPath: string
   mmprojPath?: string
+  contextSize?: number
 }
 
 function choosePort() {
@@ -58,7 +59,7 @@ async function startLlamaServer(
     '--port',
     String(port),
     '--ctx-size',
-    '8192',
+    String(model.contextSize ?? 8192),
     '--n-gpu-layers',
     'all',
     '--flash-attn',

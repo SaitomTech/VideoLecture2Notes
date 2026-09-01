@@ -1,10 +1,16 @@
 import { RefreshCw, Square } from 'lucide-react'
 import { ProcessingStatusRow } from '../../../components/ProcessingStatusRow'
-import { DEFAULT_OCR_MODEL } from '../../../lib/ocr/modelManager'
+import {
+  getOcrModel,
+  OCR_MODELS,
+  type OcrModelId,
+} from '../../../lib/ocr/modelManager'
 import type { OcrController } from '../hooks/useOcr'
 
 type OcrPanelProps = {
   ocr: OcrController
+  modelId: OcrModelId
+  onModelChange: (modelId: OcrModelId) => void
   disabled?: boolean
 }
 
@@ -27,10 +33,11 @@ function progressRatio(ocr: OcrController) {
   return ocr.progress.total > 0 ? ocr.progress.completed / ocr.progress.total : 0
 }
 
-export function OcrPanel({ ocr, disabled = false }: OcrPanelProps) {
+export function OcrPanel({ ocr, modelId, onModelChange, disabled = false }: OcrPanelProps) {
   const isRunning = ocr.status === 'running'
   const isCompleted = ocr.status === 'completed'
   const total = ocr.progress.total
+  const model = getOcrModel(modelId)
 
   return (
     <section aria-labelledby="ocr-settings-heading">
@@ -62,20 +69,31 @@ export function OcrPanel({ ocr, disabled = false }: OcrPanelProps) {
       </div>
 
       <div className="mt-4 rounded-[12px] border border-[#d8e1dc] bg-[#f7faf7] p-4 md:p-5">
-        <div className="text-xs text-[#71807b]">
+        <label className="block text-xs text-[#71807b]" htmlFor="ocr-model">
           <span className="block font-semibold text-[#18211f]">使用モデル</span>
-          <p className="mt-2 font-mono text-[11px] text-[#1d6b50]">{DEFAULT_OCR_MODEL.label}</p>
-          <p className="mt-1 text-[10px] text-[#9aa6a1]">
-            初回のみモデルをダウンロードします（約
-            {formatModelSize(DEFAULT_OCR_MODEL.totalSizeBytes)}）。
-          </p>
-        </div>
+          <select
+            id="ocr-model"
+            className="mt-2 w-full rounded-[8px] border border-[#b7cbc0] bg-[#fbfcfa] px-3 py-2.5 text-sm text-[#18211f] outline-none focus:border-[#1d6b50] focus:ring-2 focus:ring-[#1d6b50]/20 disabled:cursor-not-allowed disabled:opacity-50"
+            value={modelId}
+            onChange={(event) => onModelChange(event.target.value as OcrModelId)}
+            disabled={disabled || isRunning}
+          >
+            {OCR_MODELS.map((ocrModel) => (
+              <option key={ocrModel.id} value={ocrModel.id}>
+                {ocrModel.label}
+              </option>
+            ))}
+          </select>
+          <span className="mt-1 block text-[10px] text-[#9aa6a1]">
+            初回のみモデルをダウンロードします（約{formatModelSize(model.totalSizeBytes)}）。
+          </span>
+        </label>
       </div>
     </section>
   )
 }
 
-export function OcrStatus({ ocr, disabled = false }: OcrPanelProps) {
+export function OcrStatus({ ocr, disabled = false }: Pick<OcrPanelProps, 'ocr' | 'disabled'>) {
   const isRunning = ocr.status === 'running'
   const isCompleted = ocr.status === 'completed'
   const isCancelled = ocr.status === 'cancelled'
@@ -102,6 +120,7 @@ export function OcrStatus({ ocr, disabled = false }: OcrPanelProps) {
       progressLabel={progressLabel}
       progressAriaLabel={isRunning ? stageLabels[ocr.stage] : 'OCRの進捗'}
       error={ocr.error}
+      errorDetail={ocr.errorDetail}
       onRetry={() => ocr.recognize()}
       retryDisabled={disabled || isRunning}
     />
