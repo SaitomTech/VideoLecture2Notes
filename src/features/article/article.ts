@@ -1,7 +1,7 @@
 import { DEFAULT_ARTICLE_MODEL_ID } from '../../lib/article/articleModel'
 import type { SlideData } from '../../types/project'
 
-const ARTICLE_PROMPT_VERSION = 'content-processing-v10-provider-aware'
+const ARTICLE_PROMPT_VERSION = 'content-processing-v14-preserve-all-content'
 
 export function articleInputFingerprint(
   slide: SlideData,
