@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "videolecture2notes",
+        "title": "Video Lecture to Notes",
         "width": 800,
         "height": 600,
         "resizable": true,
