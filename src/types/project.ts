@@ -62,6 +62,12 @@ export type TranscriptionResult = {
 export type SlideOcrResult = {
   rawText: string
   model: string
+  provider?: 'local' | 'openai'
+  usage?: {
+    inputTokens: number
+    outputTokens: number
+  }
+  requestId?: string
   inputFingerprint?: string
 }
 

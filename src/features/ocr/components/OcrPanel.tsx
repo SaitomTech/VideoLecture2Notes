@@ -1,8 +1,13 @@
 import { RefreshCw, Square } from 'lucide-react'
+import { OpenAiApiKeySettings } from '../../../components/OpenAiApiKeySettings'
+import { ModelDescription } from '../../../components/ModelDescription'
+import { ModelSelect } from '../../../components/ModelSelect'
 import { ProcessingStatusRow } from '../../../components/ProcessingStatusRow'
 import {
   getOcrModel,
-  OCR_MODELS,
+  OPENAI_OCR_MODEL,
+  OCR_LOCAL_MODELS,
+  type OcrModel,
   type OcrModelId,
 } from '../../../lib/ocr/modelManager'
 import type { OcrController } from '../hooks/useOcr'
@@ -21,6 +26,38 @@ const stageLabels = {
 
 function formatModelSize(bytes: number) {
   return `${(bytes / 1024 ** 3).toFixed(2)}GB`
+}
+
+function assertNever(value: never): never {
+  throw new Error(`未対応のOCRプロバイダーです: ${JSON.stringify(value)}`)
+}
+
+function OcrModelDetails({ model, disabled }: { model: OcrModel; disabled: boolean }) {
+  switch (model.provider) {
+    case 'local':
+      return (
+        <ModelDescription
+          description={model.model.description}
+          annotation={`初回のみモデルをダウンロードします（約${formatModelSize(model.model.totalSizeBytes)}）。画像は外部送信しません。`}
+        />
+      )
+    case 'openai':
+      return (
+        <ModelDescription
+          description={model.description}
+          annotation="代表画像をOpenAIへ送信して処理します。動画・音声は送信しません。API利用料は設定したOpenAIアカウントに発生します。"
+        >
+          <OpenAiApiKeySettings
+            verificationModel={model.apiModel}
+            verificationLabel={model.label}
+            billingNote="API利用料は、入力したAPIキーに紐づくOpenAI APIの請求先に発生します。"
+            disabled={disabled}
+          />
+        </ModelDescription>
+      )
+    default:
+      return assertNever(model)
+  }
 }
 
 function progressRatio(ocr: OcrController) {
@@ -47,7 +84,7 @@ export function OcrPanel({ ocr, modelId, onModelChange, disabled = false }: OcrP
             画像データから文字を抽出
           </h3>
           <p className="mt-1 text-xs text-[#71807b]">
-            代表画像からスライドに表示された文字を抽出します。
+            ローカルモデルまたはOpenAI APIを選び、代表画像からスライド内の文字を抽出します。
           </p>
         </div>
         <button
@@ -71,23 +108,17 @@ export function OcrPanel({ ocr, modelId, onModelChange, disabled = false }: OcrP
       <div className="mt-4 rounded-[12px] border border-[#d8e1dc] bg-[#f7faf7] p-4 md:p-5">
         <label className="block text-xs text-[#71807b]" htmlFor="ocr-model">
           <span className="block font-semibold text-[#18211f]">使用モデル</span>
-          <select
+          <ModelSelect
             id="ocr-model"
-            className="mt-2 w-full rounded-[8px] border border-[#b7cbc0] bg-[#fbfcfa] px-3 py-2.5 text-sm text-[#18211f] outline-none focus:border-[#1d6b50] focus:ring-2 focus:ring-[#1d6b50]/20 disabled:cursor-not-allowed disabled:opacity-50"
             value={modelId}
-            onChange={(event) => onModelChange(event.target.value as OcrModelId)}
+            localModels={OCR_LOCAL_MODELS}
+            apiModels={[OPENAI_OCR_MODEL]}
+            onChange={(nextModelId) => onModelChange(nextModelId as OcrModelId)}
             disabled={disabled || isRunning}
-          >
-            {OCR_MODELS.map((ocrModel) => (
-              <option key={ocrModel.id} value={ocrModel.id}>
-                {ocrModel.label}
-              </option>
-            ))}
-          </select>
-          <span className="mt-1 block text-[10px] text-[#9aa6a1]">
-            初回のみモデルをダウンロードします（約{formatModelSize(model.totalSizeBytes)}）。
-          </span>
+            aria-label="使用モデル"
+          />
         </label>
+        <OcrModelDetails model={model} disabled={disabled || isRunning} />
       </div>
     </section>
   )

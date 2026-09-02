@@ -66,6 +66,14 @@ const SlideDataSchema = z.object({
     .object({
       rawText: z.string(),
       model: z.string(),
+      provider: z.enum(['local', 'openai']).optional(),
+      usage: z
+        .object({
+          inputTokens: z.number().int().nonnegative(),
+          outputTokens: z.number().int().nonnegative(),
+        })
+        .optional(),
+      requestId: z.string().optional(),
       inputFingerprint: z.string().optional(),
     })
     .optional(),

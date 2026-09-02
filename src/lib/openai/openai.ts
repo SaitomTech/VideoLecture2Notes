@@ -21,6 +21,15 @@ export type OpenAiTranscriptionResponse = {
   requestId?: string
 }
 
+export type OpenAiOcrResponse = {
+  text: string
+  requestId?: string
+  usage?: {
+    inputTokens: number
+    outputTokens: number
+  }
+}
+
 export function getOpenAiApiKeyStatus() {
   return invoke<OpenAiCredentialStatus>('get_openai_api_key_status')
 }
@@ -53,6 +62,35 @@ export async function transcribeOpenAiAudio({
   try {
     return await invoke<OpenAiTranscriptionResponse>('transcribe_openai_audio', {
       request: { audioPath, language, clientRequestId },
+    })
+  } catch (error) {
+    if (signal?.aborted) throw new DOMException('処理を中止しました。', 'AbortError')
+    throw error
+  } finally {
+    signal?.removeEventListener('abort', handleAbort)
+  }
+}
+
+export async function recognizeOpenAiImage({
+  instructions,
+  imageData,
+  signal,
+}: {
+  instructions: string
+  imageData: string
+  signal?: AbortSignal
+}) {
+  if (signal?.aborted) throw new DOMException('処理を中止しました。', 'AbortError')
+
+  const clientRequestId = crypto.randomUUID()
+  const handleAbort = () => {
+    void invoke('cancel_openai_request', { clientRequestId }).catch(() => undefined)
+  }
+  signal?.addEventListener('abort', handleAbort, { once: true })
+
+  try {
+    return await invoke<OpenAiOcrResponse>('recognize_openai_image', {
+      request: { instructions, imageData, clientRequestId },
     })
   } catch (error) {
     if (signal?.aborted) throw new DOMException('処理を中止しました。', 'AbortError')

@@ -18,6 +18,7 @@ const OPENAI_RESPONSES_URL: &str = "https://api.openai.com/v1/responses";
 const OPENAI_TRANSCRIPTIONS_URL: &str = "https://api.openai.com/v1/audio/transcriptions";
 const OPENAI_TRANSCRIPTION_MODEL: &str = "gpt-transcribe";
 const MAX_PROMPT_BYTES: usize = 2 * 1024 * 1024;
+const MAX_OCR_IMAGE_DATA_BYTES: usize = 20 * 1024 * 1024;
 const MAX_TRANSCRIPTION_AUDIO_BYTES: u64 = 24 * 1024 * 1024;
 
 static HTTP_CLIENT: OnceLock<Client> = OnceLock::new();
@@ -76,6 +77,22 @@ pub struct OpenAiTranscriptionResponse {
     language: Option<String>,
     duration_seconds: Option<f64>,
     request_id: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenAiOcrRequest {
+    instructions: String,
+    image_data: String,
+    client_request_id: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenAiOcrResponse {
+    text: String,
+    request_id: Option<String>,
+    usage: Option<OpenAiUsage>,
 }
 
 #[derive(Deserialize)]
@@ -293,6 +310,23 @@ fn validate_app_local_audio_path(
     Ok(audio_path)
 }
 
+fn validate_ocr_image_data(image_data: &str, instructions: &str) -> Result<(), String> {
+    const JPEG_DATA_URL_PREFIX: &str = "data:image/jpeg;base64,";
+
+    if !image_data.starts_with(JPEG_DATA_URL_PREFIX)
+        || image_data.len() <= JPEG_DATA_URL_PREFIX.len()
+    {
+        return Err("OpenAI OCRへ送信する画像形式が不正です".to_string());
+    }
+    if image_data.len() > MAX_OCR_IMAGE_DATA_BYTES {
+        return Err("OpenAI OCRへ送信する画像のサイズが上限を超えています".to_string());
+    }
+    if instructions.is_empty() || instructions.len() > MAX_PROMPT_BYTES {
+        return Err("OpenAI OCRの指示文が大きすぎます".to_string());
+    }
+    Ok(())
+}
+
 fn response_request_id(headers: &HeaderMap) -> Option<String> {
     headers
         .get("x-request-id")
@@ -470,6 +504,89 @@ pub async fn generate_openai_article(
 
     Ok(OpenAiArticleResponse {
         body,
+        request_id,
+        usage: result.usage.map(|usage| OpenAiUsage {
+            input_tokens: usage.input_tokens,
+            output_tokens: usage.output_tokens,
+        }),
+    })
+}
+
+#[tauri::command]
+pub async fn recognize_openai_image(
+    request: OpenAiOcrRequest,
+) -> Result<OpenAiOcrResponse, String> {
+    validate_client_request_id(&request.client_request_id)?;
+    validate_ocr_image_data(&request.image_data, &request.instructions)?;
+
+    let api_key = stored_api_key().await?;
+    let body = json!({
+        "model": OPENAI_MODEL,
+        "store": false,
+        "instructions": request.instructions,
+        "input": [{
+            "role": "user",
+            "content": [{
+                "type": "input_image",
+                "image_url": request.image_data,
+                "detail": "original"
+            }]
+        }],
+        "max_output_tokens": 8192,
+        "text": { "format": { "type": "text" }, "verbosity": "low" }
+    });
+
+    let (abort_handle, abort_registration) = AbortHandle::new_pair();
+    active_requests()
+        .lock()
+        .map_err(|_| "OpenAI APIリクエストを開始できません".to_string())?
+        .insert(request.client_request_id.clone(), abort_handle);
+
+    let response = Abortable::new(
+        http_client()?
+            .post(OPENAI_RESPONSES_URL)
+            .bearer_auth(api_key)
+            .header("X-Client-Request-Id", &request.client_request_id)
+            .json(&body)
+            .send(),
+        abort_registration,
+    )
+    .await;
+
+    active_requests()
+        .lock()
+        .map_err(|_| "OpenAI APIリクエストの終了処理に失敗しました".to_string())?
+        .remove(&request.client_request_id);
+
+    let response = response
+        .map_err(|_| "OpenAI APIリクエストを停止しました".to_string())?
+        .map_err(|error| format!("OpenAI APIへ接続できません: {error}"))?;
+    if !response.status().is_success() {
+        return Err(api_error(response).await);
+    }
+
+    let request_id = response_request_id(response.headers());
+    let result = response
+        .json::<ResponsesApiResponse>()
+        .await
+        .map_err(|error| format!("OpenAI OCRの応答を読み取れません: {error}"))?;
+    let text = result
+        .output_text
+        .or_else(|| {
+            let text = result
+                .output
+                .iter()
+                .flat_map(|item| item.content.iter())
+                .filter_map(|content| content.text.as_deref())
+                .collect::<String>();
+            (!text.trim().is_empty()).then_some(text)
+        })
+        .map(|text| text.trim().to_string())
+        .filter(|text| !text.is_empty())
+        .ok_or_else(|| "OpenAI OCRの応答が空でした".to_string())?;
+
+    Ok(OpenAiOcrResponse {
+        text,
         request_id,
         usage: result.usage.map(|usage| OpenAiUsage {
             input_tokens: usage.input_tokens,
