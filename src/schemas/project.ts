@@ -66,7 +66,25 @@ const SlideDataSchema = z.object({
     .object({
       rawText: z.string(),
       model: z.string(),
-      provider: z.enum(['local', 'openai']).optional(),
+      provider: z.enum(['local', 'vision', 'openai']).optional(),
+      blocks: z
+        .array(
+          z.object({
+            text: z.string(),
+            confidence: z.number().finite().min(0).max(1).optional(),
+            polygon: z
+              .array(
+                z.object({
+                  x: z.number().finite(),
+                  y: z.number().finite(),
+                }),
+              )
+              .optional(),
+          }),
+        )
+        .optional(),
+      engineVersion: z.string().min(1).optional(),
+      language: z.string().min(1).optional(),
       usage: z
         .object({
           inputTokens: z.number().int().nonnegative(),

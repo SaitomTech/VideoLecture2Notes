@@ -3,8 +3,12 @@ import { access, chmod, mkdir, mkdtemp, readFile, rename, rm, stat } from 'node:
 import { basename, join } from 'node:path'
 import { tmpdir } from 'node:os'
 
-const TARGET_TRIPLE = process.env.TAURI_ENV_TARGET_TRIPLE ?? (process.platform === 'darwin' && process.arch === 'arm64' ? 'aarch64-apple-darwin' : '')
+const TARGET_TRIPLE =
+  process.env.TAURI_ENV_TARGET_TRIPLE ??
+  (process.platform === 'darwin' && process.arch === 'arm64' ? 'aarch64-apple-darwin' : '')
 const SIDECAR_DIRECTORY = join(import.meta.dir, '..', 'src-tauri', 'binaries')
+const VISION_SOURCE = join(import.meta.dir, '..', 'src-tauri', 'vision-ocr', 'main.swift')
+const VISION_SIDECAR_NAME = 'apple-vision-ocr'
 const RELEASE_DIRECTORY = '1787073674_9.0.1'
 const LLAMA_RUNTIME_FILES = {
   'libllama-server-impl.dylib': 'libllama-server-impl.dylib',
@@ -54,6 +58,41 @@ function sidecarPath(name: string) {
   return join(SIDECAR_DIRECTORY, `${name}-${TARGET_TRIPLE}`)
 }
 
+async function buildVisionSidecar(temporaryDirectory: string, force: boolean) {
+  const destination = sidecarPath(VISION_SIDECAR_NAME)
+  if (!force) {
+    try {
+      const [sourceStats, destinationStats] = await Promise.all([
+        stat(VISION_SOURCE),
+        stat(destination),
+      ])
+      if (destinationStats.size > 0 && destinationStats.mtimeMs >= sourceStats.mtimeMs) return
+    } catch {
+      // The helper has not been built yet, so continue with compilation.
+    }
+  }
+
+  const temporaryDestination = join(temporaryDirectory, VISION_SIDECAR_NAME)
+  const moduleCachePath = join(temporaryDirectory, 'swift-module-cache')
+  await run('swiftc', [
+    '-O',
+    '-target',
+    'arm64-apple-macosx11.0',
+    '-module-cache-path',
+    moduleCachePath,
+    '-framework',
+    'Foundation',
+    '-framework',
+    'Vision',
+    VISION_SOURCE,
+    '-o',
+    temporaryDestination,
+  ])
+  await chmod(temporaryDestination, 0o755)
+  await rename(temporaryDestination, destination)
+  console.log(`✓ ${VISION_SIDECAR_NAME}-${TARGET_TRIPLE}`)
+}
+
 async function pathExists(path: string) {
   try {
     await access(path)
@@ -96,10 +135,7 @@ async function sha256(path: string) {
   return hash.digest('hex')
 }
 
-async function listArchiveEntries(
-  sidecar: (typeof SIDECARS)[number],
-  archivePath: string,
-) {
+async function listArchiveEntries(sidecar: (typeof SIDECARS)[number], archivePath: string) {
   const output =
     sidecar.archive === 'zip'
       ? await run('unzip', ['-Z1', archivePath])
@@ -168,10 +204,7 @@ async function prepareRuntimeFiles(
   ])
 }
 
-async function downloadAndExtract(
-  sidecar: (typeof SIDECARS)[number],
-  temporaryDirectory: string,
-) {
+async function downloadAndExtract(sidecar: (typeof SIDECARS)[number], temporaryDirectory: string) {
   const extension = sidecar.archive === 'zip' ? 'zip' : 'tar.gz'
   const archivePath = join(temporaryDirectory, `${sidecar.name}.${extension}`)
   const response = await fetch(sidecar.url)
@@ -182,7 +215,9 @@ async function downloadAndExtract(
   await Bun.write(archivePath, response)
   const actualHash = await sha256(archivePath)
   if (actualHash !== sidecar.sha256) {
-    throw new Error(`${sidecar.name}のSHA-256が一致しません (expected ${sidecar.sha256}, got ${actualHash})`)
+    throw new Error(
+      `${sidecar.name}のSHA-256が一致しません (expected ${sidecar.sha256}, got ${actualHash})`,
+    )
   }
 
   const entries = await listArchiveEntries(sidecar, archivePath)
@@ -221,18 +256,23 @@ async function sidecarReady(sidecar: (typeof SIDECARS)[number]) {
 
 async function main() {
   if (TARGET_TRIPLE !== 'aarch64-apple-darwin') {
-    throw new Error(`現在はmacOS Apple Siliconのみ対応しています。検出されたtarget triple: ${TARGET_TRIPLE || 'unknown'}`)
+    throw new Error(
+      `現在はmacOS Apple Siliconのみ対応しています。検出されたtarget triple: ${TARGET_TRIPLE || 'unknown'}`,
+    )
   }
 
   await mkdir(SIDECAR_DIRECTORY, { recursive: true })
   const force = process.argv.includes('--force')
-  if (!force && (await Promise.all(SIDECARS.map(sidecarReady))).every(Boolean)) {
-    console.log(`✓ sidecarは準備済みです (${TARGET_TRIPLE})`)
-    return
-  }
-
   const cleanTemporaryDirectory = await mkdtemp(join(tmpdir(), 'video-notes-sidecars-'))
   try {
+    await buildVisionSidecar(cleanTemporaryDirectory, force)
+    const downloadedSidecarsReady = (await Promise.all(SIDECARS.map(sidecarReady))).every(Boolean)
+    const visionSidecarReady = await nonEmptyFileExists(sidecarPath(VISION_SIDECAR_NAME))
+    if (!force && downloadedSidecarsReady && visionSidecarReady) {
+      console.log(`✓ sidecarは準備済みです (${TARGET_TRIPLE})`)
+      return
+    }
+
     for (const sidecar of SIDECARS) {
       if (!force && (await sidecarReady(sidecar))) {
         console.log(`✓ ${sidecar.name}-${TARGET_TRIPLE}`)

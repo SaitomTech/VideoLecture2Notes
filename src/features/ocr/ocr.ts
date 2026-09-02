@@ -3,6 +3,7 @@ import { UserFacingError, withUserFacingError } from '../../lib/errors'
 import { completeChat } from '../../lib/llama/chat'
 import { withLlamaServer } from '../../lib/llama/server'
 import { recognizeOpenAiImage, getOpenAiApiKeyStatus } from '../../lib/openai/openai'
+import { recognizeVisionImage } from '../../lib/ocr/vision'
 import {
   DEFAULT_OCR_MODEL,
   ensureOcrModel,
@@ -37,6 +38,9 @@ type RunOcrInput = {
 
 type OcrRecognition = {
   rawText: string
+  blocks?: SlideOcrResult['blocks']
+  engineVersion?: string
+  language?: string
   usage?: {
     inputTokens: number
     outputTokens: number
@@ -56,10 +60,7 @@ function throwIfAborted(signal?: AbortSignal) {
   if (signal?.aborted) throw new DOMException('OCRを中止しました。', 'AbortError')
 }
 
-export function ocrInputFingerprint(
-  slide: SlideData,
-  modelId: OcrModelId = DEFAULT_OCR_MODEL.id,
-) {
+export function ocrInputFingerprint(slide: SlideData, modelId: OcrModelId = DEFAULT_OCR_MODEL.id) {
   return JSON.stringify([
     slide.id,
     slide.image.representativeFramePath ?? '',
@@ -121,6 +122,23 @@ async function recognizeOpenAiSlide(
   }
 }
 
+async function recognizeVisionSlide(
+  slide: SlideData,
+  model: Extract<OcrModel, { provider: 'vision' }>,
+  signal?: AbortSignal,
+) {
+  const imagePath = slide.image.representativeFramePath
+  if (!imagePath) throw new UserFacingError(`Slide ${slide.index + 1}の代表画像がありません。`)
+
+  const recognition = await recognizeVisionImage({
+    imagePath,
+    language: model.language,
+    signal,
+  })
+
+  return { ...recognition, language: model.language }
+}
+
 export async function runOcr({
   project,
   onStage,
@@ -142,9 +160,7 @@ export async function runOcr({
 
   const pendingSlides = force
     ? slides
-    : slides.filter(
-        (slide) => slide.ocr?.inputFingerprint !== ocrInputFingerprint(slide, modelId),
-      )
+    : slides.filter((slide) => slide.ocr?.inputFingerprint !== ocrInputFingerprint(slide, modelId))
   let completed = slides.length - pendingSlides.length
   const report = (stageProgress: number | null) => {
     onProgress?.({
@@ -168,6 +184,8 @@ export async function runOcr({
         if (!status.configured) throw new Error('OpenAI APIキーが設定されていません。')
         return null
       }
+
+      if (ocrModel.provider === 'vision') return null
 
       return ensureOcrModel({
         modelId,
@@ -195,6 +213,9 @@ export async function runOcr({
             rawText: recognition.rawText,
             model: modelId,
             provider: ocrModel.provider,
+            blocks: recognition.blocks,
+            engineVersion: recognition.engineVersion,
+            language: recognition.language,
             usage: recognition.usage,
             requestId: recognition.requestId,
             inputFingerprint: fingerprint,
@@ -212,6 +233,15 @@ export async function runOcr({
     await withUserFacingError(
       'OpenAI OCRを完了できませんでした。APIキーと利用上限、通信状況を確認してください。',
       () => processSlides((slide) => recognizeOpenAiSlide(slide, ocrModel, signal)),
+    )
+    return
+  }
+
+  if (ocrModel.provider === 'vision') {
+    report(1)
+    await withUserFacingError(
+      'Apple Vision OCRを完了できませんでした。macOSの環境と代表画像を確認して、再試行してください。',
+      () => processSlides((slide) => recognizeVisionSlide(slide, ocrModel, signal)),
     )
     return
   }

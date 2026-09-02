@@ -49,6 +49,11 @@
           "name": "binaries/llama-server",
           "sidecar": true,
           "args": true
+        },
+        {
+          "name": "binaries/apple-vision-ocr",
+          "sidecar": true,
+          "args": true
         }
       ]
     },
@@ -67,6 +72,11 @@
         },
         {
           "name": "binaries/llama-server",
+          "sidecar": true,
+          "args": true
+        },
+        {
+          "name": "binaries/apple-vision-ocr",
           "sidecar": true,
           "args": true
         }

@@ -5,6 +5,7 @@ export type SidecarName =
   | 'binaries/ffprobe'
   | 'binaries/whisper-cli'
   | 'binaries/llama-server'
+  | 'binaries/apple-vision-ocr'
 
 type SidecarStreamHandlers = {
   onStdout?: (chunk: string) => void
