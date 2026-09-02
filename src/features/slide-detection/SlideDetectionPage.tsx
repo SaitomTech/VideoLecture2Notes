@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
 import type { MediaProject, SlideBoundary } from '../../types/project'
@@ -21,6 +21,9 @@ export function SlideDetectionPage({ project, onBack, onCompleted, onContinue }:
   const [reviewBoundaries, setReviewBoundaries] = useState<SlideBoundary[] | null>(
     () => project.slideDetection?.boundaries ?? null,
   )
+  const savedReviewBoundariesRef = useRef<SlideBoundary[] | null>(
+    project.slideDetection?.boundaries ?? null,
+  )
   const [threshold, setThreshold] = useState(
     project.slideDetection?.threshold ?? project.settings.slideDetection.threshold,
   )
@@ -32,6 +35,7 @@ export function SlideDetectionPage({ project, onBack, onCompleted, onContinue }:
   const handleDetectionCompleted = useCallback(
     async (nextOutput: SlideDetectionOutput) => {
       setReviewBoundaries(nextOutput.result.boundaries)
+      savedReviewBoundariesRef.current = nextOutput.result.boundaries
       setThreshold(nextOutput.result.threshold)
       setSampleIntervalMs(nextOutput.result.sampleIntervalMs)
       setHasUnsavedReview(false)
@@ -75,12 +79,18 @@ export function SlideDetectionPage({ project, onBack, onCompleted, onContinue }:
     setIsSavingReview(true)
     try {
       await onCompleted(output)
+      savedReviewBoundariesRef.current = output.result.boundaries
       setHasUnsavedReview(false)
     } catch (saveError) {
       console.error(saveError)
     } finally {
       setIsSavingReview(false)
     }
+  }
+
+  const cancelReview = () => {
+    setReviewBoundaries(savedReviewBoundariesRef.current)
+    setHasUnsavedReview(false)
   }
 
   const handleDetect = () => detection.detect({ threshold, sampleIntervalMs })
@@ -152,7 +162,15 @@ export function SlideDetectionPage({ project, onBack, onCompleted, onContinue }:
           </div>
 
           {hasUnsavedReview && (
-            <div className="flex justify-end border-t border-[#d8e1dc] px-5 py-4">
+            <div className="flex justify-end gap-2 border-t border-[#d8e1dc] px-5 py-4">
+              <button
+                className="inline-flex items-center rounded-[9px] px-3 py-2.5 text-xs font-semibold text-[#71807b] transition hover:bg-[#f1f6f2] hover:text-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50"
+                type="button"
+                onClick={cancelReview}
+                disabled={isSavingReview || isRunning}
+              >
+                修正をキャンセル
+              </button>
               <button
                 className="inline-flex items-center gap-1.5 rounded-[9px] border border-[#b7cbc0] bg-[#fbfcfa] px-3 py-2.5 text-xs font-semibold text-[#1d6b50] transition hover:border-[#1d6b50] hover:bg-[#e2eee8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50"
                 type="button"
