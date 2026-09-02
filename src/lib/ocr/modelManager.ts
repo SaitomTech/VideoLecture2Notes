@@ -1,9 +1,24 @@
 import { ensureModelFiles, type ModelDownloadProgress } from '../models/download'
 
-export const OCR_MODELS = [
+export const OPENAI_OCR_MODEL = {
+  id: 'openai:gpt-5.6-luna',
+  provider: 'openai',
+  apiModel: 'gpt-5.6-luna',
+  label: 'GPT-5.6 Luna',
+  description: 'OpenAI APIの画像認識モデルです。スライド内の細かい文字を読み取ります。',
+  prompt: [
+    '画像内に実際に表示されている文字だけを、読み取った順序で抽出してください。',
+    '要約、説明、推測、補完、翻訳はしないでください。',
+    '判読できない文字は無理に補わず、読み取れた文字だけを返してください。',
+    '返答は抽出した文字だけにしてください。Markdown、コードフェンス、前置きは不要です。',
+  ].join('\n'),
+} as const
+
+const OCR_LOCAL_MODEL_DEFINITIONS = [
   {
     id: 'glm-ocr-q2_k',
     label: 'GLM-OCR Q2_K',
+    description: 'Mac内で動作する軽量なローカルOCRモデルです。',
     totalSizeBytes: 845_760_288,
     directory: 'models/glm-ocr-q2',
     prompt: 'Text Recognition:',
@@ -25,6 +40,7 @@ export const OCR_MODELS = [
   {
     id: 'glm-ocr-q8_0',
     label: 'GLM-OCR Q8_0',
+    description: 'Mac内で動作する高精度なローカルOCRモデルです。',
     totalSizeBytes: 1_434_837_056,
     directory: 'models/glm-ocr',
     prompt: 'Text Recognition:',
@@ -46,6 +62,7 @@ export const OCR_MODELS = [
   {
     id: 'paddleocr-vl-1.6',
     label: 'PaddleOCR-VL 1.6',
+    description: 'Mac内で動作する多言語対応のローカルOCRモデルです。',
     totalSizeBytes: 1_817_539_616,
     directory: 'models/paddleocr-vl-1.6',
     prompt: 'OCR:',
@@ -66,11 +83,30 @@ export const OCR_MODELS = [
   },
 ] as const
 
-export type OcrModel = (typeof OCR_MODELS)[number]
+export type LocalOcrModelDefinition = (typeof OCR_LOCAL_MODEL_DEFINITIONS)[number]
+export type LocalOcrModel = {
+  provider: 'local'
+  id: LocalOcrModelDefinition['id']
+  label: LocalOcrModelDefinition['label']
+  model: LocalOcrModelDefinition
+}
+export type OpenAiOcrModel = typeof OPENAI_OCR_MODEL
+export type OcrModel = LocalOcrModel | OpenAiOcrModel
 export type OcrModelId = OcrModel['id']
 
+export const OCR_LOCAL_MODELS: readonly LocalOcrModel[] = OCR_LOCAL_MODEL_DEFINITIONS.map(
+  (model) => ({
+    provider: 'local' as const,
+    id: model.id,
+    label: model.label,
+    model,
+  }),
+)
+
+export const OCR_MODELS: readonly OcrModel[] = [...OCR_LOCAL_MODELS, OPENAI_OCR_MODEL]
+
 export const DEFAULT_OCR_MODEL =
-  OCR_MODELS.find((model) => model.id === 'paddleocr-vl-1.6') ?? OCR_MODELS[0]
+  OCR_LOCAL_MODELS.find((model) => model.id === 'paddleocr-vl-1.6') ?? OCR_LOCAL_MODELS[0]
 
 export function getOcrModel(id: string | undefined) {
   return OCR_MODELS.find((model) => model.id === id) ?? DEFAULT_OCR_MODEL
@@ -93,9 +129,12 @@ export async function ensureOcrModel({
   signal?: AbortSignal
 } = {}): Promise<OcrModelPaths> {
   const model = getOcrModel(modelId)
+  if (model.provider !== 'local') {
+    throw new Error('OpenAI OCRモデルにローカルモデルの準備処理は必要ありません。')
+  }
   const [modelPath, mmprojPath] = await ensureModelFiles({
-    directory: model.directory,
-    files: model.files,
+    directory: model.model.directory,
+    files: model.model.files,
     onProgress,
     signal,
   })

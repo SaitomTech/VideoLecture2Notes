@@ -2,10 +2,12 @@ import { readFile } from '@tauri-apps/plugin-fs'
 import { UserFacingError, withUserFacingError } from '../../lib/errors'
 import { completeChat } from '../../lib/llama/chat'
 import { withLlamaServer } from '../../lib/llama/server'
+import { recognizeOpenAiImage, getOpenAiApiKeyStatus } from '../../lib/openai/openai'
 import {
   DEFAULT_OCR_MODEL,
   ensureOcrModel,
   getOcrModel,
+  type OcrModel,
   type OcrModelId,
 } from '../../lib/ocr/modelManager'
 import { modelProgressRatio } from '../../lib/models/download'
@@ -31,6 +33,15 @@ type RunOcrInput = {
   signal?: AbortSignal
   force?: boolean
   modelId?: OcrModelId
+}
+
+type OcrRecognition = {
+  rawText: string
+  usage?: {
+    inputTokens: number
+    outputTokens: number
+  }
+  requestId?: string
 }
 
 function toBase64(bytes: Uint8Array) {
@@ -60,25 +71,29 @@ export function ocrInputFingerprint(
   ])
 }
 
-async function recognizeSlide(
-  baseUrl: string,
-  slide: SlideData,
-  modelId: OcrModelId,
-  signal?: AbortSignal,
-) {
+async function imageDataFor(slide: SlideData) {
   const imagePath = slide.image.representativeFramePath
   if (!imagePath) throw new UserFacingError(`Slide ${slide.index + 1}の代表画像がありません。`)
 
-  const model = getOcrModel(modelId)
   const image = toBase64(await readFile(imagePath))
-  return completeChat(baseUrl, {
+  return `data:image/jpeg;base64,${image}`
+}
+
+async function recognizeLocalSlide(
+  baseUrl: string,
+  slide: SlideData,
+  model: Extract<OcrModel, { provider: 'local' }>,
+  signal?: AbortSignal,
+) {
+  const imageData = await imageDataFor(slide)
+  const rawText = await completeChat(baseUrl, {
     model: model.id,
     messages: [
       {
         role: 'user',
         content: [
-          { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${image}` } },
-          { type: 'text', text: model.prompt },
+          { type: 'image_url', image_url: { url: imageData } },
+          { type: 'text', text: model.model.prompt },
         ],
       },
     ],
@@ -86,6 +101,24 @@ async function recognizeSlide(
     maxTokens: 8192,
     signal,
   })
+  return { rawText }
+}
+
+async function recognizeOpenAiSlide(
+  slide: SlideData,
+  model: Extract<OcrModel, { provider: 'openai' }>,
+  signal?: AbortSignal,
+) {
+  const result = await recognizeOpenAiImage({
+    instructions: model.prompt,
+    imageData: await imageDataFor(slide),
+    signal,
+  })
+  return {
+    rawText: result.text,
+    usage: result.usage,
+    requestId: result.requestId,
+  }
 }
 
 export async function runOcr({
@@ -124,49 +157,73 @@ export async function runOcr({
   report(pendingSlides.length === 0 ? 1 : null)
   if (pendingSlides.length === 0) return
 
+  const ocrModel = getOcrModel(modelId)
   throwIfAborted(signal)
   onStage?.('preparing-model')
-  const model = await withUserFacingError(
-    'OCRモデルを準備できませんでした。通信状況と空き容量を確認して、再試行してください。',
-    () =>
-      ensureOcrModel({
+  const localModel = await withUserFacingError(
+    'OCRモデルまたはOpenAI APIを準備できませんでした。設定と通信状況を確認して、再試行してください。',
+    async () => {
+      if (ocrModel.provider === 'openai') {
+        const status = await getOpenAiApiKeyStatus()
+        if (!status.configured) throw new Error('OpenAI APIキーが設定されていません。')
+        return null
+      }
+
+      return ensureOcrModel({
         modelId,
         signal,
         onProgress: (progress) => report(modelProgressRatio(progress)),
-      }),
+      })
+    },
   )
 
-  throwIfAborted(signal)
-  onStage?.('recognizing')
-  report(null)
+  const processSlides = async (recognize: (slide: SlideData) => Promise<OcrRecognition>) => {
+    throwIfAborted(signal)
+    onStage?.('recognizing')
+    report(null)
+    for (const slide of pendingSlides) {
+      const fingerprint = ocrInputFingerprint(slide, modelId)
+      throwIfAborted(signal)
+      const recognition = await withUserFacingError(
+        `Slide ${slide.index + 1}の文字を読み取れませんでした。再試行してください。`,
+        () => recognize(slide),
+      )
+      await withUserFacingError(
+        `Slide ${slide.index + 1}のOCR結果を保存できませんでした。空き容量を確認して、再試行してください。`,
+        async () => {
+          await onSlideCompleted?.(slide.id, {
+            rawText: recognition.rawText,
+            model: modelId,
+            provider: ocrModel.provider,
+            usage: recognition.usage,
+            requestId: recognition.requestId,
+            inputFingerprint: fingerprint,
+          })
+        },
+      )
+      throwIfAborted(signal)
+      completed += 1
+      report(null)
+    }
+  }
+
+  if (ocrModel.provider === 'openai') {
+    report(1)
+    await withUserFacingError(
+      'OpenAI OCRを完了できませんでした。APIキーと利用上限、通信状況を確認してください。',
+      () => processSlides((slide) => recognizeOpenAiSlide(slide, ocrModel, signal)),
+    )
+    return
+  }
+
+  if (!localModel) throw new Error('ローカルOCRモデルの準備結果がありません。')
   await withUserFacingError(
     'OCRエンジンを起動または実行できませんでした。アプリを再起動して、再試行してください。',
     () =>
       withLlamaServer(
-        model,
-        async (baseUrl) => {
-          for (const slide of pendingSlides) {
-            const fingerprint = ocrInputFingerprint(slide, modelId)
-            throwIfAborted(signal)
-            const rawText = await withUserFacingError(
-              `Slide ${slide.index + 1}の文字を読み取れませんでした。再試行してください。`,
-              () => recognizeSlide(baseUrl, slide, modelId, signal),
-            )
-            await withUserFacingError(
-              `Slide ${slide.index + 1}のOCR結果を保存できませんでした。空き容量を確認して、再試行してください。`,
-              async () => {
-                await onSlideCompleted?.(slide.id, {
-                  rawText,
-                  model: modelId,
-                  inputFingerprint: fingerprint,
-                })
-              },
-            )
-            throwIfAborted(signal)
-            completed += 1
-            report(null)
-          }
-        },
+        localModel,
+        (baseUrl) =>
+          processSlides((slide) => recognizeLocalSlide(baseUrl, slide, ocrModel, signal)),
         signal,
       ),
   )
