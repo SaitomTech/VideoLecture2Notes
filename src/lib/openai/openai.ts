@@ -14,16 +14,52 @@ export type OpenAiArticleResponse = {
   }
 }
 
+export type OpenAiTranscriptionResponse = {
+  text: string
+  language?: string
+  durationSeconds?: number
+  requestId?: string
+}
+
 export function getOpenAiApiKeyStatus() {
   return invoke<OpenAiCredentialStatus>('get_openai_api_key_status')
 }
 
-export function validateAndSaveOpenAiApiKey(apiKey: string) {
-  return invoke<OpenAiCredentialStatus>('validate_and_save_openai_api_key', { apiKey })
+export function validateAndSaveOpenAiApiKey(apiKey: string, model = 'gpt-5.6-luna') {
+  return invoke<OpenAiCredentialStatus>('validate_and_save_openai_api_key', { apiKey, model })
 }
 
-export function testOpenAiConnection() {
-  return invoke<void>('test_openai_connection')
+export function testOpenAiConnection(model = 'gpt-5.6-luna') {
+  return invoke<void>('test_openai_connection', { model })
+}
+
+export async function transcribeOpenAiAudio({
+  audioPath,
+  language,
+  signal,
+}: {
+  audioPath: string
+  language?: 'ja' | 'en'
+  signal?: AbortSignal
+}) {
+  if (signal?.aborted) throw new DOMException('処理を中止しました。', 'AbortError')
+
+  const clientRequestId = crypto.randomUUID()
+  const handleAbort = () => {
+    void invoke('cancel_openai_request', { clientRequestId }).catch(() => undefined)
+  }
+  signal?.addEventListener('abort', handleAbort, { once: true })
+
+  try {
+    return await invoke<OpenAiTranscriptionResponse>('transcribe_openai_audio', {
+      request: { audioPath, language, clientRequestId },
+    })
+  } catch (error) {
+    if (signal?.aborted) throw new DOMException('処理を中止しました。', 'AbortError')
+    throw error
+  } finally {
+    signal?.removeEventListener('abort', handleAbort)
+  }
 }
 
 export function deleteOpenAiApiKey() {

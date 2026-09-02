@@ -25,6 +25,16 @@ export async function getAudioAssetPath(projectId: string) {
   return join(directory, 'source-16k.wav')
 }
 
+export async function getTranscriptionAudioChunkPath(
+  projectId: string,
+  provider: 'local' | 'openai',
+  chunkIndex: number,
+) {
+  const directory = await prepareProjectAssetDirectory(projectId, `audio/${provider}`)
+  const extension = provider === 'local' ? 'wav' : 'm4a'
+  return join(directory, `chunk-${String(chunkIndex + 1).padStart(3, '0')}.${extension}`)
+}
+
 export async function getRawTranscriptAssetPath(projectId: string) {
   const directory = await prepareProjectAssetDirectory(projectId, 'transcript')
   return join(directory, 'raw.json')

@@ -1,18 +1,31 @@
 import { Check, KeyRound, LoaderCircle, Trash2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
-import { getErrorDetail } from '../../../lib/errors'
+import { getErrorDetail } from '../lib/errors'
 import {
   deleteOpenAiApiKey,
   getOpenAiApiKeyStatus,
   testOpenAiConnection,
   validateAndSaveOpenAiApiKey,
   type OpenAiCredentialStatus,
-} from '../../../lib/openai/openai'
+} from '../lib/openai/openai'
 
 type CredentialAction = 'saving' | 'testing' | 'deleting' | null
 
-export function OpenAiApiKeySettings({ disabled = false }: { disabled?: boolean }) {
+type OpenAiApiKeySettingsProps = {
+  verificationModel: string
+  verificationLabel: string
+  usageLabel: string
+  disabled?: boolean
+}
+
+export function OpenAiApiKeySettings({
+  verificationModel,
+  verificationLabel,
+  usageLabel,
+  disabled = false,
+}: OpenAiApiKeySettingsProps) {
+  const inputId = useId()
   const [credential, setCredential] = useState<OpenAiCredentialStatus | null>(null)
   const [apiKey, setApiKey] = useState('')
   const [action, setAction] = useState<CredentialAction>(null)
@@ -41,7 +54,7 @@ export function OpenAiApiKeySettings({ disabled = false }: { disabled?: boolean 
     setError(null)
     setMessage(null)
     try {
-      const status = await validateAndSaveOpenAiApiKey(apiKey)
+      const status = await validateAndSaveOpenAiApiKey(apiKey, verificationModel)
       setCredential(status)
       setApiKey('')
       setMessage('接続を確認し、APIキーをmacOS Keychainへ保存しました。')
@@ -58,8 +71,10 @@ export function OpenAiApiKeySettings({ disabled = false }: { disabled?: boolean 
     setError(null)
     setMessage(null)
     try {
-      await testOpenAiConnection()
-      setMessage('GPT-5.6 Lunaへの接続を確認しました。')
+      await testOpenAiConnection(verificationModel)
+      setMessage(
+        `${verificationLabel}のモデルアクセスを確認しました。利用上限は実際のAPI処理時に確認されます。`,
+      )
     } catch (testError) {
       setError(getErrorDetail(testError, 'OpenAI APIへ接続できませんでした。'))
     } finally {
@@ -92,7 +107,7 @@ export function OpenAiApiKeySettings({ disabled = false }: { disabled?: boolean 
         <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold text-[#18211f]">OpenAI APIキー</p>
           <p className="mt-1 text-[10px] leading-4 text-[#71807b]">
-            キーはmacOS Keychainへ保存され、本文生成時もReactへ読み戻しません。
+            キーはmacOS Keychainへ保存され、{usageLabel}時もReactへ読み戻しません。
           </p>
 
           {credential?.configured ? (
@@ -129,11 +144,11 @@ export function OpenAiApiKeySettings({ disabled = false }: { disabled?: boolean 
             className="mt-3 flex flex-col gap-2 sm:flex-row"
             onSubmit={(event) => void handleSave(event)}
           >
-            <label className="sr-only" htmlFor="openai-api-key">
+            <label className="sr-only" htmlFor={inputId}>
               OpenAI APIキー
             </label>
             <input
-              id="openai-api-key"
+              id={inputId}
               className="min-w-0 flex-1 rounded-[8px] border border-[#b7cbc0] bg-white px-3 py-2 text-xs outline-none placeholder:text-[#9aa6a1] focus:border-[#1d6b50] focus:ring-2 focus:ring-[#1d6b50]/20 disabled:cursor-not-allowed disabled:opacity-50"
               type="password"
               value={apiKey}

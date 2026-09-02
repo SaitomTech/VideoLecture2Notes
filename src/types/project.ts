@@ -51,6 +51,7 @@ export type TranscriptSegment = {
 
 export type TranscriptionResult = {
   model: string
+  provider?: 'local' | 'openai'
   language?: string
   audioPath: string
   segments: TranscriptSegment[]

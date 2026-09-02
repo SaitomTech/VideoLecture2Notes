@@ -1,4 +1,5 @@
 import { RefreshCw, Square } from 'lucide-react'
+import { OpenAiApiKeySettings } from '../../../components/OpenAiApiKeySettings'
 import { ProcessingStatusRow } from '../../../components/ProcessingStatusRow'
 import {
   OPENAI_LUNA_MODEL,
@@ -7,7 +8,6 @@ import {
 } from '../../../lib/article/articleModel'
 import { TEXT_MODELS } from '../../../lib/llama/textModel'
 import type { ContentProcessingController } from '../hooks/useContentProcessing'
-import { OpenAiApiKeySettings } from './OpenAiApiKeySettings'
 
 type ContentProcessingPanelProps = {
   processing: ContentProcessingController
@@ -53,7 +53,12 @@ function ArticleModelDetails({ model, disabled }: { model: ArticleModel; disable
           <span className="mt-2 block rounded-[8px] border border-[#d8e1dc] bg-[#fbfcfa] px-3 py-2 text-xs leading-5 text-[#52635c]">
             {model.description}
           </span>
-          <OpenAiApiKeySettings disabled={disabled} />
+          <OpenAiApiKeySettings
+            verificationModel={OPENAI_LUNA_MODEL.apiModel}
+            verificationLabel={OPENAI_LUNA_MODEL.label}
+            usageLabel="本文生成"
+            disabled={disabled}
+          />
         </>
       )
     default:
