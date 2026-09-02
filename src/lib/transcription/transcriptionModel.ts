@@ -10,7 +10,7 @@ export const OPENAI_TRANSCRIBE_MODEL = {
   apiModel: 'gpt-transcribe',
   label: 'GPT-Transcribe',
   description:
-    'OpenAIの音声認識モデルです。音声をSlideごとの区間（1区間は最大30分）に分け、送信用に圧縮してOpenAIへ送信します。',
+    'OpenAIの音声認識モデルです。音声をスライド単位（1単位は最大30分）に分け、送信用に圧縮してOpenAIへ送信します。',
   accuracy: '高',
   speed: '通信環境による',
 } as const

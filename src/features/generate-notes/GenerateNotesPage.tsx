@@ -159,6 +159,7 @@ export function GenerateNotesPage({
                   <div className="mt-6">
                     <TranscriptionStatus
                       status={transcription.status}
+                      provider={getTranscriptionModel(transcriptionModelId).provider}
                       stage={transcription.stage}
                       stageProgress={transcription.stageProgress}
                       chunkProgress={transcription.chunkProgress}

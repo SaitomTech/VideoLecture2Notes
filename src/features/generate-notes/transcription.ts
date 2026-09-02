@@ -1,7 +1,6 @@
 import { UserFacingError, withUserFacingError } from '../../lib/errors'
 import {
   extractAudio,
-  extractAudioChunkForLocalTranscription,
   extractAudioChunkForOpenAi,
 } from '../../lib/media/ffmpeg'
 import { transcribeOpenAiAudio } from '../../lib/openai/openai'
@@ -51,9 +50,8 @@ type PreparedChunk = ChunkRange & {
   path: string
 }
 
-type TranscriptionProvider = {
-  provider: 'local' | 'openai'
-  chunking: 'duration' | 'slides'
+type OpenAiTranscriptionProvider = {
+  provider: 'openai'
   effectiveLanguage: TranscriptionLanguage
   prepare: () => Promise<void>
   prepareChunk: (audioPath: string, outputPath: string, range: ChunkRange) => Promise<void>
@@ -97,11 +95,8 @@ function splitRange(range: ChunkRange) {
   return chunks
 }
 
-function createChunkRanges(project: MediaProject, chunking: TranscriptionProvider['chunking']) {
+function createSlideRanges(project: MediaProject) {
   const durationMs = Math.max(1, project.source.metadata.durationMs)
-  if (chunking === 'duration') {
-    return splitRange({ startMs: 0, endMs: durationMs })
-  }
   const slideRanges: ChunkRange[] = []
   for (const slide of project.slides) {
     const range = {
@@ -115,58 +110,71 @@ function createChunkRanges(project: MediaProject, chunking: TranscriptionProvide
   return ranges.flatMap(splitRange)
 }
 
-function assertNever(value: never): never {
-  throw new Error(`未対応の文字起こしプロバイダーです: ${JSON.stringify(value)}`)
-}
-
-function createLocalProvider({
+async function runLocalTranscription({
   project,
-  model,
   language,
+  model,
+  onStage,
   onProgress,
   signal,
-}: Omit<RunTranscriptionInput, 'modelId' | 'onStage' | 'onChunkProgress'> & {
+}: RunTranscriptionInput & {
   model: Extract<TranscriptionModel, { provider: 'local' }>
-}): TranscriptionProvider {
+}): Promise<TranscriptionResult> {
   const effectiveLanguage = model.model.languageSupport === 'ja' ? 'ja' : language
-  let modelPath: string | null = null
+  throwIfAborted(signal)
+  onStage?.('preparing-model')
+  onProgress?.(null)
 
-  return {
-    provider: 'local',
-    chunking: 'duration',
-    effectiveLanguage,
-    prepare: async () => {
-      modelPath = await withUserFacingError(
-        '文字起こしモデルを準備できませんでした。通信状況と空き容量を確認して、再試行してください。',
-        () =>
-          ensureWhisperModel({
-            modelId: model.id,
-            signal,
-            onProgress: ({ receivedBytes, totalBytes }) => {
-              onProgress?.(totalBytes > 0 ? receivedBytes / totalBytes : null)
-            },
-          }),
-      )
-    },
-    prepareChunk: async (audioPath, outputPath, range) => {
-      await extractAudioChunkForLocalTranscription({
-        path: audioPath,
-        outputPath,
-        startMs: range.startMs,
-        durationMs: range.endMs - range.startMs,
+  const modelPath = await withUserFacingError(
+    '文字起こしモデルを準備できませんでした。通信状況と空き容量を確認して、再試行してください。',
+    () =>
+      ensureWhisperModel({
+        modelId: model.id,
         signal,
-      })
-    },
-    transcribeChunk: async (chunk) => {
-      if (!modelPath) throw new Error('ローカル文字起こしモデルが準備されていません')
-      return runWhisper({
+        onProgress: ({ receivedBytes, totalBytes }) => {
+          onProgress?.(totalBytes > 0 ? receivedBytes / totalBytes : null)
+        },
+      }),
+  )
+
+  throwIfAborted(signal)
+  onStage?.('extracting-audio')
+  onProgress?.(null)
+  const audioError =
+    '動画から音声を準備できませんでした。音声トラックを確認して、再試行してください。'
+  const audioPath = await withUserFacingError(audioError, async () => {
+    const path = await getAudioAssetPath(project.id)
+    if (!(await fileExists(path))) {
+      await extractAudio({ path: project.source.path, outputPath: path, signal })
+    }
+    if (!(await fileExists(path))) throw new UserFacingError(audioError)
+    return path
+  })
+
+  throwIfAborted(signal)
+  onStage?.('transcribing')
+  onProgress?.(null)
+  const rawTranscript = await withUserFacingError(
+    '音声を文字起こしできませんでした。アプリを再起動して、再試行してください。',
+    () =>
+      runWhisper({
         projectId: project.id,
-        audioPath: chunk.path,
+        audioPath,
         modelPath,
         language: effectiveLanguage,
+        onProgress,
         signal,
-      })
-    },
+      }),
+  )
+
+  return {
+    model: model.id,
+    provider: model.provider,
+    language: rawTranscript.language ?? effectiveLanguage,
+    audioPath,
+    segments: rawTranscript.segments,
+    transcribedAt: new Date().toISOString(),
+    inputFingerprint: inputFingerprint(project, model.id, effectiveLanguage),
   }
 }
 
@@ -175,12 +183,11 @@ function createOpenAiProvider({
   signal,
 }: Omit<RunTranscriptionInput, 'modelId' | 'onStage' | 'onProgress' | 'onChunkProgress'> & {
   model: Extract<TranscriptionModel, { provider: 'openai' }>
-}): TranscriptionProvider {
+}): OpenAiTranscriptionProvider {
   const effectiveLanguage = language
 
   return {
     provider: 'openai',
-    chunking: 'slides',
     effectiveLanguage,
     prepare: async () => undefined,
     prepareChunk: async (audioPath, outputPath, range) => {
@@ -206,20 +213,6 @@ function createOpenAiProvider({
           : [],
       }
     },
-  }
-}
-
-function createTranscriptionProvider(
-  input: RunTranscriptionInput,
-  model: TranscriptionModel,
-): TranscriptionProvider {
-  switch (model.provider) {
-    case 'local':
-      return createLocalProvider({ ...input, model })
-    case 'openai':
-      return createOpenAiProvider({ ...input, model })
-    default:
-      return assertNever(model)
   }
 }
 
@@ -250,7 +243,11 @@ function offsetSegments(chunk: PreparedChunk, segments: TranscriptSegment[]) {
 export async function runTranscription(input: RunTranscriptionInput): Promise<TranscriptionResult> {
   const { project, modelId, onStage, onProgress, onChunkProgress, signal } = input
   const model = getTranscriptionModel(modelId)
-  const provider = createTranscriptionProvider(input, model)
+  if (model.provider === 'local') {
+    return runLocalTranscription({ ...input, model })
+  }
+
+  const provider = createOpenAiProvider({ ...input, model })
 
   throwIfAborted(signal)
   onStage?.('preparing-model')
@@ -272,7 +269,7 @@ export async function runTranscription(input: RunTranscriptionInput): Promise<Tr
     return path
   })
 
-  const ranges = createChunkRanges(project, provider.chunking)
+  const ranges = createSlideRanges(project)
   const chunks: PreparedChunk[] = []
   onStage?.('preparing-chunks')
   reportChunkProgress(0, ranges.length, onProgress, onChunkProgress)

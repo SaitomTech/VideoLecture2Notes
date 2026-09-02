@@ -93,7 +93,7 @@ export function TranscriptionSettings({
             音声データから文字を抽出
           </h3>
           <p className="mt-1 text-xs text-[#71807b]">
-            ローカル処理またはOpenAI APIを選び、結果をSlideの区間へ割り当てます。
+            ローカル処理またはOpenAI APIを選び、文字起こし結果をスライドに割り当てます。
           </p>
         </div>
         <button
