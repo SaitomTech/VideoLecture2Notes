@@ -67,6 +67,10 @@ export function SlideDetectionVideo({
           <div className="min-w-0 flex-1">{children}</div>
         </div>
       )}
+
+      <p className="mt-2 text-[10px] text-[#9aa6a1]">
+        タイムラインをダブルクリックで境界を追加。境界線はドラッグで移動、一覧のゴミ箱から削除できます。
+      </p>
     </section>
   )
 }

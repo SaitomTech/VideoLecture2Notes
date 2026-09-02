@@ -170,7 +170,10 @@ export function SlideDetectionTimeline({
             }}
             onPointerUp={() => setDraggingBoundaryId(null)}
             onPointerCancel={() => setDraggingBoundaryId(null)}
-            onDoubleClick={(event) => event.stopPropagation()}
+            onDoubleClick={(event) => {
+              event.stopPropagation()
+              onSeek(boundary.timestampMs)
+            }}
           >
             <span className="absolute left-1/2 top-0 h-10 w-px -translate-x-1/2 bg-[#174d3c]" />
             <span className="absolute left-1/2 top-0 h-2 w-2 -translate-x-1/2 rounded-full bg-[#174d3c]" />
