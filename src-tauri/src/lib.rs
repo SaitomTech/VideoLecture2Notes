@@ -84,6 +84,7 @@ pub fn run() {
             openai::test_openai_connection,
             openai::delete_openai_api_key,
             openai::generate_openai_article,
+            openai::transcribe_openai_audio,
             openai::cancel_openai_request,
         ])
         .run(tauri::generate_context!())

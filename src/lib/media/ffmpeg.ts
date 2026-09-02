@@ -32,6 +32,14 @@ type ExtractAudioInput = {
   signal?: AbortSignal
 }
 
+type ExtractAudioChunkInput = {
+  path: string
+  outputPath: string
+  startMs: number
+  durationMs: number
+  signal?: AbortSignal
+}
+
 function outputText(value: string | Uint8Array) {
   return typeof value === 'string' ? value : new TextDecoder().decode(value)
 }
@@ -146,6 +154,93 @@ export async function extractAudio({ path, outputPath, signal }: ExtractAudioInp
   if (output.code !== 0) {
     const detail = output.stderr.trim()
     throw new Error(detail || `音声の抽出に失敗しました (code ${output.code})`)
+  }
+
+  return outputPath
+}
+
+/** Creates a compact upload copy while preserving the local WAV used by whisper.cpp. */
+export async function extractAudioChunkForOpenAi({
+  path,
+  outputPath,
+  startMs,
+  durationMs,
+  signal,
+}: ExtractAudioChunkInput) {
+  const output = await executeSidecar(
+    'binaries/ffmpeg',
+    [
+      '-hide_banner',
+      '-v',
+      'error',
+      '-ss',
+      String(Math.max(0, startMs / 1000)),
+      '-i',
+      path,
+      '-t',
+      String(Math.max(0.001, durationMs / 1000)),
+      '-vn',
+      '-sn',
+      '-dn',
+      '-ac',
+      '1',
+      '-ar',
+      '16000',
+      '-c:a',
+      'aac',
+      '-b:a',
+      '32k',
+      '-y',
+      outputPath,
+    ],
+    { signal },
+  )
+
+  if (output.code !== 0) {
+    const detail = output.stderr.trim()
+    throw new Error(detail || `OpenAI送信用音声の準備に失敗しました (code ${output.code})`)
+  }
+
+  return outputPath
+}
+
+export async function extractAudioChunkForLocalTranscription({
+  path,
+  outputPath,
+  startMs,
+  durationMs,
+  signal,
+}: ExtractAudioChunkInput) {
+  const output = await executeSidecar(
+    'binaries/ffmpeg',
+    [
+      '-hide_banner',
+      '-v',
+      'error',
+      '-ss',
+      String(Math.max(0, startMs / 1000)),
+      '-i',
+      path,
+      '-t',
+      String(Math.max(0.001, durationMs / 1000)),
+      '-vn',
+      '-sn',
+      '-dn',
+      '-ac',
+      '1',
+      '-ar',
+      '16000',
+      '-c:a',
+      'pcm_s16le',
+      '-y',
+      outputPath,
+    ],
+    { signal },
+  )
+
+  if (output.code !== 0) {
+    const detail = output.stderr.trim()
+    throw new Error(detail || `ローカル文字起こし用音声の準備に失敗しました (code ${output.code})`)
   }
 
   return outputPath

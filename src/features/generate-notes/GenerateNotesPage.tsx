@@ -4,7 +4,10 @@ import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
 import { getArticleModel, type ArticleModelId } from '../../lib/article/articleModel'
 import { getOcrModel, type OcrModelId } from '../../lib/ocr/modelManager'
-import { getWhisperModel, type WhisperModelId } from '../../lib/whisper/modelManager'
+import {
+  getTranscriptionModel,
+  type TranscriptionModelId,
+} from '../../lib/transcription/transcriptionModel'
 import type { MediaProject, TranscriptionResult } from '../../types/project'
 import { AnalysisResultPreview } from '../content-processing/components/AnalysisResultPreview'
 import {
@@ -43,8 +46,8 @@ export function GenerateNotesPage({
       ? project.transcription.language
       : 'auto',
   )
-  const [whisperModelId, setWhisperModelId] = useState<WhisperModelId>(
-    () => getWhisperModel(project.transcription?.model).id,
+  const [transcriptionModelId, setTranscriptionModelId] = useState<TranscriptionModelId>(
+    () => getTranscriptionModel(project.transcription?.model).id,
   )
   const storedOcrModelId = project.slides
     .map((slide) => slide.ocr?.model)
@@ -57,7 +60,7 @@ export function GenerateNotesPage({
     () => getArticleModel(storedTextModelId).id,
   )
   const textModel = getArticleModel(textModelId)
-  const transcription = useTranscription(project, whisperModelId, onCompleted)
+  const transcription = useTranscription(project, transcriptionModelId, onCompleted)
   const ocr = useOcr(project, onOcrSlideCompleted, ocrModelId)
   const processing = useContentProcessing(project, onContentSlideCompleted, textModelId)
   const handleTranscribe = () => transcription.transcribe(language)
@@ -145,11 +148,11 @@ export function GenerateNotesPage({
                 <div>
                   <TranscriptionSettings
                     language={language}
-                    modelId={whisperModelId}
+                    modelId={transcriptionModelId}
                     status={transcription.status}
                     disabled={isOcrRunning || isContentProcessing}
                     onLanguageChange={setLanguage}
-                    onModelChange={setWhisperModelId}
+                    onModelChange={setTranscriptionModelId}
                     onTranscribe={handleTranscribe}
                     onCancel={transcription.cancel}
                   />
@@ -158,6 +161,7 @@ export function GenerateNotesPage({
                       status={transcription.status}
                       stage={transcription.stage}
                       stageProgress={transcription.stageProgress}
+                      chunkProgress={transcription.chunkProgress}
                       error={transcription.error}
                       disabled={isOcrRunning || isContentProcessing}
                       onRetry={handleTranscribe}

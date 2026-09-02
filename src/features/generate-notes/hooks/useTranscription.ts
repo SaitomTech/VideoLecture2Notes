@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react'
-import { getUserErrorMessage, withUserFacingError } from '../../../lib/errors'
-import type { WhisperModelId } from '../../../lib/whisper/modelManager'
+import { getErrorDetail, withUserFacingError } from '../../../lib/errors'
+import type { TranscriptionModelId } from '../../../lib/transcription/transcriptionModel'
 import type { MediaProject, TranscriptionResult } from '../../../types/project'
 import {
   runTranscription,
+  type TranscriptionChunkProgress,
   type TranscriptionLanguage,
   type TranscriptionStage,
 } from '../transcription'
@@ -12,7 +13,7 @@ export type TranscriptionStatus = 'idle' | 'running' | 'completed' | 'cancelled'
 
 export function useTranscription(
   project: MediaProject,
-  modelId: WhisperModelId,
+  modelId: TranscriptionModelId,
   onCompleted: (result: TranscriptionResult) => void | Promise<void>,
 ) {
   const hasCurrentTranscription = project.transcription?.model === modelId
@@ -23,8 +24,9 @@ export function useTranscription(
   const [stageProgress, setStageProgress] = useState<number | null>(
     hasCurrentTranscription ? 1 : null,
   )
+  const [chunkProgress, setChunkProgress] = useState<TranscriptionChunkProgress | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [operationModelId, setOperationModelId] = useState<WhisperModelId>(modelId)
+  const [operationModelId, setOperationModelId] = useState<TranscriptionModelId>(modelId)
   const activeController = useRef<AbortController | null>(null)
 
   async function transcribe(language: TranscriptionLanguage) {
@@ -36,6 +38,7 @@ export function useTranscription(
     setStatus('running')
     setStage('preparing-model')
     setStageProgress(null)
+    setChunkProgress(null)
     setError(null)
 
     try {
@@ -47,11 +50,14 @@ export function useTranscription(
         onStage: (nextStage) => {
           setStage(nextStage)
           setStageProgress(null)
+          setChunkProgress(null)
         },
         onProgress: setStageProgress,
+        onChunkProgress: setChunkProgress,
       })
       setStage('saving')
       setStageProgress(null)
+      setChunkProgress(null)
       await withUserFacingError(
         '文字起こし結果を保存できませんでした。空き容量を確認して、再試行してください。',
         () => onCompleted(result),
@@ -69,7 +75,7 @@ export function useTranscription(
         console.error(transcriptionError)
         setStatus('error')
         setError(
-          getUserErrorMessage(
+          getErrorDetail(
             transcriptionError,
             '文字起こしを完了できませんでした。アプリを再起動して、再試行してください。',
           ),
@@ -96,11 +102,13 @@ export function useTranscription(
       ? 1
       : null
   const visibleError = isOperationForSelectedModel ? error : null
+  const visibleChunkProgress = isOperationForSelectedModel ? chunkProgress : null
 
   return {
     status: visibleStatus,
     stage,
     stageProgress: visibleStageProgress,
+    chunkProgress: visibleChunkProgress,
     error: visibleError,
     transcribe,
     cancel,

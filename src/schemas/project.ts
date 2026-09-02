@@ -41,6 +41,7 @@ const TranscriptSegmentSchema = z.object({
 
 const TranscriptionResultSchema = z.object({
   model: z.string().min(1),
+  provider: z.enum(['local', 'openai']).optional(),
   language: z.string().min(1).optional(),
   audioPath: z.string().min(1),
   segments: z.array(TranscriptSegmentSchema),
