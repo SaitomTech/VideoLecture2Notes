@@ -56,28 +56,27 @@ export function SlideDetectionSettingsStatus({
 
   return (
     <section aria-labelledby="analysis-status-heading">
-      <h2 id="analysis-status-heading" className="text-[21px] font-bold tracking-[-0.05em]">
-        解析設定・解析状況
-      </h2>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h2 id="analysis-status-heading" className="text-[21px] font-bold tracking-[-0.05em]">
+          解析を実行
+        </h2>
+        <button
+          className="inline-flex items-center justify-center gap-2 rounded-[9px] border border-[#b7cbc0] bg-[#fbfcfa] px-4 py-3 text-xs font-semibold text-[#1d6b50] transition hover:border-[#1d6b50] hover:bg-[#e2eee8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50"
+          type="button"
+          onClick={() => void onDetect()}
+          disabled={isRunning || isSaving}
+        >
+          <RefreshCw size={14} className={isRunning ? 'animate-spin' : ''} />
+          {isRunning ? '解析中…' : isCompleted ? '再検出' : '解析開始'}
+        </button>
+      </div>
 
-      <div className="mt-6 rounded-[12px] border border-[#d8e1dc] bg-[#f7faf7] p-4 md:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-[13px] font-semibold text-[#18211f]">検出設定</p>
-            <p className="mt-1 text-xs text-[#71807b]">設定を確認してから解析を開始します。</p>
-          </div>
-          <button
-            className="inline-flex items-center justify-center gap-2 rounded-[9px] border border-[#b7cbc0] bg-[#fbfcfa] px-4 py-3 text-xs font-semibold text-[#1d6b50] transition hover:border-[#1d6b50] hover:bg-[#e2eee8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50"
-            type="button"
-            onClick={() => void onDetect()}
-            disabled={isRunning || isSaving}
-          >
-            <RefreshCw size={14} className={isRunning ? 'animate-spin' : ''} />
-            {isRunning ? '解析中…' : isCompleted ? '再検出' : '解析開始'}
-          </button>
-        </div>
+      <div className="mt-6">
+        <p className="text-[13px] font-semibold text-[#18211f]">設定</p>
+      </div>
 
-        <div className="mt-5 grid gap-5 border-t border-[#e0e8e3] pt-5 md:grid-cols-2">
+      <div className="mt-3 rounded-[12px] border border-[#d8e1dc] bg-[#f7faf7] p-4 md:p-5">
+        <div className="grid gap-5 md:grid-cols-2">
           <label className="block text-xs text-[#71807b]">
             <span className="flex items-center justify-between gap-3">
               <span>しきい値</span>
