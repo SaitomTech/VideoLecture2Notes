@@ -77,7 +77,6 @@ function TranscriptionModelDetails({
           <OpenAiApiKeySettings
             verificationModel={model.apiModel}
             verificationLabel={model.label}
-            usageLabel="文字起こし"
             disabled={disabled}
           />
         </>

@@ -35,28 +35,28 @@ function ArticleModelDetails({ model, disabled }: { model: ArticleModel; disable
     case 'local':
       return (
         <>
+          <span className="mt-2 block text-xs leading-5 text-[#52635c]">
+            {model.model.description}
+          </span>
           <span className="mt-1 block text-[10px] text-[#9aa6a1]">
             初回のみモデルをダウンロードします（約
             {formatModelSize(model.model.totalSizeBytes)}）。
-          </span>
-          <span className="mt-2 block rounded-[8px] border border-[#d8e1dc] bg-[#fbfcfa] px-3 py-2 text-xs leading-5 text-[#52635c]">
-            {model.model.description}
           </span>
         </>
       )
     case 'openai':
       return (
         <>
-          <span className="mt-1 block text-[10px] leading-4 text-[#9a7a35]">
-            API利用料は設定したOpenAIアカウントに発生します。動画・音声・画像は送信しません。
-          </span>
-          <span className="mt-2 block rounded-[8px] border border-[#d8e1dc] bg-[#fbfcfa] px-3 py-2 text-xs leading-5 text-[#52635c]">
+          <span className="mt-2 block text-xs leading-5 text-[#52635c]">
             {model.description}
+          </span>
+          <span className="mt-1 block text-[10px] leading-4 text-[#9aa6a1]">
+            文字起こしとOCRテキストを外部送信します。動画・音声・画像は送信しません。
           </span>
           <OpenAiApiKeySettings
             verificationModel={OPENAI_LUNA_MODEL.apiModel}
             verificationLabel={OPENAI_LUNA_MODEL.label}
-            usageLabel="本文生成"
+            billingNote="API利用料は、入力したAPIキーに紐づくOpenAI APIの請求先に発生します。"
             disabled={disabled}
           />
         </>
