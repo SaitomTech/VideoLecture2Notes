@@ -1,4 +1,12 @@
-import { Check, ChevronDown, KeyRound, LoaderCircle, Trash2 } from 'lucide-react'
+import {
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  CircleAlert,
+  KeyRound,
+  LoaderCircle,
+  Trash2,
+} from 'lucide-react'
 import { useEffect, useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { getErrorDetail } from '../lib/errors'
@@ -106,7 +114,9 @@ export function OpenAiApiKeySettings({
   const isBusy = action !== null
 
   return (
-    <div className="mt-3 rounded-[10px] border border-[#b7cbc0] bg-[#fbfcfa] p-3.5">
+    <div
+      className={`mt-3 rounded-[10px] border border-[#b7cbc0] bg-[#fbfcfa] p-3.5 ${credential?.configured ? 'border-dashed' : ''}`}
+    >
       <div className="min-w-0">
         <button
           className="flex w-full items-center justify-between gap-3 text-left disabled:cursor-default"
@@ -119,14 +129,18 @@ export function OpenAiApiKeySettings({
         >
           <span className="inline-flex min-w-0 items-center gap-2">
             <KeyRound className="shrink-0 text-[#1d6b50]" size={16} />
-            <span className="min-w-0 text-xs font-semibold text-[#18211f]">
-              OpenAI APIキー
-              {credential?.configured ? (
-                <span className="ml-2 font-normal text-[#52635c]">
-                  設定済み{credential.lastFour ? `（末尾 ${credential.lastFour}）` : ''}
-                </span>
-              ) : null}
-            </span>
+            <span className="min-w-0 text-xs font-semibold text-[#18211f]">OpenAI APIキー</span>
+            {credential?.configured ? (
+              <span className="inline-flex shrink-0 items-center gap-1 text-xs font-normal text-[#1d6b50]">
+                <CheckCircle2 size={13} />
+                設定済み{credential.lastFour ? `（末尾 ${credential.lastFour}）` : ''}
+              </span>
+            ) : (
+              <span className="inline-flex shrink-0 items-center gap-1 text-xs font-normal text-[#9a7a35]">
+                <CircleAlert size={13} />
+                未設定
+              </span>
+            )}
           </span>
           {credential?.configured ? (
             <ChevronDown
