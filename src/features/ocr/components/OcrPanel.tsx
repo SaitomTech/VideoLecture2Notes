@@ -4,6 +4,7 @@ import { ModelDescription } from '../../../components/ModelDescription'
 import { ModelSelect } from '../../../components/ModelSelect'
 import { ProcessingStatusRow } from '../../../components/ProcessingStatusRow'
 import {
+  APPLE_VISION_OCR_MODEL,
   getOcrModel,
   OPENAI_OCR_MODEL,
   OCR_LOCAL_MODELS,
@@ -34,6 +35,13 @@ function assertNever(value: never): never {
 
 function OcrModelDetails({ model, disabled }: { model: OcrModel; disabled: boolean }) {
   switch (model.provider) {
+    case 'vision':
+      return (
+        <ModelDescription
+          description={model.description}
+          annotation="代表画像をMac内で処理します。画像やOCR結果を外部へ送信せず、追加モデルのダウンロードもありません。"
+        />
+      )
     case 'local':
       return (
         <ModelDescription
@@ -84,7 +92,8 @@ export function OcrPanel({ ocr, modelId, onModelChange, disabled = false }: OcrP
             画像データから文字を抽出
           </h3>
           <p className="mt-1 text-xs text-[#71807b]">
-            ローカルモデルまたはOpenAI APIを選び、代表画像からスライド内の文字を抽出します。
+            macOS標準のApple Vision、ローカルモデル、またはOpenAI
+            APIを選び、代表画像からスライド内の文字を抽出します。
           </p>
         </div>
         <button
@@ -111,6 +120,7 @@ export function OcrPanel({ ocr, modelId, onModelChange, disabled = false }: OcrP
           <ModelSelect
             id="ocr-model"
             value={modelId}
+            systemModels={[APPLE_VISION_OCR_MODEL]}
             localModels={OCR_LOCAL_MODELS}
             apiModels={[OPENAI_OCR_MODEL]}
             onChange={(nextModelId) => onModelChange(nextModelId as OcrModelId)}

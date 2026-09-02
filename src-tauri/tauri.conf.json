@@ -41,7 +41,8 @@
       "binaries/ffmpeg",
       "binaries/ffprobe",
       "binaries/whisper-cli",
-      "binaries/llama-server"
+      "binaries/llama-server",
+      "binaries/apple-vision-ocr"
     ],
     "resources": {
       "binaries/llama-runtime": "llama-runtime"

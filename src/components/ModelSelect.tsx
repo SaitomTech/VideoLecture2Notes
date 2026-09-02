@@ -6,6 +6,7 @@ type ModelOption = {
 type ModelSelectProps = {
   id: string
   value: string
+  systemModels?: readonly ModelOption[]
   localModels: readonly ModelOption[]
   apiModels: readonly ModelOption[]
   onChange: (modelId: string) => void
@@ -19,6 +20,7 @@ const modelSelectClassName =
 export function ModelSelect({
   id,
   value,
+  systemModels = [],
   localModels,
   apiModels,
   onChange,
@@ -34,6 +36,15 @@ export function ModelSelect({
       disabled={disabled}
       aria-label={ariaLabel}
     >
+      {systemModels.length > 0 && (
+        <optgroup label="macOS標準">
+          {systemModels.map((model) => (
+            <option key={model.id} value={model.id}>
+              {model.label}
+            </option>
+          ))}
+        </optgroup>
+      )}
       <optgroup label="ローカルモデル">
         {localModels.map((model) => (
           <option key={model.id} value={model.id}>
@@ -41,13 +52,15 @@ export function ModelSelect({
           </option>
         ))}
       </optgroup>
-      <optgroup label="OpenAI API">
-        {apiModels.map((model) => (
-          <option key={model.id} value={model.id}>
-            {model.label}
-          </option>
-        ))}
-      </optgroup>
+      {apiModels.length > 0 && (
+        <optgroup label="OpenAI API">
+          {apiModels.map((model) => (
+            <option key={model.id} value={model.id}>
+              {model.label}
+            </option>
+          ))}
+        </optgroup>
+      )}
     </select>
   )
 }

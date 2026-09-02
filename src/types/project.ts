@@ -62,13 +62,25 @@ export type TranscriptionResult = {
 export type SlideOcrResult = {
   rawText: string
   model: string
-  provider?: 'local' | 'openai'
+  provider?: 'local' | 'vision' | 'openai'
+  blocks?: OcrTextBlock[]
+  engineVersion?: string
+  language?: string
   usage?: {
     inputTokens: number
     outputTokens: number
   }
   requestId?: string
   inputFingerprint?: string
+}
+
+export type OcrTextBlock = {
+  text: string
+  confidence?: number
+  polygon?: Array<{
+    x: number
+    y: number
+  }>
 }
 
 export type ArticleFormattingResult = {

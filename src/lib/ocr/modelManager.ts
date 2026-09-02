@@ -1,5 +1,13 @@
 import { ensureModelFiles, type ModelDownloadProgress } from '../models/download'
 
+export const APPLE_VISION_OCR_MODEL = {
+  id: 'apple-vision',
+  provider: 'vision',
+  label: 'Apple Vision',
+  description: 'macOS標準のオンデバイスOCRです。追加モデルのダウンロードは不要です。',
+  language: 'ja+en',
+} as const
+
 export const OPENAI_OCR_MODEL = {
   id: 'openai:gpt-5.6-luna',
   provider: 'openai',
@@ -91,7 +99,8 @@ export type LocalOcrModel = {
   model: LocalOcrModelDefinition
 }
 export type OpenAiOcrModel = typeof OPENAI_OCR_MODEL
-export type OcrModel = LocalOcrModel | OpenAiOcrModel
+export type AppleVisionOcrModel = typeof APPLE_VISION_OCR_MODEL
+export type OcrModel = LocalOcrModel | AppleVisionOcrModel | OpenAiOcrModel
 export type OcrModelId = OcrModel['id']
 
 export const OCR_LOCAL_MODELS: readonly LocalOcrModel[] = OCR_LOCAL_MODEL_DEFINITIONS.map(
@@ -103,10 +112,13 @@ export const OCR_LOCAL_MODELS: readonly LocalOcrModel[] = OCR_LOCAL_MODEL_DEFINI
   }),
 )
 
-export const OCR_MODELS: readonly OcrModel[] = [...OCR_LOCAL_MODELS, OPENAI_OCR_MODEL]
+export const OCR_MODELS: readonly OcrModel[] = [
+  APPLE_VISION_OCR_MODEL,
+  ...OCR_LOCAL_MODELS,
+  OPENAI_OCR_MODEL,
+]
 
-export const DEFAULT_OCR_MODEL =
-  OCR_LOCAL_MODELS.find((model) => model.id === 'paddleocr-vl-1.6') ?? OCR_LOCAL_MODELS[0]
+export const DEFAULT_OCR_MODEL = APPLE_VISION_OCR_MODEL
 
 export function getOcrModel(id: string | undefined) {
   return OCR_MODELS.find((model) => model.id === id) ?? DEFAULT_OCR_MODEL
