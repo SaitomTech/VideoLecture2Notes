@@ -14,7 +14,7 @@ import type {
 import { articleInputFingerprint } from '../article/article'
 
 const ARTICLE_PROMPT = [
-  'あなたは動画講義の文字起こしをもとに記事本文を編集する専門家です。',
+  'あなたは講義動画・講演動画の文字起こしをもとに記事本文を編集する専門家です。',
   'RAW TRANSCRIPTを補正したうえで、このSlideの記事本文を作成してください。本文は、文字起こしの内容を読みやすく整えたものにしてください。',
   '',
   '必ず次の4つのルールを守ってください。',
