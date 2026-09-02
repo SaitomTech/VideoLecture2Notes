@@ -1,16 +1,14 @@
 import {
   DEFAULT_WHISPER_MODEL,
   getWhisperModel,
-  WHISPER_MODELS,
   type WhisperModel,
-  type WhisperModelId,
 } from '../whisper/modelManager'
 
 export const OPENAI_TRANSCRIBE_MODEL = {
   id: 'openai:gpt-transcribe',
   provider: 'openai',
   apiModel: 'gpt-transcribe',
-  label: 'GPT-Transcribe（OpenAI API）',
+  label: 'GPT-Transcribe',
   description:
     'OpenAIの音声認識モデルです。音声をSlideごとの区間（1区間は最大30分）に分け、送信用に圧縮してOpenAIへ送信します。',
   accuracy: '高',
@@ -18,29 +16,56 @@ export const OPENAI_TRANSCRIBE_MODEL = {
 } as const
 
 export type OpenAiTranscriptionModel = typeof OPENAI_TRANSCRIBE_MODEL
+const TRANSCRIPTION_LOCAL_MODEL_DEFINITIONS = [
+  {
+    id: 'tiny-q5_1',
+    label: 'Whisper tiny Q5_1（動作確認用）',
+  },
+  {
+    id: 'large-v3-turbo-q5_0',
+    label: 'Whisper large-v3-turbo Q5_0（標準）',
+  },
+  {
+    id: 'large-v3',
+    label: 'Whisper large-v3（高精度）',
+  },
+] as const
+
+export type TranscriptionLocalModelId =
+  (typeof TRANSCRIPTION_LOCAL_MODEL_DEFINITIONS)[number]['id']
 export type LocalTranscriptionModel = {
   provider: 'local'
-  id: WhisperModelId
+  id: TranscriptionLocalModelId
   label: string
   model: WhisperModel
 }
 export type TranscriptionModel = LocalTranscriptionModel | OpenAiTranscriptionModel
-export type TranscriptionModelId = WhisperModelId | OpenAiTranscriptionModel['id']
+export type TranscriptionModelId = TranscriptionLocalModelId | OpenAiTranscriptionModel['id']
 
-export const DEFAULT_TRANSCRIPTION_MODEL_ID: TranscriptionModelId = DEFAULT_WHISPER_MODEL.id
+export const TRANSCRIPTION_LOCAL_MODELS: readonly LocalTranscriptionModel[] =
+  TRANSCRIPTION_LOCAL_MODEL_DEFINITIONS.map(({ id, label }) => ({
+    provider: 'local' as const,
+    id,
+    label,
+    model: getWhisperModel(id),
+  }))
+
+const DEFAULT_LOCAL_TRANSCRIPTION_MODEL =
+  TRANSCRIPTION_LOCAL_MODELS.find((model) => model.id === DEFAULT_WHISPER_MODEL.id) ??
+  TRANSCRIPTION_LOCAL_MODELS[0]
+
+export const DEFAULT_TRANSCRIPTION_MODEL_ID: TranscriptionModelId =
+  DEFAULT_LOCAL_TRANSCRIPTION_MODEL.id
 
 export const TRANSCRIPTION_MODELS: readonly TranscriptionModel[] = [
-  ...WHISPER_MODELS.map((model) => ({
-    provider: 'local' as const,
-    id: model.id,
-    label: model.label,
-    model,
-  })),
+  ...TRANSCRIPTION_LOCAL_MODELS,
   OPENAI_TRANSCRIBE_MODEL,
 ]
 
 export function getTranscriptionModel(id: string | undefined): TranscriptionModel {
   if (id === OPENAI_TRANSCRIBE_MODEL.id) return OPENAI_TRANSCRIBE_MODEL
-  const model = getWhisperModel(id)
-  return { provider: 'local', id: model.id, label: model.label, model }
+  return (
+    TRANSCRIPTION_LOCAL_MODELS.find((model) => model.id === id) ??
+    DEFAULT_LOCAL_TRANSCRIPTION_MODEL
+  )
 }

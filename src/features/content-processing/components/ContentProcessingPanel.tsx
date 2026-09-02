@@ -1,5 +1,7 @@
 import { RefreshCw, Square } from 'lucide-react'
 import { OpenAiApiKeySettings } from '../../../components/OpenAiApiKeySettings'
+import { ModelDescription } from '../../../components/ModelDescription'
+import { ModelSelect } from '../../../components/ModelSelect'
 import { ProcessingStatusRow } from '../../../components/ProcessingStatusRow'
 import {
   OPENAI_LUNA_MODEL,
@@ -34,32 +36,24 @@ function ArticleModelDetails({ model, disabled }: { model: ArticleModel; disable
   switch (model.provider) {
     case 'local':
       return (
-        <>
-          <span className="mt-2 block text-xs leading-5 text-[#52635c]">
-            {model.model.description}
-          </span>
-          <span className="mt-1 block text-[10px] text-[#9aa6a1]">
-            初回のみモデルをダウンロードします（約
-            {formatModelSize(model.model.totalSizeBytes)}）。
-          </span>
-        </>
+        <ModelDescription
+          description={model.model.description}
+          annotation={`初回のみモデルをダウンロードします（約${formatModelSize(model.model.totalSizeBytes)}）。`}
+        />
       )
     case 'openai':
       return (
-        <>
-          <span className="mt-2 block text-xs leading-5 text-[#52635c]">
-            {model.description}
-          </span>
-          <span className="mt-1 block text-[10px] leading-4 text-[#9aa6a1]">
-            文字起こしとOCRテキストを外部送信します。動画・音声・画像は送信しません。
-          </span>
+        <ModelDescription
+          description={model.description}
+          annotation="文字起こしとOCRテキストを外部送信します。動画・音声・画像は送信しません。"
+        >
           <OpenAiApiKeySettings
             verificationModel={OPENAI_LUNA_MODEL.apiModel}
             verificationLabel={OPENAI_LUNA_MODEL.label}
             billingNote="API利用料は、入力したAPIキーに紐づくOpenAI APIの請求先に発生します。"
             disabled={disabled}
           />
-        </>
+        </ModelDescription>
       )
     default:
       return assertNever(model)
@@ -122,24 +116,15 @@ export function ContentProcessingPanel({
       <div className="mt-4 rounded-[12px] border border-[#d8e1dc] bg-[#f7faf7] p-4 md:p-5">
         <label className="block text-xs text-[#71807b]" htmlFor="article-generation-model">
           <span className="block font-semibold text-[#18211f]">使用モデル</span>
-          <select
+          <ModelSelect
             id="article-generation-model"
-            className="mt-2 w-full rounded-[8px] border border-[#b7cbc0] bg-[#fbfcfa] px-3 py-2.5 text-sm text-[#18211f] outline-none focus:border-[#1d6b50] focus:ring-2 focus:ring-[#1d6b50]/20 disabled:cursor-not-allowed disabled:opacity-50"
             value={modelId}
-            onChange={(event) => onModelChange(event.target.value as ArticleModelId)}
+            localModels={TEXT_MODELS}
+            apiModels={[OPENAI_LUNA_MODEL]}
+            onChange={(nextModelId) => onModelChange(nextModelId as ArticleModelId)}
             disabled={disabled || isRunning}
-          >
-            <optgroup label="ローカルモデル">
-              {TEXT_MODELS.map((textModel) => (
-                <option key={textModel.id} value={textModel.id}>
-                  {textModel.label}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="OpenAI API">
-              <option value={OPENAI_LUNA_MODEL.id}>{OPENAI_LUNA_MODEL.label}</option>
-            </optgroup>
-          </select>
+            aria-label="使用モデル"
+          />
         </label>
         <ArticleModelDetails model={model} disabled={disabled || isRunning} />
       </div>
