@@ -13,6 +13,7 @@ export type LlamaModelPaths = {
   modelPath: string
   mmprojPath?: string
   contextSize?: number
+  skipChatParsing?: boolean
 }
 
 function choosePort() {
@@ -66,6 +67,7 @@ async function startLlamaServer(
     'off',
     '--reasoning',
     'off',
+    ...(model.skipChatParsing ? ['--skip-chat-parsing'] : []),
     '--fit',
     'off',
     '--no-webui',

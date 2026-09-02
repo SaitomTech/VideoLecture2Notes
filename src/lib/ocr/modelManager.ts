@@ -2,6 +2,27 @@ import { ensureModelFiles, type ModelDownloadProgress } from '../models/download
 
 export const OCR_MODELS = [
   {
+    id: 'glm-ocr-q2_k',
+    label: 'GLM-OCR Q2_K',
+    totalSizeBytes: 845_760_288,
+    directory: 'models/glm-ocr-q2',
+    prompt: 'Text Recognition:',
+    files: [
+      {
+        filename: 'GLM-OCR.Q2_K.gguf',
+        url: 'https://huggingface.co/mradermacher/GLM-OCR-GGUF/resolve/3c1e642c0fa5df64831f0b04f3c674b57ce341af/GLM-OCR.Q2_K.gguf?download=true',
+        sizeBytes: 361_356_608,
+        sha256: '4ee505d13daca256655b53377cc1aa67600fd790d4956f79d4870c8c61ad0011',
+      },
+      {
+        filename: 'GLM-OCR.mmproj-Q8_0.gguf',
+        url: 'https://huggingface.co/mradermacher/GLM-OCR-GGUF/resolve/3c1e642c0fa5df64831f0b04f3c674b57ce341af/GLM-OCR.mmproj-Q8_0.gguf?download=true',
+        sizeBytes: 484_403_680,
+        sha256: 'fb3e1e89b862ed702a0a7b36b0bf6f5b6c6ab1579fc583ce13478c7c668b2088',
+      },
+    ],
+  },
+  {
     id: 'glm-ocr-q8_0',
     label: 'GLM-OCR Q8_0',
     totalSizeBytes: 1_434_837_056,
@@ -59,6 +80,7 @@ export type OcrModelPaths = {
   modelPath: string
   mmprojPath: string
   contextSize: number
+  skipChatParsing: true
 }
 
 export async function ensureOcrModel({
@@ -78,5 +100,5 @@ export async function ensureOcrModel({
     signal,
   })
 
-  return { modelPath, mmprojPath, contextSize: 16_384 }
+  return { modelPath, mmprojPath, contextSize: 16_384, skipChatParsing: true }
 }
