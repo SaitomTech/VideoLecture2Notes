@@ -11,8 +11,7 @@ export const OPENAI_LUNA_MODEL = {
   provider: 'openai',
   apiModel: 'gpt-5.6-luna',
   label: 'GPT-5.6 Luna',
-  description:
-    'OpenAI APIを使う高速・低コストなクラウドモデルです。文字起こしとOCRテキストを外部送信します。',
+  description: 'OpenAI APIを使う高速・低コストなクラウドモデルです。',
   reasoningEffort: 'none',
 } as const
 
