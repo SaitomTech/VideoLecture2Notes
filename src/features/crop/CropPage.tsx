@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, Maximize2, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Check, RotateCcw } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import { AppHeader } from '../../components/AppHeader'
@@ -7,7 +7,7 @@ import { VideoPlaybackControls } from '../../components/VideoPlaybackControls'
 import type { MediaProject, CropRegion } from '../../types/project'
 import { CropSelector } from './components/CropSelector'
 import type { NormalizedCropRegion } from './types'
-import { FULL_FRAME, normalizedToPixelCrop, pixelToNormalizedCrop } from './utils'
+import { normalizedToPixelCrop, pixelToNormalizedCrop } from './utils'
 
 type CropPageProps = {
   project: MediaProject
@@ -83,7 +83,7 @@ export function CropPage({ project, onBack, onApply }: CropPageProps) {
       <AppHeader />
       <WorkflowBar activeStep="crop" />
 
-      <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
+      <section className="mx-auto flex w-[calc(100%-48px)] max-w-[720px] flex-1 flex-col pb-8 md:w-[calc(100%-11.6vw)]">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">02 / CROP</p>
@@ -101,7 +101,7 @@ export function CropPage({ project, onBack, onApply }: CropPageProps) {
         </div>
 
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d8e1dc] px-5 py-3.5">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d8e1dc] px-4 py-3">
             <div className="min-w-0">
               <p className="truncate text-xs font-semibold text-[#18211f]" title={project.source.path}>{project.source.name}</p>
               <p className="mt-0.5 font-mono text-[10px] text-[#71807b]">{metadata.width} × {metadata.height} · {formatTime(metadata.durationMs)}</p>
@@ -109,7 +109,7 @@ export function CropPage({ project, onBack, onApply }: CropPageProps) {
             <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#1d6b50]">CROP READY</span>
           </div>
 
-          <div className="p-4 md:p-7">
+          <div className="p-4 md:p-5">
             <div className="relative overflow-hidden rounded-[10px]" style={{ aspectRatio: `${metadata.width} / ${metadata.height}` }}>
               <video
                 ref={videoRef}
@@ -154,19 +154,11 @@ export function CropPage({ project, onBack, onApply }: CropPageProps) {
                   <RotateCcw size={14} strokeWidth={1.8} />
                   リセット
                 </button>
-                <button
-                  className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-2 text-xs font-semibold text-[#71807b] transition hover:bg-[#e2eee8] hover:text-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30"
-                  type="button"
-                  onClick={() => { setRegion(FULL_FRAME); setNotice(null) }}
-                >
-                  <Maximize2 size={14} strokeWidth={1.8} />
-                  全画面
-                </button>
               </div>
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 border-t border-[#d8e1dc] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 border-t border-[#d8e1dc] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-h-5 text-xs" aria-live="polite">
               {error && <p className="text-[#b6533a]">{error}</p>}
               {!error && notice && <p className="inline-flex items-center gap-1.5 text-[#1d6b50]"><Check size={14} />{notice}</p>}
