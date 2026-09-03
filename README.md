@@ -1,32 +1,65 @@
-# React + TypeScript + Vite
+# Video Lecture to Notes
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+講義・講演動画から、文字起こし、スライド検出、OCR、記事本文の生成までをmacOS上で行うTauriアプリです。
 
-Currently, two official plugins are available:
+現在はmacOS Apple Silicon（arm64）を対象にしています。Apple SpeechおよびApple Foundation Modelsを使う機能はmacOS 26以降が必要です。
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## できること
 
-## React Compiler
+- 動画を読み込み、音声をスライド単位に分割
+- Whisper系モデルによるローカル文字起こし
+- Apple Vision、ローカルモデル、OpenAI APIによるOCR
+- Apple Foundation Models、ローカルLLM、OpenAI APIによる本文生成
+- Markdown・HTML・TXTへのエクスポート
+- プロジェクトのローカル保存と再開
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 動作環境
 
-## Expanding the Oxlint configuration
+- Apple Silicon搭載Mac
+- macOS 26以降（Apple Speech / Foundation Modelsを利用する場合）
+- [Bun](https://bun.sh/)
+- Rust toolchain
+- Xcode Command Line Tools（Swiftのsidecarをビルドするため）
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## 開発環境のセットアップ
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+bun install --frozen-lockfile
+bun run setup
+bun tauri dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+`bun run setup`またはビルド時に、macOS arm64用のsidecarを取得・ビルドします。初回は外部バイナリのダウンロードに時間がかかることがあります。
+
+## ローカルビルド
+
+```bash
+bun run build
+bunx tauri build --bundles dmg
+```
+
+生成物は`src-tauri/target/release/bundle/`以下に作成されます。現在の配布物はApple Silicon用DMGのみです。
+
+## OpenAI APIの利用
+
+OpenAIの機能を使う場合は、アプリ内に自分のOpenAI APIキーを入力します。キーはmacOS Keychainに保存され、リポジトリやGitHub Actionsには保存しません。OpenAI APIの利用料金は入力したAPIキーのアカウントに発生します。
+
+OpenAIを選択した処理では、選択した音声・画像・文字起こし・本文データがOpenAI APIへ送信されます。ローカルモデルとApple標準モデルのデータ処理、送信先の詳細は[プライバシーとデータ取り扱い](./docs/プライバシー.md)を確認してください。
+
+## モデルとダウンロード
+
+ローカルモデルは初回利用時にHugging Faceからダウンロードされ、アプリのローカルデータ領域に保存されます。モデルファイルはこのリポジトリには含めていません。取得元、ハッシュ、ライセンスの確認事項は[第三者ライセンスとNOTICE](./docs/第三者ライセンス.md)にまとめています。
+
+## リリース
+
+リリースは、GitHub画面でタグとReleaseを作成し、GitHub ActionsでDMGをビルドしてReleaseへ添付します。詳しい手順は[macOS版リリース手順](./docs/リリース手順.md)を確認してください。
+
+アプリ内の更新確認はGitHub Releases APIを認証なしで参照するため、リポジトリとReleaseをPublicにする必要があります。現在はReleaseページを開くだけで、自動インストールは行いません。
+
+## 公開前の確認
+
+公開範囲、秘密情報、Git履歴、Actions、外部バイナリ・モデルのライセンスは[公開前チェックリスト](./docs/公開前チェックリスト.md)に沿って確認してください。
+
+## ライセンス
+
+このプロジェクトのコードはMIT Licenseです。外部ライブラリ、sidecar、AIモデル、アイコンなどはそれぞれのライセンスが適用されます。配布時は[第三者ライセンスとNOTICE](./docs/第三者ライセンス.md)の確認事項に従ってください。

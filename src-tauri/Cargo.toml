@@ -1,10 +1,10 @@
 [package]
 name = "videolecture2notes"
 version = "0.2.0"
-description = "A Tauri App"
-authors = ["you"]
-license = ""
-repository = ""
+description = "A macOS app for turning lecture videos into structured notes"
+authors = ["SaitomTech"]
+license = "MIT"
+repository = "https://github.com/SaitomTech/VideoLecture2Notes"
 edition = "2021"
 rust-version = "1.77.2"
 
