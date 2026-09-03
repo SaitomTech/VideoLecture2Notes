@@ -30,7 +30,6 @@ export function ExportPage({ project, onBack }: ExportPageProps) {
   const [destination, setDestination] = useState('')
   const [selectedFormats, setSelectedFormats] = useState<ExportFormat[]>(['html', 'markdown'])
   const exporter = useExport(project)
-  const hasTranscription = Boolean(project.transcription?.segments.length)
   const isRunning = exporter.status === 'running'
   const progressPercent = exporter.progress.total
     ? Math.round((exporter.progress.completed / exporter.progress.total) * 100)
@@ -66,7 +65,7 @@ export function ExportPage({ project, onBack }: ExportPageProps) {
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">05 / EXPORT</p>
             <h1 className="mt-1 text-[27px] font-bold tracking-[-0.06em]">記事を書き出す</h1>
-            <p className="mt-1 text-xs text-[#71807b]">画像と本文を、選んだ形式でこのMacに保存します。</p>
+            <p className="mt-1 text-xs text-[#71807b]">HTML/Markdownは画像付き、TXTは本文のみでこのMacに保存します。</p>
           </div>
           <button
             className="inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-[#71807b] transition hover:bg-[#e2eee8] hover:text-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50"
@@ -75,7 +74,7 @@ export function ExportPage({ project, onBack }: ExportPageProps) {
             disabled={isRunning}
           >
             <ArrowLeft size={15} strokeWidth={1.8} />
-            記事編集に戻る
+            記事プレビューに戻る
           </button>
         </div>
 
@@ -126,19 +125,16 @@ export function ExportPage({ project, onBack }: ExportPageProps) {
                 </div>
                 <span className="text-xs text-[#71807b]">複数選択できます</span>
               </div>
-              <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="mt-4 grid gap-2 sm:grid-cols-3">
                 {EXPORT_OPTIONS.map(({ format, label, filename, description }) => {
-                  const unavailable = format === 'srt' && !hasTranscription
                   const checked = selectedFormats.includes(format)
 
                   return (
                     <label
                       className={`flex min-h-[88px] cursor-pointer flex-col justify-between rounded-[9px] border px-3 py-3 transition ${
-                        unavailable
-                          ? 'cursor-not-allowed border-[#e0e8e3] bg-[#f4f7f4] opacity-55'
-                          : checked
-                            ? 'border-[#1d6b50] bg-[#e8f2ec]'
-                            : 'border-[#d8e1dc] bg-[#fbfcfa] hover:border-[#9dbbad]'
+                        checked
+                          ? 'border-[#1d6b50] bg-[#e8f2ec]'
+                          : 'border-[#d8e1dc] bg-[#fbfcfa] hover:border-[#9dbbad]'
                       }`}
                       key={format}
                     >
@@ -146,14 +142,14 @@ export function ExportPage({ project, onBack }: ExportPageProps) {
                         <span>
                           <span className="block font-mono text-xs font-semibold text-[#1d6b50]">{label}</span>
                           <span className="mt-1 block text-[11px] leading-5 text-[#71807b]">
-                            {unavailable ? '文字起こしが必要' : description}
+                            {description}
                           </span>
                         </span>
                         <input
                           className="mt-0.5 h-4 w-4 accent-[#1d6b50]"
                           type="checkbox"
                           checked={checked}
-                          disabled={unavailable || isRunning}
+                          disabled={isRunning}
                           onChange={() => handleToggleFormat(format)}
                         />
                       </span>
@@ -163,7 +159,7 @@ export function ExportPage({ project, onBack }: ExportPageProps) {
                 })}
               </div>
               <p className="mt-3 font-mono text-[10px] text-[#71807b]">
-                Slide画像 {project.slides.length}枚は assets/ にまとめて保存します。
+                HTML/MarkdownではSlide画像を assets/ に保存し、TXTには画像を含めません。
               </p>
             </section>
 
