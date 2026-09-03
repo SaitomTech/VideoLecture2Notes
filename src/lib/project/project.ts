@@ -7,6 +7,8 @@ import {
   type CropRegion,
   type MediaMetadata,
   type MediaProject,
+  type MediaSource,
+  type ProjectStep,
   type SlideData,
   type SlideDetectionResult,
   type SlideOcrResult,
@@ -49,8 +51,52 @@ export function createMediaProject(video: SelectedVideo, metadata: MediaMetadata
     article: {
       title: video.name.replace(/\.[^.]+$/, ''),
     },
+    workflow: {
+      lastVisitedStep: 'crop',
+      lastOpenedAt: now,
+    },
     createdAt: now,
     updatedAt: now,
+  }
+}
+
+export function updateProjectWorkflow(
+  project: MediaProject,
+  step: ProjectStep,
+  options: { cropConfirmed?: boolean } = {},
+): MediaProject {
+  const now = new Date().toISOString()
+
+  return {
+    ...project,
+    workflow: {
+      ...project.workflow,
+      lastVisitedStep: step,
+      ...(options.cropConfirmed ? { cropConfirmedAt: now } : {}),
+    },
+    updatedAt: project.updatedAt,
+  }
+}
+
+export function markProjectOpened(project: MediaProject, step: ProjectStep): MediaProject {
+  const now = new Date().toISOString()
+
+  return {
+    ...project,
+    workflow: {
+      ...project.workflow,
+      lastVisitedStep: step,
+      lastOpenedAt: now,
+    },
+    updatedAt: project.updatedAt,
+  }
+}
+
+export function updateProjectSource(project: MediaProject, source: MediaSource): MediaProject {
+  return {
+    ...project,
+    source,
+    updatedAt: new Date().toISOString(),
   }
 }
 
@@ -64,6 +110,11 @@ export function updateProjectCrop(project: MediaProject, crop: CropRegion): Medi
   return {
     ...project,
     crop,
+    workflow: {
+      ...project.workflow,
+      ...(cropChanged ? { cropConfirmedAt: new Date().toISOString() } : {}),
+      lastVisitedStep: 'detect-slides',
+    },
     ...(cropChanged
       ? {
           slides: [],
