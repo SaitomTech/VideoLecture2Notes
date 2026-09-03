@@ -20,6 +20,8 @@ const FOUNDATION_MODELS_SOURCE = join(
 )
 const FOUNDATION_MODELS_SIDECAR_NAME = 'apple-foundation-models'
 const RELEASE_DIRECTORY = '1787073674_9.0.1'
+const DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000
+const DOWNLOAD_PROGRESS_INTERVAL_MS = 30 * 1000
 const LLAMA_RUNTIME_FILES = {
   'libllama-server-impl.dylib': 'libllama-server-impl.dylib',
   'libllama-common.0.dylib': 'libllama-common.0.1.2.dylib',
@@ -291,19 +293,52 @@ async function prepareRuntimeFiles(
 async function downloadAndExtract(sidecar: (typeof SIDECARS)[number], temporaryDirectory: string) {
   const extension = sidecar.archive === 'zip' ? 'zip' : 'tar.gz'
   const archivePath = join(temporaryDirectory, `${sidecar.name}.${extension}`)
-  const response = await fetch(sidecar.url)
-  if (!response.ok) {
-    throw new Error(`${sidecar.name}のダウンロードに失敗しました: HTTP ${response.status}`)
+  const startedAt = Date.now()
+  console.log(`[${sidecar.name}] ダウンロード開始: ${sidecar.url}`)
+
+  let progressTimer: ReturnType<typeof setInterval> | undefined
+  try {
+    const response = await fetch(sidecar.url, {
+      signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
+    })
+    if (!response.ok) {
+      throw new Error(`${sidecar.name}のダウンロードに失敗しました: HTTP ${response.status}`)
+    }
+
+    const contentLength = response.headers.get('content-length')
+    console.log(
+      `[${sidecar.name}] HTTP ${response.status}` +
+        (contentLength ? ` (${contentLength} bytes)` : ' (サイズ不明)'),
+    )
+    progressTimer = setInterval(() => {
+      const elapsedSeconds = Math.round((Date.now() - startedAt) / 1000)
+      console.log(`[${sidecar.name}] ダウンロード中: ${elapsedSeconds}秒経過`)
+    }, DOWNLOAD_PROGRESS_INTERVAL_MS)
+    await Bun.write(archivePath, response)
+  } catch (error) {
+    if (error instanceof Error && error.name === 'TimeoutError') {
+      throw new Error(
+        `${sidecar.name}のダウンロードが${DOWNLOAD_TIMEOUT_MS / 60_000}分でタイムアウトしました`,
+      )
+    }
+    throw error
+  } finally {
+    if (progressTimer) clearInterval(progressTimer)
   }
 
-  await Bun.write(archivePath, response)
+  const archiveSize = (await stat(archivePath)).size
+  const downloadSeconds = Math.round((Date.now() - startedAt) / 1000)
+  console.log(`[${sidecar.name}] ダウンロード完了: ${archiveSize} bytes (${downloadSeconds}秒)`)
+  console.log(`[${sidecar.name}] SHA-256検証開始`)
   const actualHash = await sha256(archivePath)
   if (actualHash !== sidecar.sha256) {
     throw new Error(
       `${sidecar.name}のSHA-256が一致しません (expected ${sidecar.sha256}, got ${actualHash})`,
     )
   }
+  console.log(`[${sidecar.name}] SHA-256検証完了`)
 
+  console.log(`[${sidecar.name}] アーカイブ内容を確認中`)
   const entries = await listArchiveEntries(sidecar, archivePath)
   const entry = entries.find(
     (candidate) => basename(candidate) === (sidecar.archiveEntry ?? sidecar.name),
@@ -314,11 +349,14 @@ async function downloadAndExtract(sidecar: (typeof SIDECARS)[number], temporaryD
 
   const destination = sidecarPath(sidecar.name)
   const temporaryDestination = `${destination}.tmp`
+  console.log(`[${sidecar.name}] 実行ファイルを展開中`)
   await Bun.write(temporaryDestination, await extractArchiveEntry(sidecar, archivePath, entry))
   await chmod(temporaryDestination, 0o755)
   await rename(temporaryDestination, destination)
+  console.log(`[${sidecar.name}] 実行ファイルの展開完了`)
+  if (sidecar.runtimeDirectory) console.log(`[${sidecar.name}] runtimeを展開中`)
   await prepareRuntimeFiles(sidecar, archivePath, destination, entries)
-  console.log(`✓ ${sidecar.name}-${TARGET_TRIPLE}`)
+  console.log(`✓ ${sidecar.name}-${TARGET_TRIPLE} (${Math.round((Date.now() - startedAt) / 1000)}秒)`)
 }
 
 async function sidecarReady(sidecar: (typeof SIDECARS)[number]) {
@@ -371,9 +409,10 @@ async function main() {
 
     for (const sidecar of SIDECARS) {
       if (!force && (await sidecarReady(sidecar))) {
-        console.log(`✓ ${sidecar.name}-${TARGET_TRIPLE}`)
+        console.log(`✓ ${sidecar.name}-${TARGET_TRIPLE} (準備済み、ダウンロードをスキップ)`)
         continue
       }
+      console.log(`[${sidecar.name}] sidecarの準備を開始`)
       await downloadAndExtract(sidecar, cleanTemporaryDirectory)
     }
   } finally {
