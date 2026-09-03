@@ -105,38 +105,19 @@ export function renderMarkdown(document: ExportDocument) {
   return [`# ${safeHeading(document.title)}`, '', `元動画: ${document.sourceName}`, '', sections, ''].join('\n')
 }
 
-export function renderJson(document: ExportDocument) {
-  const portableDocument = {
-    title: document.title,
-    sourceName: document.sourceName,
-    durationMs: document.durationMs,
-    sections: document.sections.map(({ sourceImagePath: _sourceImagePath, ...section }) => section),
-    transcriptSegments: document.transcriptSegments,
-  }
+export function renderTxt(document: ExportDocument) {
+  const sections = document.sections
+    .map((section) => {
+      const slideLabel = `Slide ${String(section.index + 1).padStart(2, '0')}`
+      const body = section.body.trim() || '（発話なし）'
 
-  return `${JSON.stringify(portableDocument, null, 2)}\n`
-}
+      return [
+        `${slideLabel} | ${formatTimestamp(section.startMs)} — ${formatTimestamp(section.endMs)}`,
+        '',
+        body,
+      ].join('\n')
+    })
+    .join('\n\n------------------------------\n\n')
 
-function formatSrtTimestamp(timestampMs: number) {
-  const totalMilliseconds = Math.max(0, Math.round(timestampMs))
-  const milliseconds = totalMilliseconds % 1000
-  const totalSeconds = Math.floor(totalMilliseconds / 1000)
-  const seconds = totalSeconds % 60
-  const totalMinutes = Math.floor(totalSeconds / 60)
-  const minutes = totalMinutes % 60
-  const hours = Math.floor(totalMinutes / 60)
-
-  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')},${String(milliseconds).padStart(3, '0')}`
-}
-
-export function renderSrt(document: ExportDocument) {
-  const segments = document.transcriptSegments.map((segment, index) =>
-    [
-      String(index + 1),
-      `${formatSrtTimestamp(segment.startMs)} --> ${formatSrtTimestamp(segment.endMs)}`,
-      segment.text.trim(),
-    ].join('\n'),
-  )
-
-  return `${segments.join('\n\n')}\n`
+  return [document.title, `元動画: ${document.sourceName}`, '', sections, ''].join('\n')
 }
