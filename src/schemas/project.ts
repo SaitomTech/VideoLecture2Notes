@@ -41,7 +41,8 @@ const TranscriptSegmentSchema = z.object({
 
 const TranscriptionResultSchema = z.object({
   model: z.string().min(1),
-  provider: z.enum(['local', 'openai']).optional(),
+  provider: z.enum(['local', 'openai', 'apple']).optional(),
+  engineVersion: z.string().min(1).optional(),
   language: z.string().min(1).optional(),
   audioPath: z.string().min(1),
   segments: z.array(TranscriptSegmentSchema),
@@ -101,7 +102,8 @@ const SlideDataSchema = z.object({
       articleBody: z.string().optional(),
       articleModel: z.string().optional(),
       articleInputFingerprint: z.string().optional(),
-      articleProvider: z.enum(['local', 'openai']).optional(),
+      articleProvider: z.enum(['local', 'openai', 'apple']).optional(),
+      articleEngineVersion: z.string().min(1).optional(),
       articleInputTokens: z.number().int().nonnegative().optional(),
       articleOutputTokens: z.number().int().nonnegative().optional(),
       articleRequestId: z.string().optional(),

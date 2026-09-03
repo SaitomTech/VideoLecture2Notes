@@ -51,7 +51,8 @@ export type TranscriptSegment = {
 
 export type TranscriptionResult = {
   model: string
-  provider?: 'local' | 'openai'
+  provider?: 'local' | 'openai' | 'apple'
+  engineVersion?: string
   language?: string
   audioPath: string
   segments: TranscriptSegment[]
@@ -87,7 +88,8 @@ export type ArticleFormattingResult = {
   body: string
   model: string
   inputFingerprint: string
-  provider?: 'local' | 'openai'
+  provider?: 'local' | 'openai' | 'apple'
+  engineVersion?: string
   usage?: {
     inputTokens: number
     outputTokens: number
@@ -139,7 +141,8 @@ export type SlideData = {
     articleBody?: string
     articleModel?: string
     articleInputFingerprint?: string
-    articleProvider?: 'local' | 'openai'
+    articleProvider?: 'local' | 'openai' | 'apple'
+    articleEngineVersion?: string
     articleInputTokens?: number
     articleOutputTokens?: number
     articleRequestId?: string

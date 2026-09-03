@@ -4,6 +4,7 @@ import { ModelDescription } from '../../../components/ModelDescription'
 import { ModelSelect } from '../../../components/ModelSelect'
 import {
   getTranscriptionModel,
+  APPLE_SPEECH_TRANSCRIBER_MODEL,
   OPENAI_TRANSCRIBE_MODEL,
   TRANSCRIPTION_LOCAL_MODELS,
   type TranscriptionModel,
@@ -35,13 +36,21 @@ function TranscriptionModelDetails({
   disabled: boolean
 }) {
   switch (model.provider) {
+    case 'apple':
+      return (
+        <ModelDescription
+          description={model.description}
+          annotation="音声はMac内で処理します。macOS 26以降、対応するApple Silicon Mac、Apple Speechの日本語モデルが必要です。初回のみシステム音声モデルの準備が発生する場合があります。"
+        />
+      )
     case 'local':
       return (
         <ModelDescription
           description={model.model.description}
           annotation={
             <>
-              対応言語：{model.model.languageLabel}。音声はMac内で処理します。未ダウンロードの場合、初回のみモデルを取得します。
+              対応言語：{model.model.languageLabel}
+              。音声はMac内で処理します。未ダウンロードの場合、初回のみモデルを取得します。
               {model.model.languageSupport === 'ja' ? (
                 <> 日本語専用モデルのため、言語設定が自動判定でも日本語として実行します。</>
               ) : null}
@@ -130,6 +139,7 @@ export function TranscriptionSettings({
             <ModelSelect
               id="transcription-model"
               value={modelId}
+              systemModels={[APPLE_SPEECH_TRANSCRIBER_MODEL]}
               localModels={TRANSCRIPTION_LOCAL_MODELS}
               apiModels={[OPENAI_TRANSCRIBE_MODEL]}
               onChange={(nextModelId) => onModelChange(nextModelId as TranscriptionModelId)}

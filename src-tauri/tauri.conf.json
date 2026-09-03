@@ -42,7 +42,9 @@
       "binaries/ffprobe",
       "binaries/whisper-cli",
       "binaries/llama-server",
-      "binaries/apple-vision-ocr"
+      "binaries/apple-vision-ocr",
+      "binaries/apple-speech-transcriber",
+      "binaries/apple-foundation-models"
     ],
     "resources": {
       "binaries/llama-runtime": "llama-runtime"

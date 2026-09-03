@@ -1,14 +1,9 @@
 import { UserFacingError, withUserFacingError } from '../../lib/errors'
-import {
-  extractAudio,
-  extractAudioChunkForOpenAi,
-} from '../../lib/media/ffmpeg'
+import { extractAudio, extractAudioChunkForOpenAi } from '../../lib/media/ffmpeg'
 import { transcribeOpenAiAudio } from '../../lib/openai/openai'
-import {
-  getAudioAssetPath,
-  getTranscriptionAudioChunkPath,
-} from '../../lib/storage/projectAssets'
+import { getAudioAssetPath, getTranscriptionAudioChunkPath } from '../../lib/storage/projectAssets'
 import { fileExists } from '../../lib/tauri/filesystem'
+import { runAppleSpeech } from '../../lib/speech/appleSpeech'
 import {
   getTranscriptionModel,
   type TranscriptionModel,
@@ -67,11 +62,7 @@ function throwIfAborted(signal?: AbortSignal) {
   if (signal?.aborted) throw new DOMException('処理を中止しました。', 'AbortError')
 }
 
-function inputFingerprint(
-  project: MediaProject,
-  modelId: TranscriptionModelId,
-  language: string,
-) {
+function inputFingerprint(project: MediaProject, modelId: TranscriptionModelId, language: string) {
   const metadata = project.source.metadata
   return [
     project.source.path,
@@ -93,6 +84,74 @@ function splitRange(range: ChunkRange) {
     })
   }
   return chunks
+}
+
+async function prepareAudio(
+  project: MediaProject,
+  signal: AbortSignal | undefined,
+  onStage?: (stage: TranscriptionStage) => void,
+) {
+  throwIfAborted(signal)
+  onStage?.('extracting-audio')
+  const audioError =
+    '動画から音声を準備できませんでした。音声トラックを確認して、再試行してください。'
+  return withUserFacingError(audioError, async () => {
+    const path = await getAudioAssetPath(project.id)
+    if (!(await fileExists(path))) {
+      await extractAudio({ path: project.source.path, outputPath: path, signal })
+    }
+    if (!(await fileExists(path))) throw new UserFacingError(audioError)
+    return path
+  })
+}
+
+async function runAppleTranscription({
+  project,
+  language,
+  model,
+  onStage,
+  onProgress,
+  onChunkProgress,
+  signal,
+}: RunTranscriptionInput & {
+  model: Extract<TranscriptionModel, { provider: 'apple' }>
+}): Promise<TranscriptionResult> {
+  throwIfAborted(signal)
+  onStage?.('preparing-model')
+  onProgress?.(null)
+  onChunkProgress?.(null)
+  const audioPath = await prepareAudio(project, signal, onStage)
+
+  throwIfAborted(signal)
+  onStage?.('transcribing')
+  onProgress?.(null)
+  const recognition = await withUserFacingError(
+    'Apple SpeechTranscriberで音声を文字起こしできませんでした。macOSの対応状況と音声を確認して、再試行してください。',
+    () =>
+      runAppleSpeech({
+        audioPath,
+        language,
+        onProgress,
+        signal,
+      }),
+  )
+
+  const normalizedLanguage = recognition.language.toLowerCase().startsWith('ja')
+    ? 'ja'
+    : recognition.language.toLowerCase().startsWith('en')
+      ? 'en'
+      : recognition.language
+
+  return {
+    model: model.id,
+    provider: model.provider,
+    engineVersion: recognition.engineVersion,
+    language: normalizedLanguage,
+    audioPath,
+    segments: recognition.segments,
+    transcribedAt: new Date().toISOString(),
+    inputFingerprint: inputFingerprint(project, model.id, language),
+  }
 }
 
 function createSlideRanges(project: MediaProject) {
@@ -208,9 +267,7 @@ function createOpenAiProvider({
       const text = result.text.trim()
       return {
         language: result.language,
-        segments: text
-          ? [{ startMs: 0, endMs: chunk.endMs - chunk.startMs, text }]
-          : [],
+        segments: text ? [{ startMs: 0, endMs: chunk.endMs - chunk.startMs, text }] : [],
       }
     },
   }
@@ -231,10 +288,7 @@ function offsetSegments(chunk: PreparedChunk, segments: TranscriptSegment[]) {
     const startMs = Math.min(chunk.endMs, chunk.startMs + Math.max(0, segment.startMs))
     return {
       startMs,
-      endMs: Math.max(
-        startMs,
-        Math.min(chunk.endMs, chunk.startMs + Math.max(0, segment.endMs)),
-      ),
+      endMs: Math.max(startMs, Math.min(chunk.endMs, chunk.startMs + Math.max(0, segment.endMs))),
       text: segment.text,
     }
   })
@@ -243,6 +297,9 @@ function offsetSegments(chunk: PreparedChunk, segments: TranscriptSegment[]) {
 export async function runTranscription(input: RunTranscriptionInput): Promise<TranscriptionResult> {
   const { project, modelId, onStage, onProgress, onChunkProgress, signal } = input
   const model = getTranscriptionModel(modelId)
+  if (model.provider === 'apple') {
+    return runAppleTranscription({ ...input, model })
+  }
   if (model.provider === 'local') {
     return runLocalTranscription({ ...input, model })
   }

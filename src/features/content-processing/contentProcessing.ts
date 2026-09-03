@@ -17,12 +17,19 @@ export type ContentProcessingSlideCompleted = (
   result: ContentProcessingResult,
 ) => void | Promise<void>
 
+export type ContentProcessingSlideSkipped = (
+  slideId: string,
+  slideIndex: number,
+  reason: 'unsupported-language',
+) => void
+
 type RunContentProcessingInput = {
   project: MediaProject
   modelId: ArticleModelId
   onStage?: (stage: ContentProcessingStage) => void
   onProgress?: (progress: ContentProcessingProgress) => void
   onSlideCompleted: ContentProcessingSlideCompleted
+  onSlideSkipped?: ContentProcessingSlideSkipped
   signal?: AbortSignal
   force?: boolean
 }
@@ -41,6 +48,7 @@ export async function runContentProcessing({
   onStage,
   onProgress,
   onSlideCompleted,
+  onSlideSkipped,
   signal,
   force = false,
 }: RunContentProcessingInput) {
@@ -75,6 +83,12 @@ export async function runContentProcessing({
         for (const slide of pendingSlides) {
           throwIfAborted(signal)
           const result = await generate(slide, signal)
+          if (!result) {
+            onSlideSkipped?.(slide.id, slide.index, 'unsupported-language')
+            completed += 1
+            report(null)
+            continue
+          }
           await withUserFacingError(
             `Slide ${slide.index + 1}の解析結果を保存できませんでした。空き容量を確認して、再試行してください。`,
             () => onSlideCompleted(slide.id, result),

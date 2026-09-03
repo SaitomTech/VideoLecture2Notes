@@ -7,6 +7,7 @@ import {
   runContentProcessing,
   type ContentProcessingProgress,
   type ContentProcessingSlideCompleted,
+  type ContentProcessingSlideSkipped,
   type ContentProcessingStage,
 } from '../contentProcessing'
 
@@ -30,11 +31,15 @@ export function useContentProcessing(
     stageProgress: null,
   })
   const [error, setError] = useState<string | null>(null)
+  const [skippedSlides, setSkippedSlides] = useState<
+    Array<Parameters<ContentProcessingSlideSkipped>>
+  >([])
   const activeController = useRef<AbortController | null>(null)
 
   function reset() {
     setStatus('idle')
     setError(null)
+    setSkippedSlides([])
     setProgress({ completed: 0, total: 0, stageProgress: null })
     setStage('preparing-model')
   }
@@ -46,6 +51,7 @@ export function useContentProcessing(
     activeController.current = controller
     setStatus('running')
     setError(null)
+    setSkippedSlides([])
     try {
       await runContentProcessing({
         project,
@@ -54,6 +60,9 @@ export function useContentProcessing(
         onStage: setStage,
         onProgress: setProgress,
         onSlideCompleted,
+        onSlideSkipped: (slideId, slideIndex, reason) => {
+          setSkippedSlides((current) => [...current, [slideId, slideIndex, reason]])
+        },
         force,
       })
       setProgress((current) => ({ ...current, completed: current.total, stageProgress: 1 }))
@@ -82,7 +91,7 @@ export function useContentProcessing(
   }
 
   const visibleProgress =
-    status === 'running' || status === 'cancelled'
+    status === 'running' || status === 'cancelled' || (status === 'completed' && progress.total > 0)
       ? progress
       : {
           completed: completedFromProject,
@@ -90,7 +99,7 @@ export function useContentProcessing(
           stageProgress: isUpToDate ? 1 : null,
         }
   const visibleStatus: ContentProcessingStatus =
-    status === 'running' || status === 'cancelled' || status === 'error'
+    status === 'running' || status === 'cancelled' || status === 'completed' || status === 'error'
       ? status
       : isUpToDate
         ? 'completed'
@@ -101,6 +110,7 @@ export function useContentProcessing(
     stage,
     progress: visibleProgress,
     error,
+    skippedSlides: skippedSlides.map(([, slideIndex, reason]) => ({ slideIndex, reason })),
     process,
     cancel,
     reset,
