@@ -5,6 +5,7 @@ import type { SlideData } from '../../../types/project'
 type ArticleSectionEditorProps = {
   slide: SlideData
   body: string
+  editing?: boolean
   disabled?: boolean
   onBodyChange: (body: string) => void
 }
@@ -12,6 +13,7 @@ type ArticleSectionEditorProps = {
 export function ArticleSectionEditor({
   slide,
   body,
+  editing = false,
   disabled = false,
   onBodyChange,
 }: ArticleSectionEditorProps) {
@@ -32,17 +34,33 @@ export function ArticleSectionEditor({
       <div className="mt-4 grid gap-5 md:grid-cols-[minmax(220px,0.9fr)_minmax(0,1.4fr)]">
         <SlideThumbnail slide={slide} />
         <div className="min-w-0">
-          <label className="block text-xs font-semibold text-[#18211f]" htmlFor={`article-body-${slide.id}`}>
-            記事本文
-          </label>
-          <textarea
-            className="mt-2 min-h-44 w-full resize-y rounded-[8px] border border-[#b7cbc0] bg-white px-3 py-3 text-sm leading-7 text-[#33413c] outline-none transition placeholder:text-[#9aa6a1] focus:border-[#1d6b50] focus:ring-2 focus:ring-[#1d6b50]/15 disabled:cursor-not-allowed disabled:bg-[#f0f5f1]"
-            id={`article-body-${slide.id}`}
-            value={body}
-            disabled={disabled}
-            onChange={(event) => onBodyChange(event.target.value)}
-            placeholder="このSlideの記事本文を入力"
-          />
+          {editing ? (
+            <>
+              <label
+                className="block text-xs font-semibold text-[#18211f]"
+                htmlFor={`article-body-${slide.id}`}
+              >
+                記事本文
+              </label>
+              <textarea
+                className="mt-2 min-h-44 w-full resize-y rounded-[8px] border border-[#b7cbc0] bg-white px-3 py-3 text-sm leading-7 text-[#33413c] outline-none transition placeholder:text-[#9aa6a1] focus:border-[#1d6b50] focus:ring-2 focus:ring-[#1d6b50]/15 disabled:cursor-not-allowed disabled:bg-[#f0f5f1]"
+                id={`article-body-${slide.id}`}
+                value={body}
+                disabled={disabled}
+                onChange={(event) => onBodyChange(event.target.value)}
+                placeholder="このSlideの記事本文を入力"
+              />
+            </>
+          ) : (
+            <div aria-label={`Slide ${slide.index + 1}の記事本文プレビュー`}>
+              <p className="text-xs font-semibold text-[#71807b]">記事本文プレビュー</p>
+              <p
+                className={`mt-3 whitespace-pre-wrap text-[15px] leading-8 ${body.trim() ? 'text-[#33413c]' : 'text-[#9aa6a1]'}`}
+              >
+                {body.trim() || '本文はまだ生成されていません。'}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

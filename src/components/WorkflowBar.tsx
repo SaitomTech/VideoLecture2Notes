@@ -1,10 +1,17 @@
-export type WorkflowStep = 'import' | 'crop' | 'detect-slides' | 'generate-notes' | 'export'
+export type WorkflowStep =
+  | 'import'
+  | 'crop'
+  | 'detect-slides'
+  | 'generate-notes'
+  | 'article-review'
+  | 'export'
 
 const WORKFLOW_STEPS: Array<{ id: WorkflowStep; label: string }> = [
   { id: 'import', label: 'Import' },
   { id: 'crop', label: 'Crop' },
   { id: 'detect-slides', label: 'Detect slides' },
   { id: 'generate-notes', label: 'Generate notes' },
+  { id: 'article-review', label: 'Article preview' },
   { id: 'export', label: 'Export' },
 ]
 

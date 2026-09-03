@@ -111,6 +111,12 @@ export type ArticleDraft = {
   bodies: Record<string, string>
 }
 
+export type SlideResultEdits = {
+  ocrText: string
+  transcriptRaw: string
+  articleBody: string
+}
+
 export type ProjectSettings = {
   slideDetection: {
     sampleIntervalMs: number

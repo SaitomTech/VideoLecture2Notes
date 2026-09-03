@@ -12,6 +12,7 @@ import {
   updateProjectSlideContent,
   updateProjectSlideDetection,
   updateProjectSlideOcr,
+  updateProjectSlideResultEdits,
   updateProjectTranscription,
 } from '../lib/project/project'
 import { saveProject } from '../lib/storage/projectStorage'
@@ -22,6 +23,7 @@ import type {
   CropRegion,
   MediaProject,
   SlideOcrResult,
+  SlideResultEdits,
   TranscriptionResult,
 } from '../types/project'
 import type { SlideDetectionOutput } from '../features/slide-detection/types'
@@ -92,6 +94,12 @@ function App() {
     )
   }
 
+  const handleSaveSlideResultEdits = async (slideId: string, edits: SlideResultEdits) => {
+    await updateCurrentProject((currentProject) =>
+      updateProjectSlideResultEdits(currentProject, slideId, edits),
+    )
+  }
+
   const handleSaveArticle = async (draft: ArticleDraft) => {
     await updateCurrentProject((currentProject) => updateProjectArticleDraft(currentProject, draft))
   }
@@ -124,6 +132,7 @@ function App() {
         onCompleted={handleTranscriptionCompleted}
         onOcrSlideCompleted={handleOcrSlideCompleted}
         onContentSlideCompleted={handleContentSlideCompleted}
+        onSaveSlideResultEdits={handleSaveSlideResultEdits}
         onOpenArticleReview={() => setStep('article-review')}
       />
     )
