@@ -1,0 +1,60 @@
+name: Build macOS release assets
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    name: Build macOS DMG
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout the released tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Check runner architecture
+        run: |
+          test "$(uname -m)" = "arm64" || {
+            echo "This project currently supports macOS Apple Silicon only."
+            echo "Runner architecture: $(uname -m)"
+            exit 1
+          }
+
+      - name: Check release version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          expected_version="$(bun -e 'const config = JSON.parse(await Bun.file("src-tauri/tauri.conf.json").text()); console.log(config.version)')"
+          release_version="${RELEASE_TAG#v}"
+
+          if [ "$expected_version" != "$release_version" ]; then
+            echo "Release tag ($RELEASE_TAG) does not match src-tauri/tauri.conf.json ($expected_version)."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build and upload DMG
+        uses: tauri-apps/tauri-action@v0.6.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tauriScript: bunx tauri
+          tagName: ${{ github.event.release.tag_name }}
+          releaseId: ${{ github.event.release.id }}
+          releaseDraft: false
+          args: --bundles dmg

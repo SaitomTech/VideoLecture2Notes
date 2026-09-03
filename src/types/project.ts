@@ -1,6 +1,15 @@
 import type { VideoExtension } from './media'
 
-export const PROJECT_VERSION = 1
+export const PROJECT_VERSION = 2
+
+export type ProjectStep = 'crop' | 'detect-slides' | 'generate-notes' | 'article-review' | 'export'
+
+export type ProjectWorkflow = {
+  cropConfirmedAt?: string
+  lastVisitedStep: ProjectStep
+  lastOpenedAt: string
+  lastExportedAt?: string
+}
 
 export type MediaMetadata = {
   path: string
@@ -128,6 +137,37 @@ export type ProjectSettings = {
   articleFormatting: boolean
 }
 
+export type ProjectHealth = 'ready' | 'source-missing' | 'needs-repair'
+
+export type ProjectSummary = {
+  projectVersion: number
+  id: string
+  title: string
+  sourceName: string
+  sourcePath: string
+  extension: VideoExtension
+  durationMs: number
+  slideCount: number
+  ocrCompleted: number
+  articleCompleted: number
+  articleTarget: number
+  thumbnailPath?: string
+  resumeStep: ProjectStep
+  createdAt: string
+  updatedAt: string
+  lastOpenedAt: string
+  health: ProjectHealth
+}
+
+export type ProjectListEntry =
+  | { kind: 'project'; summary: ProjectSummary }
+  | { kind: 'invalid'; id: string; error: string }
+
+export type ProjectOpenResult =
+  | { kind: 'ready'; project: MediaProject; step: ProjectStep }
+  | { kind: 'source-missing'; project: MediaProject }
+  | { kind: 'invalid'; message: string }
+
 export type SlideData = {
   id: string
   index: number
@@ -167,6 +207,7 @@ export type MediaProject = {
   slideDetection?: SlideDetectionResult
   transcription?: TranscriptionResult
   article?: ArticleData
+  workflow: ProjectWorkflow
   createdAt: string
   updatedAt: string
 }

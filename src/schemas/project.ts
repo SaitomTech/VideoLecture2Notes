@@ -113,6 +113,15 @@ const SlideDataSchema = z.object({
     .optional(),
 })
 
+const ProjectWorkflowSchema = z.object({
+  cropConfirmedAt: z.iso.datetime().optional(),
+  lastVisitedStep: z
+    .enum(['crop', 'detect-slides', 'generate-notes', 'article-review', 'export'])
+    .default('crop'),
+  lastOpenedAt: z.iso.datetime().optional(),
+  lastExportedAt: z.iso.datetime().optional(),
+})
+
 export const MediaProjectSchema = z.object({
   version: z.number().int().positive(),
   id: z.string().min(1),
@@ -142,10 +151,26 @@ export const MediaProjectSchema = z.object({
       title: z.string(),
     })
     .optional(),
+  workflow: ProjectWorkflowSchema.optional(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 })
 
 export function parseMediaProject(value: unknown): MediaProject {
-  return MediaProjectSchema.parse(value) as MediaProject
+  const parsed = MediaProjectSchema.parse(value)
+  const workflow = parsed.workflow
+  const fallbackStep = parsed.slideDetection ? 'generate-notes' : 'crop'
+
+  return {
+    ...parsed,
+    workflow: {
+      lastVisitedStep: workflow?.lastVisitedStep ?? fallbackStep,
+      ...(workflow?.cropConfirmedAt || parsed.slideDetection
+        ? { cropConfirmedAt: workflow?.cropConfirmedAt ?? parsed.updatedAt }
+        : {}),
+      lastOpenedAt: workflow?.lastOpenedAt ?? parsed.updatedAt,
+      ...(workflow?.lastExportedAt ? { lastExportedAt: workflow.lastExportedAt } : {}),
+    },
+    version: Math.max(parsed.version, 2),
+  } as MediaProject
 }
