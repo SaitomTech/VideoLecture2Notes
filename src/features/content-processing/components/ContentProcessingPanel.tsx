@@ -4,6 +4,7 @@ import { ModelDescription } from '../../../components/ModelDescription'
 import { ModelSelect } from '../../../components/ModelSelect'
 import { ProcessingStatusRow } from '../../../components/ProcessingStatusRow'
 import {
+  APPLE_FOUNDATION_MODELS,
   OPENAI_LUNA_MODEL,
   type ArticleModel,
   type ArticleModelId,
@@ -34,6 +35,13 @@ function assertNever(value: never): never {
 
 function ArticleModelDetails({ model, disabled }: { model: ArticleModel; disabled: boolean }) {
   switch (model.provider) {
+    case 'apple':
+      return (
+        <ModelDescription
+          description={model.description}
+          annotation="文字起こしとOCRテキストはMac内で処理します。macOS 26以降、対応するApple Silicon MacでApple Intelligenceを有効にしてください。"
+        />
+      )
     case 'local':
       return (
         <ModelDescription
@@ -119,6 +127,7 @@ export function ContentProcessingPanel({
           <ModelSelect
             id="article-generation-model"
             value={modelId}
+            systemModels={[APPLE_FOUNDATION_MODELS]}
             localModels={TEXT_MODELS}
             apiModels={[OPENAI_LUNA_MODEL]}
             onChange={(nextModelId) => onModelChange(nextModelId as ArticleModelId)}
@@ -142,6 +151,9 @@ export function ContentProcessingStatus({
   const isRunning = processing.status === 'running'
   const isCompleted = processing.status === 'completed'
   const isCancelled = processing.status === 'cancelled'
+  const skippedSlideLabel = processing.skippedSlides
+    .map((slide) => `Slide ${slide.slideIndex + 1}`)
+    .join('、')
   const progress = progressRatio(processing)
   const progressLabel =
     isRunning &&
@@ -152,7 +164,9 @@ export function ContentProcessingStatus({
   const message = isRunning
     ? stageLabels[processing.stage]
     : isCompleted
-      ? '記事本文をすべて生成しました。'
+      ? processing.skippedSlides.length > 0
+        ? `記事本文の生成が完了しました。${skippedSlideLabel}はスキップしました。`
+        : '記事本文をすべて生成しました。'
       : isCancelled
         ? '生成を停止しました。処理済みのSlideは保存されています。'
         : processing.status === 'error'

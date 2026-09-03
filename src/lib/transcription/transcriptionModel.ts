@@ -1,8 +1,4 @@
-import {
-  DEFAULT_WHISPER_MODEL,
-  getWhisperModel,
-  type WhisperModel,
-} from '../whisper/modelManager'
+import { DEFAULT_WHISPER_MODEL, getWhisperModel, type WhisperModel } from '../whisper/modelManager'
 
 export const OPENAI_TRANSCRIBE_MODEL = {
   id: 'openai:gpt-transcribe',
@@ -15,7 +11,15 @@ export const OPENAI_TRANSCRIBE_MODEL = {
   speed: '通信環境による',
 } as const
 
+export const APPLE_SPEECH_TRANSCRIBER_MODEL = {
+  id: 'apple:speech-transcriber',
+  provider: 'apple',
+  label: 'Apple SpeechTranscriber',
+  description: 'macOS標準のオンデバイス音声認識です。講義や長時間の音声をMac内で処理します。',
+} as const
+
 export type OpenAiTranscriptionModel = typeof OPENAI_TRANSCRIBE_MODEL
+export type AppleSpeechTranscriptionModel = typeof APPLE_SPEECH_TRANSCRIBER_MODEL
 const TRANSCRIPTION_LOCAL_MODEL_DEFINITIONS = [
   {
     id: 'tiny-q5_1',
@@ -31,16 +35,21 @@ const TRANSCRIPTION_LOCAL_MODEL_DEFINITIONS = [
   },
 ] as const
 
-export type TranscriptionLocalModelId =
-  (typeof TRANSCRIPTION_LOCAL_MODEL_DEFINITIONS)[number]['id']
+export type TranscriptionLocalModelId = (typeof TRANSCRIPTION_LOCAL_MODEL_DEFINITIONS)[number]['id']
 export type LocalTranscriptionModel = {
   provider: 'local'
   id: TranscriptionLocalModelId
   label: string
   model: WhisperModel
 }
-export type TranscriptionModel = LocalTranscriptionModel | OpenAiTranscriptionModel
-export type TranscriptionModelId = TranscriptionLocalModelId | OpenAiTranscriptionModel['id']
+export type TranscriptionModel =
+  | LocalTranscriptionModel
+  | OpenAiTranscriptionModel
+  | AppleSpeechTranscriptionModel
+export type TranscriptionModelId =
+  | TranscriptionLocalModelId
+  | OpenAiTranscriptionModel['id']
+  | AppleSpeechTranscriptionModel['id']
 
 export const TRANSCRIPTION_LOCAL_MODELS: readonly LocalTranscriptionModel[] =
   TRANSCRIPTION_LOCAL_MODEL_DEFINITIONS.map(({ id, label }) => ({
@@ -58,14 +67,15 @@ export const DEFAULT_TRANSCRIPTION_MODEL_ID: TranscriptionModelId =
   DEFAULT_LOCAL_TRANSCRIPTION_MODEL.id
 
 export const TRANSCRIPTION_MODELS: readonly TranscriptionModel[] = [
+  APPLE_SPEECH_TRANSCRIBER_MODEL,
   ...TRANSCRIPTION_LOCAL_MODELS,
   OPENAI_TRANSCRIBE_MODEL,
 ]
 
 export function getTranscriptionModel(id: string | undefined): TranscriptionModel {
   if (id === OPENAI_TRANSCRIBE_MODEL.id) return OPENAI_TRANSCRIBE_MODEL
+  if (id === APPLE_SPEECH_TRANSCRIBER_MODEL.id) return APPLE_SPEECH_TRANSCRIBER_MODEL
   return (
-    TRANSCRIPTION_LOCAL_MODELS.find((model) => model.id === id) ??
-    DEFAULT_LOCAL_TRANSCRIPTION_MODEL
+    TRANSCRIPTION_LOCAL_MODELS.find((model) => model.id === id) ?? DEFAULT_LOCAL_TRANSCRIPTION_MODEL
   )
 }

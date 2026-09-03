@@ -153,6 +153,7 @@ export function updateProjectSlideContent(
           articleModel: result.article.model,
           articleInputFingerprint: result.article.inputFingerprint,
           articleProvider: result.article.provider,
+          articleEngineVersion: result.article.engineVersion,
           articleInputTokens: result.article.usage?.inputTokens,
           articleOutputTokens: result.article.usage?.outputTokens,
           articleRequestId: result.article.requestId,

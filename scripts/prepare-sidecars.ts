@@ -9,6 +9,16 @@ const TARGET_TRIPLE =
 const SIDECAR_DIRECTORY = join(import.meta.dir, '..', 'src-tauri', 'binaries')
 const VISION_SOURCE = join(import.meta.dir, '..', 'src-tauri', 'vision-ocr', 'main.swift')
 const VISION_SIDECAR_NAME = 'apple-vision-ocr'
+const SPEECH_SOURCE = join(import.meta.dir, '..', 'src-tauri', 'speech-transcriber', 'main.swift')
+const SPEECH_SIDECAR_NAME = 'apple-speech-transcriber'
+const FOUNDATION_MODELS_SOURCE = join(
+  import.meta.dir,
+  '..',
+  'src-tauri',
+  'foundation-models',
+  'main.swift',
+)
+const FOUNDATION_MODELS_SIDECAR_NAME = 'apple-foundation-models'
 const RELEASE_DIRECTORY = '1787073674_9.0.1'
 const LLAMA_RUNTIME_FILES = {
   'libllama-server-impl.dylib': 'libllama-server-impl.dylib',
@@ -91,6 +101,80 @@ async function buildVisionSidecar(temporaryDirectory: string, force: boolean) {
   await chmod(temporaryDestination, 0o755)
   await rename(temporaryDestination, destination)
   console.log(`✓ ${VISION_SIDECAR_NAME}-${TARGET_TRIPLE}`)
+}
+
+async function buildSpeechSidecar(temporaryDirectory: string, force: boolean) {
+  const destination = sidecarPath(SPEECH_SIDECAR_NAME)
+  if (!force) {
+    try {
+      const [sourceStats, destinationStats] = await Promise.all([
+        stat(SPEECH_SOURCE),
+        stat(destination),
+      ])
+      if (destinationStats.size > 0 && destinationStats.mtimeMs >= sourceStats.mtimeMs) return
+    } catch {
+      // The helper has not been built yet, so continue with compilation.
+    }
+  }
+
+  const temporaryDestination = join(temporaryDirectory, SPEECH_SIDECAR_NAME)
+  const moduleCachePath = join(temporaryDirectory, 'swift-module-cache')
+  await run('swiftc', [
+    '-O',
+    '-parse-as-library',
+    '-target',
+    'arm64-apple-macosx26.0',
+    '-module-cache-path',
+    moduleCachePath,
+    '-framework',
+    'Foundation',
+    '-framework',
+    'AVFoundation',
+    '-framework',
+    'Speech',
+    SPEECH_SOURCE,
+    '-o',
+    temporaryDestination,
+  ])
+  await chmod(temporaryDestination, 0o755)
+  await rename(temporaryDestination, destination)
+  console.log(`✓ ${SPEECH_SIDECAR_NAME}-${TARGET_TRIPLE}`)
+}
+
+async function buildFoundationModelsSidecar(temporaryDirectory: string, force: boolean) {
+  const destination = sidecarPath(FOUNDATION_MODELS_SIDECAR_NAME)
+  if (!force) {
+    try {
+      const [sourceStats, destinationStats] = await Promise.all([
+        stat(FOUNDATION_MODELS_SOURCE),
+        stat(destination),
+      ])
+      if (destinationStats.size > 0 && destinationStats.mtimeMs >= sourceStats.mtimeMs) return
+    } catch {
+      // The helper has not been built yet, so continue with compilation.
+    }
+  }
+
+  const temporaryDestination = join(temporaryDirectory, FOUNDATION_MODELS_SIDECAR_NAME)
+  const moduleCachePath = join(temporaryDirectory, 'swift-module-cache')
+  await run('swiftc', [
+    '-O',
+    '-parse-as-library',
+    '-target',
+    'arm64-apple-macosx26.0',
+    '-module-cache-path',
+    moduleCachePath,
+    '-framework',
+    'Foundation',
+    '-framework',
+    'FoundationModels',
+    FOUNDATION_MODELS_SOURCE,
+    '-o',
+    temporaryDestination,
+  ])
+  await chmod(temporaryDestination, 0o755)
+  await rename(temporaryDestination, destination)
+  console.log(`✓ ${FOUNDATION_MODELS_SIDECAR_NAME}-${TARGET_TRIPLE}`)
 }
 
 async function pathExists(path: string) {
@@ -266,9 +350,21 @@ async function main() {
   const cleanTemporaryDirectory = await mkdtemp(join(tmpdir(), 'video-notes-sidecars-'))
   try {
     await buildVisionSidecar(cleanTemporaryDirectory, force)
+    await buildSpeechSidecar(cleanTemporaryDirectory, force)
+    await buildFoundationModelsSidecar(cleanTemporaryDirectory, force)
     const downloadedSidecarsReady = (await Promise.all(SIDECARS.map(sidecarReady))).every(Boolean)
     const visionSidecarReady = await nonEmptyFileExists(sidecarPath(VISION_SIDECAR_NAME))
-    if (!force && downloadedSidecarsReady && visionSidecarReady) {
+    const speechSidecarReady = await nonEmptyFileExists(sidecarPath(SPEECH_SIDECAR_NAME))
+    const foundationModelsSidecarReady = await nonEmptyFileExists(
+      sidecarPath(FOUNDATION_MODELS_SIDECAR_NAME),
+    )
+    if (
+      !force &&
+      downloadedSidecarsReady &&
+      visionSidecarReady &&
+      speechSidecarReady &&
+      foundationModelsSidecarReady
+    ) {
       console.log(`✓ sidecarは準備済みです (${TARGET_TRIPLE})`)
       return
     }

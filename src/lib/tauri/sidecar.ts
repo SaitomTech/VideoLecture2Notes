@@ -6,6 +6,8 @@ export type SidecarName =
   | 'binaries/whisper-cli'
   | 'binaries/llama-server'
   | 'binaries/apple-vision-ocr'
+  | 'binaries/apple-speech-transcriber'
+  | 'binaries/apple-foundation-models'
 
 type SidecarStreamHandlers = {
   onStdout?: (chunk: string) => void
@@ -18,6 +20,126 @@ type SidecarStreamResult = {
   signal: number | null
   stdout: string
   stderr: string
+}
+
+type JsonLineSidecarClient = {
+  request: (message: unknown, signal?: AbortSignal) => Promise<unknown>
+  close: () => Promise<void>
+}
+
+function parseOutputChunk(chunk: unknown) {
+  return typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk as Uint8Array)
+}
+
+/** Keeps an Apple native sidecar warm while exchanging newline-delimited JSON messages. */
+export async function openJsonLineSidecar(name: SidecarName, signal?: AbortSignal) {
+  const command = Command.sidecar(name, [], { encoding: 'utf-8' })
+  const pending = new Map<
+    string,
+    { resolve: (value: unknown) => void; reject: (error: unknown) => void }
+  >()
+  let buffer = ''
+  let child: Child | null = null
+  let closed = false
+  let onAbort: (() => void) | null = null
+
+  const rejectPending = (error: unknown) => {
+    for (const entry of pending.values()) entry.reject(error)
+    pending.clear()
+  }
+
+  const close = async () => {
+    if (closed) return
+    closed = true
+    if (onAbort) signal?.removeEventListener('abort', onAbort)
+    rejectPending(new Error('sidecarが終了しました'))
+    if (child) await child.kill().catch(() => undefined)
+  }
+
+  command.stdout.on('data', (chunk) => {
+    buffer += parseOutputChunk(chunk)
+    let newlineIndex = buffer.indexOf('\n')
+    while (newlineIndex >= 0) {
+      const line = buffer.slice(0, newlineIndex).trim()
+      buffer = buffer.slice(newlineIndex + 1)
+      newlineIndex = buffer.indexOf('\n')
+      if (!line) continue
+
+      try {
+        const message = JSON.parse(line) as { id?: unknown }
+        const id = typeof message.id === 'string' ? message.id : null
+        if (!id) continue
+        const entry = pending.get(id)
+        if (!entry) continue
+        pending.delete(id)
+        entry.resolve(message)
+      } catch {
+        // Keep stdout machine-readable; malformed lines are reported by request timeout/close.
+      }
+    }
+  })
+  command.once('close', ({ code, signal: terminationSignal }) => {
+    closed = true
+    if (onAbort) signal?.removeEventListener('abort', onAbort)
+    rejectPending(
+      new Error(
+        `sidecarが終了しました (code=${code ?? 'null'}, signal=${terminationSignal ?? 'null'})`,
+      ),
+    )
+  })
+  command.once('error', (error) => {
+    closed = true
+    rejectPending(new Error(String(error)))
+  })
+
+  onAbort = () => {
+    void close()
+  }
+  if (signal?.aborted) throw new DOMException('処理を中止しました。', 'AbortError')
+  signal?.addEventListener('abort', onAbort, { once: true })
+
+  try {
+    child = await command.spawn()
+    if (closed) await child.kill().catch(() => undefined)
+  } catch (error) {
+    await close()
+    throw error
+  }
+
+  return {
+    request(message: unknown, requestSignal?: AbortSignal) {
+      if (closed || !child) return Promise.reject(new Error('sidecarは利用できません'))
+      if (requestSignal?.aborted) {
+        return Promise.reject(new DOMException('処理を中止しました。', 'AbortError'))
+      }
+
+      const id = crypto.randomUUID()
+      const request = JSON.stringify({ id, ...((message ?? {}) as Record<string, unknown>) })
+      return new Promise<unknown>((resolve, reject) => {
+        const abort = () => {
+          pending.delete(id)
+          reject(new DOMException('処理を中止しました。', 'AbortError'))
+        }
+        requestSignal?.addEventListener('abort', abort, { once: true })
+        pending.set(id, {
+          resolve: (value) => {
+            requestSignal?.removeEventListener('abort', abort)
+            resolve(value)
+          },
+          reject: (error) => {
+            requestSignal?.removeEventListener('abort', abort)
+            reject(error)
+          },
+        })
+        void child.write(`${request}\n`).catch((error) => {
+          pending.delete(id)
+          requestSignal?.removeEventListener('abort', abort)
+          reject(error)
+        })
+      })
+    },
+    close,
+  } satisfies JsonLineSidecarClient
 }
 
 /** Runs a sidecar while forwarding stdout/stderr chunks to the caller. */
@@ -54,7 +176,10 @@ export function executeSidecarStreaming(
         settleWithError(abortError)
         return
       }
-      void child.kill().catch(() => undefined).finally(() => settleWithError(abortError))
+      void child
+        .kill()
+        .catch(() => undefined)
+        .finally(() => settleWithError(abortError))
     }
     onAbort = abort
 

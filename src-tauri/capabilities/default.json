@@ -10,6 +10,7 @@
     "dialog:default",
     "fs:default",
     "shell:allow-kill",
+    "shell:allow-stdin-write",
     {
       "identifier": "fs:allow-stat",
       "allow": [
@@ -54,6 +55,16 @@
           "name": "binaries/apple-vision-ocr",
           "sidecar": true,
           "args": true
+        },
+        {
+          "name": "binaries/apple-speech-transcriber",
+          "sidecar": true,
+          "args": true
+        },
+        {
+          "name": "binaries/apple-foundation-models",
+          "sidecar": true,
+          "args": true
         }
       ]
     },
@@ -77,6 +88,16 @@
         },
         {
           "name": "binaries/apple-vision-ocr",
+          "sidecar": true,
+          "args": true
+        },
+        {
+          "name": "binaries/apple-speech-transcriber",
+          "sidecar": true,
+          "args": true
+        },
+        {
+          "name": "binaries/apple-foundation-models",
           "sidecar": true,
           "args": true
         }
