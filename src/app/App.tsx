@@ -4,9 +4,13 @@ import { CropPage } from '../features/crop/CropPage'
 import { ExportPage } from '../features/export/ExportPage'
 import { GenerateNotesPage } from '../features/generate-notes/GenerateNotesPage'
 import { ImportPage } from '../features/import/ImportPage'
+import { ProjectLibraryPage } from '../features/project-library/ProjectLibraryPage'
 import { SlideDetectionPage } from '../features/slide-detection/SlideDetectionPage'
 import {
   createMediaProject,
+  markProjectOpened,
+  updateProjectSource,
+  updateProjectWorkflow,
   updateProjectArticleDraft,
   updateProjectCrop,
   updateProjectSlideContent,
@@ -15,23 +19,30 @@ import {
   updateProjectSlideResultEdits,
   updateProjectTranscription,
 } from '../lib/project/project'
-import { saveProject } from '../lib/storage/projectStorage'
+import {
+  loadProject,
+  loadProjectForResume,
+  saveProject,
+  deleteProject,
+} from '../lib/storage/projectStorage'
 import type { SelectedVideo } from '../features/import/types'
 import type {
   ArticleDraft,
   ContentProcessingResult,
   CropRegion,
   MediaProject,
+  MediaSource,
+  ProjectStep,
   SlideOcrResult,
   SlideResultEdits,
   TranscriptionResult,
 } from '../types/project'
 import type { SlideDetectionOutput } from '../features/slide-detection/types'
 
-type AppStep = 'import' | 'crop' | 'detect-slides' | 'generate-notes' | 'article-review' | 'export'
+type AppStep = 'library' | 'import' | ProjectStep
 
 function App() {
-  const [step, setStep] = useState<AppStep>('import')
+  const [step, setStep] = useState<AppStep>('library')
   const [project, setProject] = useState<MediaProject | null>(null)
   const projectRef = useRef<MediaProject | null>(null)
 
@@ -57,6 +68,58 @@ function App() {
 
     await persistProject(createMediaProject(video, video.metadata))
     setStep('crop')
+  }
+
+  const handleCreateProject = () => {
+    projectRef.current = null
+    setProject(null)
+    setStep('import')
+  }
+
+  const handleOpenLibrary = () => {
+    setStep('library')
+  }
+
+  const handleProjectStep = async (nextStep: ProjectStep) => {
+    const currentProject = projectRef.current
+    if (!currentProject) return
+
+    await persistProject(updateProjectWorkflow(currentProject, nextStep))
+    setStep(nextStep)
+  }
+
+  const handleOpenProject = async (projectId: string) => {
+    const result = await loadProjectForResume(projectId)
+    if (result.kind === 'source-missing') {
+      throw new Error('元動画にアクセスできません。プロジェクト一覧から動画を再指定してください。')
+    }
+    if (result.kind === 'invalid') throw new Error(result.message)
+
+    const nextProject = markProjectOpened(result.project, result.step)
+    await persistProject(nextProject)
+    setStep(result.step)
+  }
+
+  const handleRelinkProject = async (projectId: string, source: MediaSource) => {
+    const project = await loadProject(projectId)
+    const metadataMatches =
+      project.source.metadata.width === source.metadata.width &&
+      project.source.metadata.height === source.metadata.height &&
+      Math.abs(project.source.metadata.durationMs - source.metadata.durationMs) <= 2_000
+    const sizeMatches =
+      project.source.sizeBytes === undefined ||
+      source.sizeBytes === undefined ||
+      project.source.sizeBytes === source.sizeBytes
+
+    if (!metadataMatches || !sizeMatches) {
+      throw new Error('選択した動画は、保存時の元動画と一致しません。別の動画を選択してください。')
+    }
+
+    await saveProject(updateProjectSource(project, source))
+  }
+
+  const handleDeleteProject = async (projectId: string) => {
+    await deleteProject(projectId)
   }
 
   const handleApplyCrop = async (crop: CropRegion) => {
@@ -106,22 +169,40 @@ function App() {
 
   const handleOpenGenerateNotes = () => {
     if (!project?.slideDetection) return
-    setStep('generate-notes')
+    void handleProjectStep('generate-notes')
+  }
+
+  if (step === 'library') {
+    return (
+      <ProjectLibraryPage
+        onCreateProject={handleCreateProject}
+        onOpenProject={handleOpenProject}
+        onRelinkProject={handleRelinkProject}
+        onDeleteProject={handleDeleteProject}
+      />
+    )
   }
 
   if (step === 'article-review' && project) {
     return (
       <ArticleReviewPage
         project={project}
-        onBack={() => setStep('generate-notes')}
+        onBack={() => void handleProjectStep('generate-notes')}
         onSave={handleSaveArticle}
-        onExport={() => setStep('export')}
+        onExport={() => void handleProjectStep('export')}
+        onOpenProjects={handleOpenLibrary}
       />
     )
   }
 
   if (step === 'export' && project) {
-    return <ExportPage project={project} onBack={() => setStep('article-review')} />
+    return (
+      <ExportPage
+        project={project}
+        onBack={() => void handleProjectStep('article-review')}
+        onOpenProjects={handleOpenLibrary}
+      />
+    )
   }
 
   if (step === 'generate-notes' && project) {
@@ -133,17 +214,33 @@ function App() {
         onOcrSlideCompleted={handleOcrSlideCompleted}
         onContentSlideCompleted={handleContentSlideCompleted}
         onSaveSlideResultEdits={handleSaveSlideResultEdits}
-        onOpenArticleReview={() => setStep('article-review')}
+        onOpenArticleReview={() => void handleProjectStep('article-review')}
+        onOpenProjects={handleOpenLibrary}
       />
     )
   }
 
   if (step === 'detect-slides' && project) {
-    return <SlideDetectionPage project={project} onBack={() => setStep('crop')} onCompleted={handleSlideDetectionCompleted} onContinue={handleOpenGenerateNotes} />
+    return (
+      <SlideDetectionPage
+        project={project}
+        onBack={() => setStep('crop')}
+        onCompleted={handleSlideDetectionCompleted}
+        onContinue={handleOpenGenerateNotes}
+        onOpenProjects={handleOpenLibrary}
+      />
+    )
   }
 
   if (step === 'crop' && project) {
-    return <CropPage project={project} onBack={() => setStep('import')} onApply={handleApplyCrop} />
+    return (
+      <CropPage
+        project={project}
+        onBack={() => setStep('import')}
+        onApply={handleApplyCrop}
+        onOpenProjects={handleOpenLibrary}
+      />
+    )
   }
 
   const initialVideo = project
@@ -156,7 +253,13 @@ function App() {
       }
     : undefined
 
-  return <ImportPage initialVideo={initialVideo} onContinue={handleImportContinue} />
+  return (
+    <ImportPage
+      initialVideo={initialVideo}
+      onContinue={handleImportContinue}
+      onOpenProjects={handleOpenLibrary}
+    />
+  )
 }
 
 export default App

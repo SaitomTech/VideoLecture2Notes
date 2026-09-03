@@ -1,12 +1,22 @@
 import {
   BaseDirectory,
   mkdir,
+  readDir,
   readFile,
   readTextFile,
+  remove,
+  rename,
   stat,
   writeFile,
   writeTextFile as tauriWriteTextFile,
 } from '@tauri-apps/plugin-fs'
+
+export type AppLocalDirectoryEntry = {
+  name: string
+  isDirectory: boolean
+  isFile: boolean
+  isSymlink: boolean
+}
 
 export async function getFileSize(path: string) {
   const fileInfo = await stat(path)
@@ -35,6 +45,30 @@ export async function readAppLocalTextFile(path: string) {
   return readTextFile(path, {
     baseDir: BaseDirectory.AppLocalData,
   })
+}
+
+export async function readAppLocalDirectory(path: string): Promise<AppLocalDirectoryEntry[]> {
+  return readDir(path, { baseDir: BaseDirectory.AppLocalData })
+}
+
+export async function appLocalFileExists(path: string) {
+  try {
+    const fileInfo = await stat(path, { baseDir: BaseDirectory.AppLocalData })
+    return fileInfo.isFile
+  } catch {
+    return false
+  }
+}
+
+export async function renameAppLocalPath(oldPath: string, newPath: string) {
+  await rename(oldPath, newPath, {
+    oldPathBaseDir: BaseDirectory.AppLocalData,
+    newPathBaseDir: BaseDirectory.AppLocalData,
+  })
+}
+
+export async function removeAppLocalPath(path: string) {
+  await remove(path, { baseDir: BaseDirectory.AppLocalData, recursive: true })
 }
 
 export async function fileExists(path: string) {

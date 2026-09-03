@@ -14,9 +14,10 @@ type SlideDetectionPageProps = {
   onBack: () => void
   onCompleted: (output: SlideDetectionOutput) => void | Promise<void>
   onContinue: () => void
+  onOpenProjects: () => void
 }
 
-export function SlideDetectionPage({ project, onBack, onCompleted, onContinue }: SlideDetectionPageProps) {
+export function SlideDetectionPage({ project, onBack, onCompleted, onContinue, onOpenProjects }: SlideDetectionPageProps) {
   const durationMs = project.source.metadata.durationMs
   const [reviewBoundaries, setReviewBoundaries] = useState<SlideBoundary[] | null>(
     () => project.slideDetection?.boundaries ?? null,
@@ -97,7 +98,10 @@ export function SlideDetectionPage({ project, onBack, onCompleted, onContinue }:
 
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
-      <AppHeader />
+      <AppHeader
+        onOpenProjects={onOpenProjects}
+        projectsDisabled={isRunning || isSavingReview || hasUnsavedReview}
+      />
       <WorkflowBar activeStep="detect-slides" />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">

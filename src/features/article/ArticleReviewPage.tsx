@@ -10,9 +10,10 @@ type ArticleReviewPageProps = {
   onBack: () => void
   onSave: (draft: ArticleDraft) => void | Promise<void>
   onExport: () => void
+  onOpenProjects: () => void
 }
 
-export function ArticleReviewPage({ project, onBack, onSave, onExport }: ArticleReviewPageProps) {
+export function ArticleReviewPage({ project, onBack, onSave, onExport, onOpenProjects }: ArticleReviewPageProps) {
   const articleSlides = project.slides.filter((slide) => Boolean(slide.transcript))
   const savedTitle = project.article?.title?.trim() || project.source.name.replace(/\.[^.]+$/, '')
   const [title, setTitle] = useState(savedTitle)
@@ -74,7 +75,10 @@ export function ArticleReviewPage({ project, onBack, onSave, onExport }: Article
 
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
-      <AppHeader />
+      <AppHeader
+        onOpenProjects={onOpenProjects}
+        projectsDisabled={isEditing || isDirty || isSaving}
+      />
       <WorkflowBar activeStep="article-review" />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
