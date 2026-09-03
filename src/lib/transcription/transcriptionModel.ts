@@ -64,7 +64,7 @@ const DEFAULT_LOCAL_TRANSCRIPTION_MODEL =
   TRANSCRIPTION_LOCAL_MODELS[0]
 
 export const DEFAULT_TRANSCRIPTION_MODEL_ID: TranscriptionModelId =
-  DEFAULT_LOCAL_TRANSCRIPTION_MODEL.id
+  APPLE_SPEECH_TRANSCRIBER_MODEL.id
 
 export const TRANSCRIPTION_MODELS: readonly TranscriptionModel[] = [
   APPLE_SPEECH_TRANSCRIBER_MODEL,
@@ -73,6 +73,7 @@ export const TRANSCRIPTION_MODELS: readonly TranscriptionModel[] = [
 ]
 
 export function getTranscriptionModel(id: string | undefined): TranscriptionModel {
+  if (id === undefined) return APPLE_SPEECH_TRANSCRIBER_MODEL
   if (id === OPENAI_TRANSCRIBE_MODEL.id) return OPENAI_TRANSCRIBE_MODEL
   if (id === APPLE_SPEECH_TRANSCRIBER_MODEL.id) return APPLE_SPEECH_TRANSCRIBER_MODEL
   return (
