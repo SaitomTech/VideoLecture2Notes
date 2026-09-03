@@ -8,7 +8,7 @@ import {
   getTranscriptionModel,
   type TranscriptionModelId,
 } from '../../lib/transcription/transcriptionModel'
-import type { MediaProject, TranscriptionResult } from '../../types/project'
+import type { MediaProject, SlideResultEdits, TranscriptionResult } from '../../types/project'
 import { AnalysisResultPreview } from '../content-processing/components/AnalysisResultPreview'
 import {
   ContentProcessingPanel,
@@ -30,6 +30,7 @@ type GenerateNotesPageProps = {
   onCompleted: (result: TranscriptionResult) => void | Promise<void>
   onOcrSlideCompleted: OcrSlideCompleted
   onContentSlideCompleted: ContentProcessingSlideCompleted
+  onSaveSlideResultEdits: (slideId: string, edits: SlideResultEdits) => void | Promise<void>
   onOpenArticleReview: () => void
 }
 
@@ -39,6 +40,7 @@ export function GenerateNotesPage({
   onCompleted,
   onOcrSlideCompleted,
   onContentSlideCompleted,
+  onSaveSlideResultEdits,
   onOpenArticleReview,
 }: GenerateNotesPageProps) {
   const [language, setLanguage] = useState<TranscriptionLanguage>(
@@ -188,7 +190,12 @@ export function GenerateNotesPage({
               </div>
             </section>
 
-            <AnalysisResultPreview slides={project.slides} onEdit={onOpenArticleReview} />
+            <AnalysisResultPreview
+              slides={project.slides}
+              onEdit={onOpenArticleReview}
+              onSaveSlideResultEdits={onSaveSlideResultEdits}
+              disabled={isProcessing}
+            />
           </div>
         </div>
       </section>

@@ -10,6 +10,7 @@ import {
   type SlideData,
   type SlideDetectionResult,
   type SlideOcrResult,
+  type SlideResultEdits,
   type TranscriptionResult,
 } from '../../types/project'
 
@@ -159,6 +160,37 @@ export function updateProjectSlideContent(
           articleRequestId: result.article.requestId,
           articleGeneratedAt: result.article.generatedAt,
         },
+      }
+    }),
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+export function updateProjectSlideResultEdits(
+  project: MediaProject,
+  slideId: string,
+  edits: SlideResultEdits,
+): MediaProject {
+  return {
+    ...project,
+    slides: project.slides.map((slide) => {
+      if (slide.id !== slideId) return slide
+
+      return {
+        ...slide,
+        ocr: slide.ocr
+          ? {
+              ...slide.ocr,
+              rawText: edits.ocrText,
+            }
+          : undefined,
+        transcript: slide.transcript
+          ? {
+              ...slide.transcript,
+              raw: edits.transcriptRaw,
+              articleBody: edits.articleBody,
+            }
+          : undefined,
       }
     }),
     updatedAt: new Date().toISOString(),
