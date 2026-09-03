@@ -1,0 +1,76 @@
+name: Ensure Develop To Main PR
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+concurrency:
+  group: ensure-develop-to-main-pr
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  ensure-pr:
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build PR metadata
+        id: meta
+        run: |
+          export TZ=Asia/Tokyo
+          echo "date=$(date +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure PR exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: ${{ steps.meta.outputs.date }} Production merge
+        run: |
+          pr_number=$(gh pr list \
+            --base main \
+            --head develop \
+            --state open \
+            --json number \
+            --jq '.[0].number')
+
+          body=$(cat <<'EOF'
+          ## 概要
+          `develop` の内容を `main` へ反映するための自動生成PRです。
+
+          ## リリース手順
+          1. `src-tauri/tauri.conf.json` と `src-tauri/Cargo.toml` の `version` が同じ値になっていることを確認する
+          2. このPRを `main` に merge する
+          3. GitHubの `Releases` から新しいReleaseを作成する
+          4. バージョンに対応するタグ（例: `v0.2.0`）を作成し、対象を `main` のリリースコミットにする
+          5. ReleaseをPublishする
+          6. `Build macOS release assets` workflowの完了を確認する
+          7. GitHub ReleaseのAssetsにmacOS Apple Silicon用DMGが追加されたことを確認する
+          8. DMGをダウンロードしてApplicationsへコピーし、アプリを起動して主要フローを確認する
+
+          ## 補足
+          Releaseのタグからバージョンを除いた値は、`src-tauri/tauri.conf.json` の `version` と一致させてください。
+          ReleaseのPublishを起点に、GitHub ActionsがDMGをビルドしてReleaseへ添付します。
+          EOF
+          )
+
+          if [ -z "$pr_number" ] || [ "$pr_number" = "null" ]; then
+            gh pr create \
+              --base main \
+              --head develop \
+              --title "$TITLE" \
+              --body "$body"
+            exit 0
+          fi
+
+          gh pr edit "$pr_number" \
+            --title "$TITLE" \
+            --body "$body"
