@@ -4,7 +4,7 @@ import { CropPage } from '../features/crop/CropPage'
 import { ExportPage } from '../features/export/ExportPage'
 import { GenerateNotesPage } from '../features/generate-notes/GenerateNotesPage'
 import { ImportPage } from '../features/import/ImportPage'
-import { ProjectLibraryPage } from '../features/project-library/ProjectLibraryPage'
+import { HomePage } from '../features/home/HomePage'
 import { SlideDetectionPage } from '../features/slide-detection/SlideDetectionPage'
 import {
   createMediaProject,
@@ -39,10 +39,10 @@ import type {
 } from '../types/project'
 import type { SlideDetectionOutput } from '../features/slide-detection/types'
 
-type AppStep = 'library' | 'import' | ProjectStep
+type AppStep = 'home' | 'import' | ProjectStep
 
 function App() {
-  const [step, setStep] = useState<AppStep>('library')
+  const [step, setStep] = useState<AppStep>('home')
   const [project, setProject] = useState<MediaProject | null>(null)
   const projectRef = useRef<MediaProject | null>(null)
 
@@ -76,8 +76,8 @@ function App() {
     setStep('import')
   }
 
-  const handleOpenLibrary = () => {
-    setStep('library')
+  const handleGoHome = () => {
+    setStep('home')
   }
 
   const handleProjectStep = async (nextStep: ProjectStep) => {
@@ -91,7 +91,7 @@ function App() {
   const handleOpenProject = async (projectId: string) => {
     const result = await loadProjectForResume(projectId)
     if (result.kind === 'source-missing') {
-      throw new Error('元動画にアクセスできません。プロジェクト一覧から動画を再指定してください。')
+      throw new Error('元動画にアクセスできません。保存済みプロジェクトから動画を再指定してください。')
     }
     if (result.kind === 'invalid') throw new Error(result.message)
 
@@ -172,9 +172,10 @@ function App() {
     void handleProjectStep('generate-notes')
   }
 
-  if (step === 'library') {
+  if (step === 'home') {
     return (
-      <ProjectLibraryPage
+      <HomePage
+        onHome={handleGoHome}
         onCreateProject={handleCreateProject}
         onOpenProject={handleOpenProject}
         onRelinkProject={handleRelinkProject}
@@ -190,7 +191,7 @@ function App() {
         onBack={() => void handleProjectStep('generate-notes')}
         onSave={handleSaveArticle}
         onExport={() => void handleProjectStep('export')}
-        onOpenProjects={handleOpenLibrary}
+        onHome={handleGoHome}
       />
     )
   }
@@ -200,7 +201,7 @@ function App() {
       <ExportPage
         project={project}
         onBack={() => void handleProjectStep('article-review')}
-        onOpenProjects={handleOpenLibrary}
+        onHome={handleGoHome}
       />
     )
   }
@@ -215,7 +216,7 @@ function App() {
         onContentSlideCompleted={handleContentSlideCompleted}
         onSaveSlideResultEdits={handleSaveSlideResultEdits}
         onOpenArticleReview={() => void handleProjectStep('article-review')}
-        onOpenProjects={handleOpenLibrary}
+        onHome={handleGoHome}
       />
     )
   }
@@ -227,7 +228,7 @@ function App() {
         onBack={() => setStep('crop')}
         onCompleted={handleSlideDetectionCompleted}
         onContinue={handleOpenGenerateNotes}
-        onOpenProjects={handleOpenLibrary}
+        onHome={handleGoHome}
       />
     )
   }
@@ -238,7 +239,7 @@ function App() {
         project={project}
         onBack={() => setStep('import')}
         onApply={handleApplyCrop}
-        onOpenProjects={handleOpenLibrary}
+        onHome={handleGoHome}
       />
     )
   }
@@ -257,7 +258,7 @@ function App() {
     <ImportPage
       initialVideo={initialVideo}
       onContinue={handleImportContinue}
-      onOpenProjects={handleOpenLibrary}
+      onHome={handleGoHome}
     />
   )
 }

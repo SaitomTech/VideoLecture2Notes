@@ -11,7 +11,7 @@ import { useExport, type ExportController } from './hooks/useExport'
 type ExportPageProps = {
   project: MediaProject
   onBack: () => void
-  onOpenProjects: () => void
+  onHome: () => void
 }
 
 function getStatusMessage({ status, progress, files }: ExportController) {
@@ -27,7 +27,7 @@ function getStatusMessage({ status, progress, files }: ExportController) {
   }
 }
 
-export function ExportPage({ project, onBack, onOpenProjects }: ExportPageProps) {
+export function ExportPage({ project, onBack, onHome }: ExportPageProps) {
   const [destination, setDestination] = useState('')
   const [selectedFormats, setSelectedFormats] = useState<ExportFormat[]>(['html', 'markdown'])
   const exporter = useExport(project)
@@ -58,7 +58,7 @@ export function ExportPage({ project, onBack, onOpenProjects }: ExportPageProps)
 
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
-      <AppHeader onOpenProjects={onOpenProjects} projectsDisabled={isRunning} />
+      <AppHeader onHome={onHome} homeDisabled={isRunning} />
       <WorkflowBar activeStep="export" />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">

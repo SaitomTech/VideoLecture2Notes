@@ -32,7 +32,7 @@ type GenerateNotesPageProps = {
   onContentSlideCompleted: ContentProcessingSlideCompleted
   onSaveSlideResultEdits: (slideId: string, edits: SlideResultEdits) => void | Promise<void>
   onOpenArticleReview: () => void
-  onOpenProjects: () => void
+  onHome: () => void
 }
 
 export function GenerateNotesPage({
@@ -43,7 +43,7 @@ export function GenerateNotesPage({
   onContentSlideCompleted,
   onSaveSlideResultEdits,
   onOpenArticleReview,
-  onOpenProjects,
+  onHome,
 }: GenerateNotesPageProps) {
   const [language, setLanguage] = useState<TranscriptionLanguage>(
     project.transcription?.language === 'ja' || project.transcription?.language === 'en'
@@ -77,7 +77,7 @@ export function GenerateNotesPage({
   }
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
-      <AppHeader onOpenProjects={onOpenProjects} projectsDisabled={isProcessing} />
+      <AppHeader onHome={onHome} homeDisabled={isProcessing} />
       <WorkflowBar activeStep="generate-notes" />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
