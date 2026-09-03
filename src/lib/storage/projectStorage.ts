@@ -1,7 +1,7 @@
 import { parseMediaProject } from '../../schemas/project'
 import type {
   MediaProject,
-  ProjectLibraryEntry,
+  ProjectListEntry,
   ProjectOpenResult,
   ProjectSummary,
 } from '../../types/project'
@@ -169,7 +169,7 @@ async function listProjectDirectoryEntries() {
   return entries.filter((entry) => entry.name !== '.trash')
 }
 
-async function readProjectEntry(projectId: string): Promise<ProjectLibraryEntry> {
+async function readProjectEntry(projectId: string): Promise<ProjectListEntry> {
   try {
     let summary: ProjectSummary
     if (await appLocalFileExists(projectSummaryPath(projectId))) {
@@ -208,7 +208,7 @@ async function readProjectEntry(projectId: string): Promise<ProjectLibraryEntry>
   }
 }
 
-export async function listProjects(): Promise<ProjectLibraryEntry[]> {
+export async function listProjects(): Promise<ProjectListEntry[]> {
   const entries = await listProjectDirectoryEntries()
   const projectIds: string[] = []
   for (const entry of entries) {

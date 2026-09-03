@@ -13,7 +13,7 @@ type CropPageProps = {
   project: MediaProject
   onBack: () => void
   onApply: (crop: CropRegion) => void | Promise<void>
-  onOpenProjects: () => void
+  onHome: () => void
 }
 
 function formatTime(durationMs: number) {
@@ -27,7 +27,7 @@ function formatTime(durationMs: number) {
     : `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
-export function CropPage({ project, onBack, onApply, onOpenProjects }: CropPageProps) {
+export function CropPage({ project, onBack, onApply, onHome }: CropPageProps) {
   const metadata = project.source.metadata
   const initialRegion = pixelToNormalizedCrop(project.crop, metadata)
   const savedRegionRef = useRef(initialRegion)
@@ -81,7 +81,7 @@ export function CropPage({ project, onBack, onApply, onOpenProjects }: CropPageP
 
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
-      <AppHeader onOpenProjects={onOpenProjects} projectsDisabled={isApplying} />
+      <AppHeader onHome={onHome} homeDisabled={isApplying} />
       <WorkflowBar activeStep="crop" />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[720px] flex-1 flex-col pb-8 md:w-[calc(100%-11.6vw)]">

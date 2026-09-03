@@ -159,7 +159,7 @@ export type ProjectSummary = {
   health: ProjectHealth
 }
 
-export type ProjectLibraryEntry =
+export type ProjectListEntry =
   | { kind: 'project'; summary: ProjectSummary }
   | { kind: 'invalid'; id: string; error: string }
 

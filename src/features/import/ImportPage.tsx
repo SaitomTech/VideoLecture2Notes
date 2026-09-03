@@ -10,10 +10,10 @@ import type { SelectedVideo } from './types'
 type ImportPageProps = {
   initialVideo?: SelectedVideo
   onContinue: (video: SelectedVideo) => void | Promise<void>
-  onOpenProjects: () => void
+  onHome: () => void
 }
 
-export function ImportPage({ initialVideo, onContinue, onOpenProjects }: ImportPageProps) {
+export function ImportPage({ initialVideo, onContinue, onHome }: ImportPageProps) {
   const picker = useVideoPicker(initialVideo)
   const [isContinuing, setIsContinuing] = useState(false)
   const [continueError, setContinueError] = useState<string | null>(null)
@@ -35,7 +35,7 @@ export function ImportPage({ initialVideo, onContinue, onOpenProjects }: ImportP
 
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
-      <AppHeader onOpenProjects={onOpenProjects} projectsDisabled={isContinuing} />
+      <AppHeader onHome={onHome} homeDisabled={isContinuing} />
       <WorkflowBar activeStep="import" />
 
       <section className="mx-auto flex min-h-[540px] w-[calc(100%-48px)] max-w-[1040px] flex-1 items-start justify-center pt-10 md:w-[calc(100%-11.6vw)] md:pt-14">
