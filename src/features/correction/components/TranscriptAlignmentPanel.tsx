@@ -1,4 +1,5 @@
 import { RefreshCw, Square } from 'lucide-react'
+import { ApiCostEstimate } from '../../../components/ApiCostEstimate'
 import { ModelSelect } from '../../../components/ModelSelect'
 import { ProcessingStatusRow } from '../../../components/ProcessingStatusRow'
 import { SlideThumbnail } from '../../../components/SlideThumbnail'
@@ -9,6 +10,7 @@ import {
   type ArticleModelId,
 } from '../../../lib/article/articleModel'
 import { formatTimestamp } from '../../../lib/time'
+import { estimateOpenAiAlignmentCost } from '../../../lib/openai/cost'
 import { TEXT_MODELS } from '../../../lib/llama/textModel'
 import type {
   MediaProject,
@@ -134,6 +136,10 @@ export function TranscriptAlignmentPanel({
   const slideNumberById = new Map(project.slides.map((slide) => [slide.id, slide.index + 1]))
   const total = alignment.progress.total
   const progress = progressRatio(alignment)
+  const contextCount =
+    project.transcription && project.slides.length >= 2 ? project.slides.length - 1 : 0
+  const costEstimate =
+    model.provider === 'openai' ? estimateOpenAiAlignmentCost(contextCount) : undefined
   const message =
     alignment.status === 'running'
       ? '境界付近の発話を前後のSlideと照合中…'
@@ -192,6 +198,11 @@ export function TranscriptAlignmentPanel({
           />
         </label>
         <ArticleModelDetails model={model} disabled={disabled || isRunning} />
+        <ApiCostEstimate
+          isOpenAi={model.provider === 'openai'}
+          estimate={costEstimate}
+          label='この処理の費用見込み（最大）'
+        />
       </div>
 
       <div className='mt-4'>

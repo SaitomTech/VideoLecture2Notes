@@ -1,8 +1,13 @@
 import { RefreshCw, Square } from 'lucide-react'
+import { ApiCostEstimate } from '../../../components/ApiCostEstimate'
 import { OpenAiApiKeySettings } from '../../../components/OpenAiApiKeySettings'
 import { ModelDescription } from '../../../components/ModelDescription'
 import { ModelSelect } from '../../../components/ModelSelect'
 import { ProcessingStatusRow } from '../../../components/ProcessingStatusRow'
+import {
+  estimateOpenAiOcrCost,
+  representativeFrameDimensions,
+} from '../../../lib/openai/cost'
 import {
   APPLE_VISION_OCR_MODEL,
   getOcrModel,
@@ -11,9 +16,12 @@ import {
   type OcrModel,
   type OcrModelId,
 } from '../../../lib/ocr/modelManager'
+import type { MediaProject } from '../../../types/project'
 import type { OcrController } from '../hooks/useOcr'
+import { ocrInputFingerprint } from '../ocr'
 
 type OcrPanelProps = {
+  project: MediaProject
   ocr: OcrController
   modelId: OcrModelId
   onModelChange: (modelId: OcrModelId) => void
@@ -78,11 +86,25 @@ function progressRatio(ocr: OcrController) {
   return ocr.progress.total > 0 ? ocr.progress.completed / ocr.progress.total : 0
 }
 
-export function OcrPanel({ ocr, modelId, onModelChange, disabled = false }: OcrPanelProps) {
+export function OcrPanel({ project, ocr, modelId, onModelChange, disabled = false }: OcrPanelProps) {
   const isRunning = ocr.status === 'running'
   const isCompleted = ocr.status === 'completed'
   const total = ocr.progress.total
   const model = getOcrModel(modelId)
+  const slidesToProcess = isCompleted
+    ? project.slides
+    : project.slides.filter(
+        (slide) => slide.ocr?.inputFingerprint !== ocrInputFingerprint(slide, modelId),
+      )
+  const frameSize = representativeFrameDimensions(project.crop.width, project.crop.height)
+  const costEstimate =
+    model.provider === 'openai'
+      ? estimateOpenAiOcrCost({
+          slideCount: slidesToProcess.length,
+          imageWidth: frameSize.width,
+          imageHeight: frameSize.height,
+        })
+      : undefined
 
   return (
     <section aria-labelledby="ocr-settings-heading">
@@ -129,6 +151,7 @@ export function OcrPanel({ ocr, modelId, onModelChange, disabled = false }: OcrP
           />
         </label>
         <OcrModelDetails model={model} disabled={disabled || isRunning} />
+        <ApiCostEstimate isOpenAi={model.provider === 'openai'} estimate={costEstimate} />
       </div>
     </section>
   )

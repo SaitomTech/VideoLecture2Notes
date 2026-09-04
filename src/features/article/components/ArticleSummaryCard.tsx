@@ -9,6 +9,7 @@ import {
   X,
 } from 'lucide-react'
 import { useState } from 'react'
+import { ApiCostEstimate } from '../../../components/ApiCostEstimate'
 import { ModelSelect } from '../../../components/ModelSelect'
 import {
   APPLE_FOUNDATION_MODELS,
@@ -18,12 +19,15 @@ import {
   type ArticleModelId,
 } from '../../../lib/article/articleModel'
 import { TEXT_MODELS } from '../../../lib/llama/textModel'
-import type { ArticleSummary } from '../../../types/project'
+import { estimateOpenAiSummaryCost } from '../../../lib/openai/cost'
+import type { ArticleSummary, MediaProject } from '../../../types/project'
+import { articleSummaryInput } from '../article'
 import type { ArticleSummaryController } from '../hooks/useArticleSummary'
 
 type SummaryDraft = Pick<ArticleSummary, 'overview' | 'mainMessage' | 'keyPoints' | 'keywords'>
 
 type ArticleSummaryCardProps = {
+  project: MediaProject
   summary?: ArticleSummary
   generation: ArticleSummaryController
   modelId: ArticleModelId
@@ -100,6 +104,7 @@ function SummaryField({
 }
 
 export function ArticleSummaryCard({
+  project,
   summary,
   generation,
   modelId,
@@ -121,6 +126,11 @@ export function ArticleSummaryCard({
     : hasSummary
       ? '要約を更新'
       : '要約を生成'
+  const summaryModel = getArticleModel(modelId)
+  const costEstimate =
+    summaryModel.provider === 'openai'
+      ? estimateOpenAiSummaryCost(articleSummaryInput(project).length)
+      : undefined
 
   const startEditing = () => {
     if (!summary || !canEdit) return
@@ -272,8 +282,12 @@ export function ArticleSummaryCard({
             />
           </label>
           <p className='mt-1.5 text-[10px] leading-5 text-[#9aa6a1]'>
-            {modelDescription(getArticleModel(modelId))}
+            {modelDescription(summaryModel)}
           </p>
+          <ApiCostEstimate
+            isOpenAi={summaryModel.provider === 'openai'}
+            estimate={costEstimate}
+          />
         </div>
         {generation.error && (
           <p className='mt-4 rounded-[8px] border border-[#e6b6a8] bg-[#fff5f1] px-3 py-2 text-xs leading-5 text-[#9d422d]'>

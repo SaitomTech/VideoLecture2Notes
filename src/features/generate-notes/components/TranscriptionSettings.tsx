@@ -1,7 +1,9 @@
 import { RefreshCw, Square } from 'lucide-react'
+import { ApiCostEstimate } from '../../../components/ApiCostEstimate'
 import { OpenAiApiKeySettings } from '../../../components/OpenAiApiKeySettings'
 import { ModelDescription } from '../../../components/ModelDescription'
 import { ModelSelect } from '../../../components/ModelSelect'
+import { estimateOpenAiTranscriptionCost } from '../../../lib/openai/cost'
 import {
   getTranscriptionModel,
   APPLE_SPEECH_TRANSCRIBER_MODEL,
@@ -16,6 +18,7 @@ import type { TranscriptionStatus } from '../hooks/useTranscription'
 type TranscriptionSettingsProps = {
   language: TranscriptionLanguage
   modelId: TranscriptionModelId
+  durationMs: number
   status: TranscriptionStatus
   disabled?: boolean
   onLanguageChange: (language: TranscriptionLanguage) => void
@@ -79,6 +82,7 @@ function TranscriptionModelDetails({
 export function TranscriptionSettings({
   language,
   modelId,
+  durationMs,
   status,
   disabled = false,
   onLanguageChange,
@@ -90,6 +94,8 @@ export function TranscriptionSettings({
   const isCompleted = status === 'completed'
   const isDisabled = isRunning || disabled
   const model = getTranscriptionModel(modelId)
+  const costEstimate =
+    model.provider === 'openai' ? estimateOpenAiTranscriptionCost(durationMs) : undefined
 
   return (
     <section aria-labelledby="transcription-settings-heading">
@@ -148,6 +154,7 @@ export function TranscriptionSettings({
             />
           </label>
           <TranscriptionModelDetails model={model} disabled={isDisabled} />
+          <ApiCostEstimate isOpenAi={model.provider === 'openai'} estimate={costEstimate} />
         </div>
       </div>
     </section>

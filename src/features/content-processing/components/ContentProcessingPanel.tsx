@@ -1,8 +1,11 @@
 import { RefreshCw, Square } from 'lucide-react'
+import { ApiCostEstimate } from '../../../components/ApiCostEstimate'
 import { OpenAiApiKeySettings } from '../../../components/OpenAiApiKeySettings'
 import { ModelDescription } from '../../../components/ModelDescription'
 import { ModelSelect } from '../../../components/ModelSelect'
 import { ProcessingStatusRow } from '../../../components/ProcessingStatusRow'
+import { estimateOpenAiArticleCost } from '../../../lib/openai/cost'
+import type { MediaProject } from '../../../types/project'
 import {
   APPLE_FOUNDATION_MODELS,
   OPENAI_LUNA_MODEL,
@@ -11,8 +14,10 @@ import {
 } from '../../../lib/article/articleModel'
 import { TEXT_MODELS } from '../../../lib/llama/textModel'
 import type { ContentProcessingController } from '../hooks/useContentProcessing'
+import { hasCurrentContent } from '../contentProcessing'
 
 type ContentProcessingPanelProps = {
+  project: MediaProject
   processing: ContentProcessingController
   model: ArticleModel
   modelId: ArticleModelId
@@ -89,6 +94,7 @@ function progressRatio(processing: ContentProcessingController) {
 }
 
 export function ContentProcessingPanel({
+  project,
   processing,
   model,
   modelId,
@@ -98,6 +104,19 @@ export function ContentProcessingPanel({
   const isRunning = processing.status === 'running'
   const isCompleted = processing.status === 'completed'
   const total = processing.progress.total
+  const targetSlides = project.slides.filter((slide) => slide.transcript?.raw.trim())
+  const slidesToProcess = isCompleted
+    ? targetSlides
+    : targetSlides.filter((slide) => !hasCurrentContent(slide, modelId))
+  const costEstimate =
+    model.provider === 'openai'
+      ? estimateOpenAiArticleCost({
+          slides: slidesToProcess.map((slide) => ({
+            transcriptCharacters: slide.transcript?.raw.length ?? 0,
+            ocrCharacters: slide.ocr?.rawText.length ?? 0,
+          })),
+        })
+      : undefined
   return (
     <section aria-labelledby='content-processing-heading'>
       <div className='flex flex-wrap items-start justify-between gap-4'>
@@ -142,6 +161,7 @@ export function ContentProcessingPanel({
           />
         </label>
         <ArticleModelDetails model={model} disabled={disabled || isRunning} />
+        <ApiCostEstimate isOpenAi={model.provider === 'openai'} estimate={costEstimate} />
       </div>
     </section>
   )
