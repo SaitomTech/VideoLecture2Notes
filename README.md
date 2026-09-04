@@ -40,6 +40,17 @@ bunx tauri build --bundles dmg
 
 生成物は`src-tauri/target/release/bundle/`以下に作成されます。現在の配布物はApple Silicon用DMGのみです。
 
+## macOSで「アプリが壊れているため開けません」と表示される場合
+
+自分でビルドしたもの、または信頼できるGitHub Releaseからダウンロードしたものに限り、ターミナルでダウンロード時の隔離属性を外して起動できます。
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/videolecture2notes.app"
+open "/Applications/videolecture2notes.app"
+```
+
+アプリを`Applications`以外に置いている場合は、パスを実際の`.app`の場所に置き換えてください。Finderでアプリを右クリックして「開く」を選ぶ方法でも起動できる場合があります。この対応はAppleのコード署名やnotarizationの代わりにはなりません。
+
 ## OpenAI APIの利用
 
 OpenAIの機能を使う場合は、アプリ内に自分のOpenAI APIキーを入力します。キーはmacOS Keychainに保存され、リポジトリやGitHub Actionsには保存しません。OpenAI APIの利用料金は入力したAPIキーのアカウントに発生します。
