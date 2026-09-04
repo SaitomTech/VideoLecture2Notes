@@ -72,6 +72,11 @@
           "name": "binaries/apple-foundation-models",
           "sidecar": true,
           "args": true
+        },
+        {
+          "name": "binaries/yt-dlp",
+          "sidecar": true,
+          "args": true
         }
       ]
     },
@@ -105,6 +110,11 @@
         },
         {
           "name": "binaries/apple-foundation-models",
+          "sidecar": true,
+          "args": true
+        },
+        {
+          "name": "binaries/yt-dlp",
           "sidecar": true,
           "args": true
         }

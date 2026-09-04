@@ -1,6 +1,6 @@
 import type { VideoExtension } from './media'
 
-export const PROJECT_VERSION = 5
+export const PROJECT_VERSION = 6
 
 export type ProjectStep = 'crop' | 'detect-slides' | 'generate-notes' | 'article-review' | 'export'
 
@@ -21,12 +21,34 @@ export type MediaMetadata = {
   audioCodec?: string
 }
 
+export type YoutubeImportQuality = '720p' | '1080p' | 'best'
+
+export type MediaSourceOrigin =
+  | {
+      kind: 'local-file'
+    }
+  | {
+      kind: 'youtube'
+      videoId: string
+      canonicalUrl: string
+      pageTitle?: string
+      channelTitle?: string
+      thumbnailUrl?: string
+      importedAt: string
+      downloader: {
+        name: 'yt-dlp'
+        version: string
+      }
+      quality: YoutubeImportQuality
+    }
+
 export type MediaSource = {
   path: string
   name: string
   extension: VideoExtension
   sizeBytes?: number
   metadata: MediaMetadata
+  origin?: MediaSourceOrigin
 }
 
 /** Coordinates are always expressed in the original video's pixel space. */

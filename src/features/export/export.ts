@@ -1,6 +1,6 @@
 import { join } from '@tauri-apps/api/path'
 import { copyFile, ensureDirectory, writeTextFile } from '../../lib/tauri/filesystem'
-import { hasCurrentArticle, hasCurrentArticleSummary } from '../article/article'
+import { hasCurrentArticleSummary } from '../article/article'
 import type { ArticleSummary, MediaProject } from '../../types/project'
 import { renderHtml, renderMarkdown, renderTxt } from './renderers'
 
@@ -60,17 +60,6 @@ function imageFilename(index: number) {
 function buildExportDocument(project: MediaProject, includeImages: boolean): ExportDocument {
   if (project.slides.length === 0) {
     throw new Error('ExportするSlideがありません。先にスライド検出を実行してください。')
-  }
-
-  if (!project.slides.some((slide) => hasCurrentArticle(slide))) {
-    throw new Error('Exportする記事本文がありません。先に記事本文を生成してください。')
-  }
-
-  const incompleteSlide = project.slides.find(
-    (slide) => slide.transcript?.raw.trim() && !hasCurrentArticle(slide),
-  )
-  if (incompleteSlide) {
-    throw new Error(`Slide ${incompleteSlide.index + 1}の記事本文が未生成です。記事本文の生成を完了してください。`)
   }
 
   const missingImageSlide = includeImages

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { MediaProject } from '../types/project'
+import { PROJECT_VERSION, type MediaProject } from '../types/project'
 
 const MediaMetadataSchema = z.object({
   path: z.string().min(1),
@@ -10,6 +10,26 @@ const MediaMetadataSchema = z.object({
   videoCodec: z.string().min(1).optional(),
   audioCodec: z.string().min(1).optional(),
 })
+
+const MediaSourceOriginSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('local-file'),
+  }),
+  z.object({
+    kind: z.literal('youtube'),
+    videoId: z.string().regex(/^[A-Za-z0-9_-]{11}$/),
+    canonicalUrl: z.url(),
+    pageTitle: z.string().min(1).optional(),
+    channelTitle: z.string().min(1).optional(),
+    thumbnailUrl: z.url().optional(),
+    importedAt: z.iso.datetime(),
+    downloader: z.object({
+      name: z.literal('yt-dlp'),
+      version: z.string().min(1),
+    }),
+    quality: z.enum(['720p', '1080p', 'best']),
+  }),
+])
 
 const CropRegionSchema = z.object({
   x: z.number().finite().nonnegative(),
@@ -181,6 +201,7 @@ export const MediaProjectSchema = z.object({
     extension: z.enum(['mp4', 'mov', 'm4v', 'mkv', 'webm']),
     sizeBytes: z.number().int().nonnegative().optional(),
     metadata: MediaMetadataSchema,
+    origin: MediaSourceOriginSchema.default({ kind: 'local-file' }),
   }),
   crop: CropRegionSchema,
   settings: z.object({
@@ -223,6 +244,6 @@ export function parseMediaProject(value: unknown): MediaProject {
       lastOpenedAt: workflow?.lastOpenedAt ?? parsed.updatedAt,
       ...(workflow?.lastExportedAt ? { lastExportedAt: workflow.lastExportedAt } : {}),
     },
-    version: Math.max(parsed.version, 3),
+    version: Math.max(parsed.version, PROJECT_VERSION),
   } as MediaProject
 }

@@ -8,6 +8,7 @@ export type SidecarName =
   | 'binaries/apple-vision-ocr'
   | 'binaries/apple-speech-transcriber'
   | 'binaries/apple-foundation-models'
+  | 'binaries/yt-dlp'
 
 type SidecarStreamHandlers = {
   onStdout?: (chunk: string) => void

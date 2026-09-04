@@ -7,6 +7,7 @@
 ## できること
 
 - 動画を読み込み、音声をスライド単位に分割
+- YouTubeの公開動画URLから動画をプロジェクトへ読み込み
 - Whisper系モデルによるローカル文字起こし
 - Apple Vision、ローカルモデル、OpenAI APIによるOCR
 - Apple Foundation Models、ローカルLLM、OpenAI APIによる本文生成

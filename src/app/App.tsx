@@ -28,7 +28,11 @@ import {
   saveProject,
   deleteProject,
 } from '../lib/storage/projectStorage'
+import { removeProjectSourceAssetDirectory } from '../lib/storage/projectAssets'
+import { downloadYoutubeVideo } from '../lib/youtube/downloader'
 import type { SelectedVideo } from '../features/import/types'
+import type { YoutubeImportOptions, YoutubeImportRequest } from '../features/import/types'
+import type { YoutubeDownloadInput } from '../lib/youtube/types'
 import type {
   ArticleDraft,
   ArticleSummary,
@@ -45,6 +49,33 @@ import type {
 import type { SlideDetectionOutput } from '../features/slide-detection/types'
 
 type AppStep = 'home' | 'import' | ProjectStep
+
+async function relinkProject(projectId: string, source: MediaSource) {
+  const project = await loadProject(projectId)
+  const metadataMatches =
+    project.source.metadata.width === source.metadata.width &&
+    project.source.metadata.height === source.metadata.height &&
+    Math.abs(project.source.metadata.durationMs - source.metadata.durationMs) <= 2_000
+  const sizeMatches =
+    project.source.sizeBytes === undefined ||
+    source.sizeBytes === undefined ||
+    project.source.sizeBytes === source.sizeBytes
+
+  if (!metadataMatches || !sizeMatches) {
+    throw new Error('選択した動画は、保存時の元動画と一致しません。別の動画を選択してください。')
+  }
+
+  await saveProject(
+    updateProjectSource(project, {
+      ...source,
+      origin: source.origin ?? { kind: 'local-file' },
+    }),
+  )
+}
+
+async function removeProject(projectId: string) {
+  await deleteProject(projectId)
+}
 
 function App() {
   const [step, setStep] = useState<AppStep>('home')
@@ -71,6 +102,30 @@ function App() {
 
     await persistProject(createMediaProject(video, video.metadata))
     setStep('crop')
+  }
+
+  const handleYoutubeImport = async (
+    request: YoutubeImportRequest,
+    options: YoutubeImportOptions,
+  ) => {
+    const projectId = crypto.randomUUID()
+
+    try {
+      const video = await downloadYoutubeVideo({
+        projectId,
+        info: request.info,
+        quality: request.quality,
+        signal: options.signal,
+        onProgress: options.onProgress,
+      } satisfies YoutubeDownloadInput)
+      if (!video.metadata) throw new Error('取得した動画のメタデータがありません')
+
+      await persistProject(createMediaProject(video, video.metadata, projectId))
+      setStep('crop')
+    } catch (error) {
+      await removeProjectSourceAssetDirectory(projectId).catch(() => undefined)
+      throw error
+    }
   }
 
   const handleCreateProject = () => {
@@ -103,28 +158,6 @@ function App() {
     const nextProject = markProjectOpened(result.project, result.step)
     await persistProject(nextProject)
     setStep(result.step)
-  }
-
-  const handleRelinkProject = async (projectId: string, source: MediaSource) => {
-    const project = await loadProject(projectId)
-    const metadataMatches =
-      project.source.metadata.width === source.metadata.width &&
-      project.source.metadata.height === source.metadata.height &&
-      Math.abs(project.source.metadata.durationMs - source.metadata.durationMs) <= 2_000
-    const sizeMatches =
-      project.source.sizeBytes === undefined ||
-      source.sizeBytes === undefined ||
-      project.source.sizeBytes === source.sizeBytes
-
-    if (!metadataMatches || !sizeMatches) {
-      throw new Error('選択した動画は、保存時の元動画と一致しません。別の動画を選択してください。')
-    }
-
-    await saveProject(updateProjectSource(project, source))
-  }
-
-  const handleDeleteProject = async (projectId: string) => {
-    await deleteProject(projectId)
   }
 
   const handleApplyCrop = async (crop: CropRegion) => {
@@ -198,8 +231,8 @@ function App() {
         onHome={handleGoHome}
         onCreateProject={handleCreateProject}
         onOpenProject={handleOpenProject}
-        onRelinkProject={handleRelinkProject}
-        onDeleteProject={handleDeleteProject}
+        onRelinkProject={relinkProject}
+        onDeleteProject={removeProject}
       />
     )
   }
@@ -274,6 +307,7 @@ function App() {
         extension: project.source.extension,
         sizeBytes: project.source.sizeBytes,
         metadata: project.source.metadata,
+        origin: project.source.origin,
       }
     : undefined
 
@@ -281,6 +315,7 @@ function App() {
     <ImportPage
       initialVideo={initialVideo}
       onContinue={handleImportContinue}
+      onContinueYoutube={handleYoutubeImport}
       onHome={handleGoHome}
     />
   )
