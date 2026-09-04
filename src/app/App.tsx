@@ -17,6 +17,8 @@ import {
   updateProjectSlideDetection,
   updateProjectSlideOcr,
   updateProjectSlideResultEdits,
+  updateProjectTranscriptAlignment,
+  updateProjectTranscriptPlacement,
   updateProjectTranscription,
 } from '../lib/project/project'
 import {
@@ -35,6 +37,7 @@ import type {
   ProjectStep,
   SlideOcrResult,
   SlideResultEdits,
+  TranscriptAlignment,
   TranscriptionResult,
 } from '../types/project'
 import type { SlideDetectionOutput } from '../features/slide-detection/types'
@@ -52,9 +55,7 @@ function App() {
     setProject(nextProject)
   }
 
-  const updateCurrentProject = async (
-    update: (currentProject: MediaProject) => MediaProject,
-  ) => {
+  const updateCurrentProject = async (update: (currentProject: MediaProject) => MediaProject) => {
     const currentProject = projectRef.current
     if (!currentProject) return null
 
@@ -91,7 +92,9 @@ function App() {
   const handleOpenProject = async (projectId: string) => {
     const result = await loadProjectForResume(projectId)
     if (result.kind === 'source-missing') {
-      throw new Error('元動画にアクセスできません。保存済みプロジェクトから動画を再指定してください。')
+      throw new Error(
+        '元動画にアクセスできません。保存済みプロジェクトから動画を再指定してください。',
+      )
     }
     if (result.kind === 'invalid') throw new Error(result.message)
 
@@ -148,12 +151,21 @@ function App() {
     )
   }
 
-  const handleContentSlideCompleted = async (
-    slideId: string,
-    result: ContentProcessingResult,
-  ) => {
+  const handleContentSlideCompleted = async (slideId: string, result: ContentProcessingResult) => {
     await updateCurrentProject((currentProject) =>
       updateProjectSlideContent(currentProject, slideId, result),
+    )
+  }
+
+  const handleTranscriptAlignmentCompleted = async (alignment: TranscriptAlignment) => {
+    await updateCurrentProject((currentProject) =>
+      updateProjectTranscriptAlignment(currentProject, alignment),
+    )
+  }
+
+  const handleTranscriptPlacementChange = async (unitId: string, slideId: string) => {
+    await updateCurrentProject((currentProject) =>
+      updateProjectTranscriptPlacement(currentProject, unitId, slideId),
     )
   }
 
@@ -214,6 +226,8 @@ function App() {
         onCompleted={handleTranscriptionCompleted}
         onOcrSlideCompleted={handleOcrSlideCompleted}
         onContentSlideCompleted={handleContentSlideCompleted}
+        onTranscriptAlignmentCompleted={handleTranscriptAlignmentCompleted}
+        onTranscriptPlacementChange={handleTranscriptPlacementChange}
         onSaveSlideResultEdits={handleSaveSlideResultEdits}
         onOpenArticleReview={() => void handleProjectStep('article-review')}
         onHome={handleGoHome}

@@ -44,13 +44,13 @@ function parseTimestamp(value: unknown) {
   return Math.round((hours * 3600 + minutes * 60 + seconds) * 1000)
 }
 
-function parseSegment(segment: WhisperJsonSegment): TranscriptSegment | null {
+function parseSegment(segment: WhisperJsonSegment, index: number): TranscriptSegment | null {
   const startMs = parseTimestamp(segment.offsets?.from) ?? parseTimestamp(segment.timestamps?.from)
   const endMs = parseTimestamp(segment.offsets?.to) ?? parseTimestamp(segment.timestamps?.to)
   const text = typeof segment.text === 'string' ? segment.text.trim() : ''
   if (startMs === null || endMs === null || !text || endMs < startMs) return null
 
-  return { startMs, endMs, text }
+  return { id: `segment-${index}-${startMs}-${endMs}`, startMs, endMs, text }
 }
 
 function outputBasePath(path: string) {
@@ -109,7 +109,7 @@ export async function runWhisper({
   const contents = await readTextFile(outputPath)
   const parsed = JSON.parse(contents) as WhisperJson
   const segments = (parsed.transcription ?? [])
-    .map(parseSegment)
+    .map((segment, index) => parseSegment(segment, index))
     .filter((segment): segment is TranscriptSegment => segment !== null)
     .sort((first, second) => first.startMs - second.startMs)
 

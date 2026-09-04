@@ -12,6 +12,7 @@ jobs:
   build-macos:
     name: Build macOS DMG
     runs-on: macos-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout the released tag

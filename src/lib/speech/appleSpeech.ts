@@ -73,5 +73,11 @@ export async function runAppleSpeech({
     throw new UserFacingError('Apple SpeechTranscriberの応答形式が不正です。', result.error)
   }
 
-  return result.data
+  return {
+    ...result.data,
+    segments: result.data.segments.map((segment, index) => ({
+      ...segment,
+      id: `segment-${index}-${segment.startMs}-${segment.endMs}`,
+    })),
+  }
 }
