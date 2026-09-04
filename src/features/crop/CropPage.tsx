@@ -1,9 +1,10 @@
-import { ArrowLeft, Check, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Check, RotateCcw, ScanLine } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
 import { VideoPlaybackControls } from '../../components/VideoPlaybackControls'
+import { detectAutomaticCrop, type AutoCropProgress } from './autoCrop'
 import type { MediaProject, CropRegion } from '../../types/project'
 import { CropSelector } from './components/CropSelector'
 import type { NormalizedCropRegion } from './types'
@@ -37,6 +38,9 @@ export function CropPage({ project, onBack, onApply, onHome }: CropPageProps) {
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(metadata.durationMs / 1000)
   const [isApplying, setIsApplying] = useState(false)
+  const [isDetecting, setIsDetecting] = useState(false)
+  const [autoCropProgress, setAutoCropProgress] = useState<AutoCropProgress | null>(null)
+  const [autoCropConfidence, setAutoCropConfidence] = useState<number | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -63,6 +67,42 @@ export function CropPage({ project, onBack, onApply, onHome }: CropPageProps) {
     setCurrentTime(time)
   }
 
+  const handleAutomaticCrop = async () => {
+    setIsDetecting(true)
+    setAutoCropProgress(null)
+    setAutoCropConfidence(null)
+    setNotice(null)
+    setError(null)
+
+    const controller = new AbortController()
+    try {
+      const result = await detectAutomaticCrop({
+        projectId: project.id,
+        path: project.source.path,
+        metadata,
+        signal: controller.signal,
+        onProgress: setAutoCropProgress,
+      })
+
+      if (!result) {
+        setError('スライド領域を自動検出できませんでした。手動で範囲を指定してください。')
+        return
+      }
+
+      setRegion(pixelToNormalizedCrop(result.crop, metadata))
+      setAutoCropConfidence(result.confidence)
+      setNotice(
+        `スライド領域を自動推定しました（信頼度 ${Math.round(result.confidence * 100)}%）。必要なら調整してください。`,
+      )
+    } catch (detectionError) {
+      console.error(detectionError)
+      setError('スライド領域の自動検出に失敗しました。手動で範囲を指定してください。')
+    } finally {
+      setIsDetecting(false)
+      setAutoCropProgress(null)
+    }
+  }
+
   const handleApply = async () => {
     setIsApplying(true)
     setNotice(null)
@@ -81,7 +121,7 @@ export function CropPage({ project, onBack, onApply, onHome }: CropPageProps) {
 
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
-      <AppHeader onHome={onHome} homeDisabled={isApplying} />
+      <AppHeader onHome={onHome} homeDisabled={isApplying || isDetecting} />
       <WorkflowBar activeStep="crop" />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[720px] flex-1 flex-col pb-8 md:w-[calc(100%-11.6vw)]">
@@ -107,7 +147,15 @@ export function CropPage({ project, onBack, onApply, onHome }: CropPageProps) {
               <p className="truncate text-xs font-semibold text-[#18211f]" title={project.source.path}>{project.source.name}</p>
               <p className="mt-0.5 font-mono text-[10px] text-[#71807b]">{metadata.width} × {metadata.height} · {formatTime(metadata.durationMs)}</p>
             </div>
-            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#1d6b50]">CROP READY</span>
+            <button
+              className="inline-flex items-center gap-1.5 rounded-md border border-[#b7cbc0] px-2.5 py-2 text-[10px] font-semibold text-[#1d6b50] transition hover:border-[#1d6b50] hover:bg-[#edf4ef] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50"
+              type="button"
+              onClick={() => void handleAutomaticCrop()}
+              disabled={isApplying || isDetecting}
+            >
+              <ScanLine size={14} strokeWidth={1.8} />
+              {isDetecting ? '自動検出中…' : 'スライド領域を自動検出'}
+            </button>
           </div>
 
           <div className="p-4 md:p-5">
@@ -128,7 +176,14 @@ export function CropPage({ project, onBack, onApply, onHome }: CropPageProps) {
                 onPause={() => setIsPlaying(false)}
                 onEnded={() => setIsPlaying(false)}
               />
-              <CropSelector region={region} onChange={(nextRegion) => { setRegion(nextRegion); setNotice(null) }} />
+              <CropSelector
+                region={region}
+                onChange={(nextRegion) => {
+                  setRegion(nextRegion)
+                  setAutoCropConfidence(null)
+                  setNotice(null)
+                }}
+              />
             </div>
 
             <VideoPlaybackControls
@@ -150,7 +205,11 @@ export function CropPage({ project, onBack, onApply, onHome }: CropPageProps) {
                 <button
                   className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-2 text-xs font-semibold text-[#71807b] transition hover:bg-[#e2eee8] hover:text-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30"
                   type="button"
-                  onClick={() => { setRegion(savedRegionRef.current); setNotice(null) }}
+                  onClick={() => {
+                    setRegion(savedRegionRef.current)
+                    setAutoCropConfidence(null)
+                    setNotice(null)
+                  }}
                 >
                   <RotateCcw size={14} strokeWidth={1.8} />
                   リセット
@@ -163,13 +222,25 @@ export function CropPage({ project, onBack, onApply, onHome }: CropPageProps) {
             <div className="min-h-5 text-xs" aria-live="polite">
               {error && <p className="text-[#b6533a]">{error}</p>}
               {!error && notice && <p className="inline-flex items-center gap-1.5 text-[#1d6b50]"><Check size={14} />{notice}</p>}
-              {!error && !notice && <p className="text-[#9aa6a1]">座標は元動画のピクセル単位で保存されます。</p>}
+              {!error && !notice && isDetecting && autoCropProgress && (
+                <p className="text-[#71807b]">
+                  {autoCropProgress.phase === 'extracting' ? '動画のフレームを準備中' : '矩形候補を解析中'}
+                  … {autoCropProgress.completed} / {autoCropProgress.total}
+                </p>
+              )}
+              {!error && !notice && !isDetecting && (
+                <p className="text-[#9aa6a1]">
+                  {autoCropConfidence === null
+                    ? '座標は元動画のピクセル単位で保存されます。'
+                    : '自動推定結果です。必要なら枠を調整してください。'}
+                </p>
+              )}
             </div>
             <button
               className="inline-flex items-center justify-center gap-[18px] rounded-[9px] bg-[#1d6b50] px-5 py-3.5 text-xs font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] transition hover:-translate-y-0.5 hover:bg-[#174d3c] hover:shadow-[0_9px_20px_rgba(29,107,80,0.24)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
               type="button"
               onClick={() => void handleApply()}
-              disabled={isApplying}
+              disabled={isApplying || isDetecting}
             >
               <span>{isApplying ? '保存中…' : '保存して検出へ'}</span>
               <span className="text-[17px] font-normal leading-none" aria-hidden="true">→</span>

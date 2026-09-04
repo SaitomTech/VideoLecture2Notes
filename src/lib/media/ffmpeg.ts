@@ -26,6 +26,13 @@ type RepresentativeFrameInput = {
   outputPath: string
 }
 
+type CropDetectionFrameInput = {
+  path: string
+  timestampMs: number
+  outputPath: string
+  signal?: AbortSignal
+}
+
 type ExtractAudioInput = {
   path: string
   outputPath: string
@@ -122,6 +129,46 @@ export async function extractRepresentativeFrame({
   if (output.code !== 0) {
     const detail = output.stderr.trim()
     throw new Error(detail || `代表フレームの抽出に失敗しました (code ${output.code})`)
+  }
+
+  return outputPath
+}
+
+/** Extracts a small still image for local slide-region detection. */
+export async function extractCropDetectionFrame({
+  path,
+  timestampMs,
+  outputPath,
+  signal,
+}: CropDetectionFrameInput) {
+  const output = await executeSidecar(
+    'binaries/ffmpeg',
+    [
+      '-hide_banner',
+      '-v',
+      'error',
+      '-ss',
+      String(Math.max(0, timestampMs / 1000)),
+      '-i',
+      path,
+      '-an',
+      '-sn',
+      '-dn',
+      '-vf',
+      'scale=640:-2:flags=fast_bilinear',
+      '-frames:v',
+      '1',
+      '-q:v',
+      '6',
+      '-y',
+      outputPath,
+    ],
+    { signal },
+  )
+
+  if (output.code !== 0) {
+    const detail = output.stderr.trim()
+    throw new Error(detail || `crop候補フレームの抽出に失敗しました (code ${output.code})`)
   }
 
   return outputPath

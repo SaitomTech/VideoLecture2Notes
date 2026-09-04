@@ -23,6 +23,14 @@ export async function prepareProjectSourceAssetDirectory(projectId: string) {
   return prepareProjectAssetDirectory(projectId, 'source')
 }
 
+export async function prepareCropDetectionDirectory(projectId: string) {
+  return prepareProjectAssetDirectory(projectId, 'crop-detection')
+}
+
+export async function removeCropDetectionDirectory(projectId: string) {
+  await removeAppLocalPath(projectAssetDirectory(projectId, 'crop-detection'))
+}
+
 export async function removeProjectSourceAssetDirectory(projectId: string) {
   await removeAppLocalPath(projectAssetDirectory(projectId, 'source'))
 }
