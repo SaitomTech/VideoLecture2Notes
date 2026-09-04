@@ -11,6 +11,7 @@ import {
 } from '../../lib/transcription/transcriptionModel'
 import { ensureWhisperModel } from '../../lib/whisper/modelManager'
 import { runWhisper } from '../../lib/whisper/whisper'
+import { normalizeTranscriptSegments } from '../../lib/pipeline/assignTranscriptToSlides'
 import type { MediaProject, TranscriptSegment, TranscriptionResult } from '../../types/project'
 
 export type TranscriptionLanguage = 'auto' | 'ja' | 'en'
@@ -148,25 +149,15 @@ async function runAppleTranscription({
     engineVersion: recognition.engineVersion,
     language: normalizedLanguage,
     audioPath,
-    segments: recognition.segments,
+    segments: normalizeTranscriptSegments(recognition.segments),
     transcribedAt: new Date().toISOString(),
     inputFingerprint: inputFingerprint(project, model.id, language),
   }
 }
 
-function createSlideRanges(project: MediaProject) {
+function createAudioRanges(project: MediaProject) {
   const durationMs = Math.max(1, project.source.metadata.durationMs)
-  const slideRanges: ChunkRange[] = []
-  for (const slide of project.slides) {
-    const range = {
-      startMs: Math.max(0, Math.min(durationMs, slide.startMs)),
-      endMs: Math.max(0, Math.min(durationMs, slide.endMs)),
-    }
-    if (range.endMs > range.startMs) slideRanges.push(range)
-  }
-  slideRanges.sort((first, second) => first.startMs - second.startMs)
-  const ranges = slideRanges.length ? slideRanges : [{ startMs: 0, endMs: durationMs }]
-  return ranges.flatMap(splitRange)
+  return splitRange({ startMs: 0, endMs: durationMs })
 }
 
 async function runLocalTranscription({
@@ -231,7 +222,7 @@ async function runLocalTranscription({
     provider: model.provider,
     language: rawTranscript.language ?? effectiveLanguage,
     audioPath,
-    segments: rawTranscript.segments,
+    segments: normalizeTranscriptSegments(rawTranscript.segments),
     transcribedAt: new Date().toISOString(),
     inputFingerprint: inputFingerprint(project, model.id, effectiveLanguage),
   }
@@ -265,9 +256,30 @@ function createOpenAiProvider({
         signal,
       })
       const text = result.text.trim()
+      const segments =
+        result.segments
+          ?.map((segment) => ({
+            id: `segment-${segment.startSeconds}-${segment.endSeconds}`,
+            startMs: Math.max(0, segment.startSeconds * 1000),
+            endMs: Math.max(0, segment.endSeconds * 1000),
+            text: segment.text.trim(),
+          }))
+          .filter((segment) => segment.text && segment.endMs >= segment.startMs) ?? []
       return {
         language: result.language,
-        segments: text ? [{ startMs: 0, endMs: chunk.endMs - chunk.startMs, text }] : [],
+        segments:
+          segments.length > 0
+            ? segments
+            : text
+              ? [
+                  {
+                    id: `segment-0-${chunk.startMs}-${chunk.endMs}`,
+                    startMs: 0,
+                    endMs: chunk.endMs - chunk.startMs,
+                    text,
+                  },
+                ]
+              : [],
       }
     },
   }
@@ -287,6 +299,7 @@ function offsetSegments(chunk: PreparedChunk, segments: TranscriptSegment[]) {
   return segments.map((segment) => {
     const startMs = Math.min(chunk.endMs, chunk.startMs + Math.max(0, segment.startMs))
     return {
+      id: segment.id,
       startMs,
       endMs: Math.max(startMs, Math.min(chunk.endMs, chunk.startMs + Math.max(0, segment.endMs))),
       text: segment.text,
@@ -326,7 +339,7 @@ export async function runTranscription(input: RunTranscriptionInput): Promise<Tr
     return path
   })
 
-  const ranges = createSlideRanges(project)
+  const ranges = createAudioRanges(project)
   const chunks: PreparedChunk[] = []
   onStage?.('preparing-chunks')
   reportChunkProgress(0, ranges.length, onProgress, onChunkProgress)
@@ -363,7 +376,9 @@ export async function runTranscription(input: RunTranscriptionInput): Promise<Tr
     provider: model.provider,
     language: detectedLanguage ?? provider.effectiveLanguage,
     audioPath,
-    segments: segments.sort((first, second) => first.startMs - second.startMs),
+    segments: normalizeTranscriptSegments(
+      segments.sort((first, second) => first.startMs - second.startMs),
+    ),
     transcribedAt: new Date().toISOString(),
     inputFingerprint: inputFingerprint(project, model.id, provider.effectiveLanguage),
   }

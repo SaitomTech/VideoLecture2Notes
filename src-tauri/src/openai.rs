@@ -77,6 +77,15 @@ pub struct OpenAiTranscriptionResponse {
     language: Option<String>,
     duration_seconds: Option<f64>,
     request_id: Option<String>,
+    segments: Vec<OpenAiTranscriptionSegment>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenAiTranscriptionSegment {
+    start_seconds: f64,
+    end_seconds: f64,
+    text: String,
 }
 
 #[derive(Deserialize)]
@@ -135,6 +144,15 @@ struct TranscriptionsApiResponse {
     text: String,
     language: Option<String>,
     duration: Option<f64>,
+    #[serde(default)]
+    segments: Vec<TranscriptionApiSegment>,
+}
+
+#[derive(Deserialize)]
+struct TranscriptionApiSegment {
+    start: f64,
+    end: f64,
+    text: String,
 }
 
 fn keychain_entry() -> Result<Entry, String> {
@@ -619,7 +637,8 @@ pub async fn transcribe_openai_audio(
         .map_err(|error| format!("OpenAI送信用音声の形式を設定できません: {error}"))?;
     let mut form = multipart::Form::new()
         .text("model", OPENAI_TRANSCRIPTION_MODEL)
-        .text("response_format", "json")
+        .text("response_format", "verbose_json")
+        .text("timestamp_granularities[]", "segment")
         .part("file", audio_part);
     if let Some(language) = request.language.as_deref() {
         form = form.text("language", language.to_string());
@@ -667,5 +686,20 @@ pub async fn transcribe_openai_audio(
         language: result.language,
         duration_seconds: result.duration,
         request_id,
+        segments: result
+            .segments
+            .into_iter()
+            .filter(|segment| {
+                segment.start.is_finite()
+                    && segment.end.is_finite()
+                    && segment.end >= segment.start
+                    && !segment.text.trim().is_empty()
+            })
+            .map(|segment| OpenAiTranscriptionSegment {
+                start_seconds: segment.start,
+                end_seconds: segment.end,
+                text: segment.text,
+            })
+            .collect(),
     })
 }
