@@ -52,10 +52,17 @@ func requestedLanguages(from value: String) -> [String] {
 }
 
 func topLeftPolygon(for box: CGRect) -> [Point] {
-    let minX = Double(box.minX)
-    let maxX = Double(box.maxX)
-    let minY = 1 - Double(box.maxY)
-    let maxY = 1 - Double(box.minY)
+    // Vision normally returns normalized coordinates, but observations at an
+    // image edge can contain tiny floating-point excursions outside [0, 1].
+    // Keep the sidecar response valid for the client-side schema.
+    func clampNormalized(_ value: Double) -> Double {
+        min(max(value, 0), 1)
+    }
+
+    let minX = clampNormalized(Double(box.minX))
+    let maxX = clampNormalized(Double(box.maxX))
+    let minY = clampNormalized(1 - Double(box.maxY))
+    let maxY = clampNormalized(1 - Double(box.minY))
 
     return [
         Point(x: minX, y: minY),
