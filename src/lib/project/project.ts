@@ -7,6 +7,7 @@ import {
 import {
   PROJECT_VERSION,
   type ArticleDraft,
+  type ArticleSummary,
   type ContentProcessingResult,
   type CropRegion,
   type MediaMetadata,
@@ -350,7 +351,7 @@ export function updateProjectArticleDraft(
 
   return {
     ...project,
-    article: { title },
+    article: { ...project.article, title },
     slides: project.slides.map((slide) => {
       const body = draft.bodies[slide.id]
       if (body === undefined || !slide.transcript || body === slide.transcript.articleBody)
@@ -365,5 +366,19 @@ export function updateProjectArticleDraft(
       }
     }),
     updatedAt,
+  }
+}
+
+export function updateProjectArticleSummary(
+  project: MediaProject,
+  summary: ArticleSummary,
+): MediaProject {
+  const title =
+    project.article?.title?.trim() || project.source.name.replace(/\.[^.]+$/, '')
+
+  return {
+    ...project,
+    article: { ...project.article, title, summary },
+    updatedAt: new Date().toISOString(),
   }
 }

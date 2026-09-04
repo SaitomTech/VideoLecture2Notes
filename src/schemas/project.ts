@@ -89,6 +89,15 @@ const TranscriptionResultSchema = z.object({
   inputFingerprint: z.string().min(1),
 })
 
+const ArticleSummarySchema = z.object({
+  overview: z.string().trim().min(1),
+  mainMessage: z.string().trim().min(1),
+  keyPoints: z.array(z.string().trim().min(1)).min(1),
+  keywords: z.array(z.string().trim().min(1)).min(1),
+  model: z.string().min(1),
+  inputFingerprint: z.string().min(1),
+})
+
 const SlideDataSchema = z.object({
   id: z.string().min(1),
   index: z.number().int().nonnegative(),
@@ -191,6 +200,7 @@ export const MediaProjectSchema = z.object({
   article: z
     .object({
       title: z.string(),
+      summary: ArticleSummarySchema.optional(),
     })
     .optional(),
   workflow: ProjectWorkflowSchema.optional(),

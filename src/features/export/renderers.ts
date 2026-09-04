@@ -1,4 +1,5 @@
 import { formatTimestamp } from '../../lib/time'
+import type { ArticleSummary } from '../../types/project'
 import type { ExportDocument } from './export'
 
 function escapeHtml(value: string) {
@@ -26,6 +27,45 @@ function renderBodyHtml(body: string) {
     .split(/\n{2,}/)
     .filter(Boolean)
     .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, '<br>')}</p>`)
+    .join('\n')
+}
+
+function renderSummaryHtml(summary?: ArticleSummary) {
+  if (!summary) return ''
+
+  const keyPoints = summary.keyPoints
+    .map((point) => `          <li>${escapeHtml(point)}</li>`)
+    .join('\n')
+  const keywords = summary.keywords
+    .map((keyword) => `          <span>${escapeHtml(keyword)}</span>`)
+    .join('\n')
+
+  return [
+    '      <section class="article-summary">',
+    '        <p class="summary-eyebrow">AI SUMMARY</p>',
+    '        <h2>文書全体の要約</h2>',
+    `        <div class="summary-overview">${renderBodyHtml(summary.overview)}</div>`,
+    '        <div class="summary-group summary-message">',
+    '          <h3>中心メッセージ</h3>',
+    `          <p>${escapeHtml(summary.mainMessage)}</p>`,
+    '        </div>',
+    '        <div class="summary-grid">',
+    '          <div class="summary-group">',
+    '            <h3>主なポイント</h3>',
+    '            <ul>',
+    keyPoints,
+    '            </ul>',
+    '          </div>',
+    '          <div class="summary-group">',
+    '            <h3>キーワード</h3>',
+    '            <div class="keywords">',
+    keywords,
+    '            </div>',
+    '          </div>',
+    '        </div>',
+    '      </section>',
+  ]
+    .filter(Boolean)
     .join('\n')
 }
 
@@ -62,6 +102,19 @@ export function renderHtml(document: ExportDocument) {
     '    header { margin-bottom: 48px; }',
     '    h1 { margin: 0; font-size: clamp(28px, 5vw, 48px); letter-spacing: -0.05em; line-height: 1.15; }',
     '    .source { margin: 12px 0 0; color: #71807b; font-size: 14px; }',
+    '    .article-summary { margin: 0 0 48px; padding: 28px 32px; border: 1px solid #b7cbc0; border-radius: 12px; background: #eef6f0; }',
+    '    .summary-eyebrow { margin: 0 0 4px; color: #1d6b50; font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; }',
+    '    .article-summary h2 { margin: 0; font-size: 26px; letter-spacing: -0.04em; }',
+    '    .summary-overview { margin-top: 16px; }',
+    '    .summary-overview p { margin: 0 0 12px; font-size: 17px; line-height: 1.8; }',
+    '    .summary-message { margin-top: 24px; padding: 16px 20px; background: #f4f8f4; }',
+    '    .summary-message p { margin: 0; font-size: 16px; line-height: 1.8; }',
+    '    .summary-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 32px; margin-top: 24px; padding-top: 20px; border-top: 1px solid #d8e1dc; }',
+    '    .summary-group h3 { margin: 0 0 12px; color: #71807b; font-size: 12px; letter-spacing: .03em; }',
+    '    .summary-group ul { margin: 0; padding-left: 20px; }',
+    '    .summary-group li { margin: 0 0 8px; font-size: 15px; line-height: 1.7; }',
+    '    .keywords { display: flex; flex-wrap: wrap; gap: 8px; }',
+    '    .keywords span { padding: 5px 10px; border: 1px solid #b7cbc0; border-radius: 999px; color: #53615b; background: #f4f8f4; font-size: 13px; }',
     '    .slide-section { padding: 40px 0; border-top: 1px solid #d8e1dc; }',
     '    .section-meta { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 16px; color: #1d6b50; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }',
     '    .section-content { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: start; }',
@@ -69,7 +122,7 @@ export function renderHtml(document: ExportDocument) {
     '    img { display: block; width: 100%; height: auto; border-radius: 8px; }',
     '    .content { min-width: 0; }',
     '    p { margin: 0 0 16px; font-size: 18px; line-height: 1.9; }',
-    '    @media (max-width: 600px) { main { padding-top: 36px; } .slide-section { padding: 28px 0; } .section-meta { display: block; } .section-meta time { display: block; margin-top: 4px; } .section-content { grid-template-columns: 1fr; gap: 24px; } p { font-size: 16px; } }',
+    '    @media (max-width: 600px) { main { padding-top: 36px; } .article-summary { padding: 22px 20px; } .summary-grid { grid-template-columns: 1fr; gap: 24px; } .slide-section { padding: 28px 0; } .section-meta { display: block; } .section-meta time { display: block; margin-top: 4px; } .section-content { grid-template-columns: 1fr; gap: 24px; } p { font-size: 16px; } }',
     '  </style>',
     '</head>',
     '<body>',
@@ -78,6 +131,7 @@ export function renderHtml(document: ExportDocument) {
     `      <h1>${escapeHtml(document.title)}</h1>`,
     `      <p class="source">${escapeHtml(document.sourceName)} · ${formatTimestamp(document.durationMs)}</p>`,
     '    </header>',
+    renderSummaryHtml(document.summary),
     sections,
     '  </main>',
     '</body>',
@@ -102,7 +156,31 @@ export function renderMarkdown(document: ExportDocument) {
     })
     .join('\n\n')
 
-  return [`# ${safeHeading(document.title)}`, '', `元動画: ${document.sourceName}`, '', sections, ''].join('\n')
+  const summary = document.summary
+    ? [
+        '## 要約',
+        '',
+        document.summary.overview,
+        '',
+        '### 主なポイント',
+        '',
+        ...document.summary.keyPoints.map((point) => `- ${point}`),
+        '',
+        '### キーワード',
+        '',
+        document.summary.keywords.map((keyword) => `\`${keyword}\``).join(' · '),
+      ].join('\n')
+    : ''
+
+  return [
+    `# ${safeHeading(document.title)}`,
+    '',
+    `元動画: ${document.sourceName}`,
+    ...(summary ? ['', summary] : []),
+    '',
+    sections,
+    '',
+  ].join('\n')
 }
 
 export function renderTxt(document: ExportDocument) {
@@ -119,5 +197,22 @@ export function renderTxt(document: ExportDocument) {
     })
     .join('\n\n------------------------------\n\n')
 
-  return [document.title, `元動画: ${document.sourceName}`, '', sections, ''].join('\n')
+  const summary = document.summary
+    ? [
+        '要約',
+        '====',
+        document.summary.overview,
+        '',
+        '中心メッセージ',
+        document.summary.mainMessage,
+        '',
+        '主なポイント',
+        ...document.summary.keyPoints.map((point) => `・${point}`),
+        '',
+        'キーワード',
+        document.summary.keywords.map((keyword) => `・${keyword}`).join('\n'),
+      ].join('\n')
+    : ''
+
+  return [document.title, `元動画: ${document.sourceName}`, ...(summary ? ['', summary] : []), '', sections, ''].join('\n')
 }
