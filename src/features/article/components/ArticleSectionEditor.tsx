@@ -100,9 +100,6 @@ export function ArticleSectionEditor({
                   onChange={(event) => onBodyChange(event.target.value)}
                   placeholder="このSlideの記事本文を入力"
                 />
-                {!body.trim() && (
-                  <p className="mt-2 text-xs text-[#b6533a]">本文を入力してから保存してください。</p>
-                )}
                 {error && <p className="mt-2 text-xs text-[#b6533a]">{error}</p>}
               </>
             ) : (

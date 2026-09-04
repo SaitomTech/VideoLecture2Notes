@@ -143,7 +143,6 @@ export function AnalysisResultPreview({
   onSaveSlideResultEdits,
   disabled = false,
 }: AnalysisResultPreviewProps) {
-  const hasArticle = slides.some((slide) => slide.transcript?.articleBody?.trim())
   const hasAnyResult = slides.some((slide) => slide.ocr || slide.transcript)
   const [editingSlideId, setEditingSlideId] = useState<string | null>(null)
   const [draft, setDraft] = useState<SlideResultEdits | null>(null)
@@ -332,16 +331,13 @@ export function AnalysisResultPreview({
       {hasAnyResult && (
         <div className='mt-7 flex flex-wrap items-center justify-between gap-4 border-t border-[#d8e1dc] pt-5'>
           <p className='text-xs text-[#71807b]'>
-            {hasArticle
-              ? '本文を確認・編集して、次の書き出しステップへ進みます。'
-              : '本文を生成すると、記事プレビューへ進めます。'}
+            解析結果を確認・編集して、次の書き出しステップへ進みます。
           </p>
           <button
             className='inline-flex items-center gap-2 rounded-[9px] bg-[#1d6b50] px-4 py-3 text-xs font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] transition hover:bg-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none'
             type='button'
             onClick={onEdit}
-            disabled={disabled || editingSlideId !== null || !hasArticle}
-            title={!hasArticle ? '先に本文を生成してください' : undefined}
+            disabled={disabled || editingSlideId !== null}
           >
             記事プレビューへ
             <ArrowRight size={14} />

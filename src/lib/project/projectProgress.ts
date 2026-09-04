@@ -10,11 +10,14 @@ export function getProjectResumeStep(project: MediaProject): ProjectStep {
   if (!project.slideDetection || project.slides.length === 0) return 'detect-slides'
   if (project.slides.some((slide) => !slide.image.representativeFramePath)) return 'detect-slides'
 
+  if (project.workflow.lastVisitedStep === 'export') return 'export'
+  if (project.workflow.lastVisitedStep === 'article-review') return 'article-review'
+
   const articleTarget = project.slides.filter((slide) => slide.transcript?.raw.trim())
   const articleCompleted = articleTarget.filter((slide) => hasCurrentArticle(slide)).length
   if (articleTarget.length === 0 || articleCompleted < articleTarget.length) return 'generate-notes'
 
-  return project.workflow.lastVisitedStep === 'export' ? 'export' : 'article-review'
+  return 'article-review'
 }
 
 export function getProjectProgress(project: MediaProject) {
