@@ -34,18 +34,23 @@ const DEFAULT_SETTINGS = {
   articleFormatting: true,
 }
 
-export function createMediaProject(video: SelectedVideo, metadata: MediaMetadata): MediaProject {
+export function createMediaProject(
+  video: SelectedVideo,
+  metadata: MediaMetadata,
+  projectId = crypto.randomUUID(),
+): MediaProject {
   const now = new Date().toISOString()
 
   return {
     version: PROJECT_VERSION,
-    id: crypto.randomUUID(),
+    id: projectId,
     source: {
       path: video.path,
       name: video.name,
       extension: video.extension,
       sizeBytes: video.sizeBytes,
       metadata,
+      origin: video.origin ?? { kind: 'local-file' },
     },
     crop: {
       x: 0,
