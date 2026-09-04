@@ -2,22 +2,39 @@ import { ArrowLeft, ArrowRight, FilePenLine, Save, X } from 'lucide-react'
 import { useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
-import type { ArticleDraft, MediaProject } from '../../types/project'
+import { getArticleModel, type ArticleModelId } from '../../lib/article/articleModel'
+import type { ArticleDraft, ArticleSummary, MediaProject } from '../../types/project'
+import { ArticleSummaryCard } from './components/ArticleSummaryCard'
 import { ArticleSectionEditor } from './components/ArticleSectionEditor'
+import { useArticleSummary } from './hooks/useArticleSummary'
 
 type ArticleReviewPageProps = {
   project: MediaProject
   onBack: () => void
   onSave: (draft: ArticleDraft) => void | Promise<void>
+  onSaveSummary: (summary: ArticleSummary) => void | Promise<void>
   onExport: () => void
   onHome: () => void
 }
 
 type EditingTarget = { type: 'title' } | { type: 'slide'; slideId: string } | null
 
-export function ArticleReviewPage({ project, onBack, onSave, onExport, onHome }: ArticleReviewPageProps) {
+export function ArticleReviewPage({
+  project,
+  onBack,
+  onSave,
+  onSaveSummary,
+  onExport,
+  onHome,
+}: ArticleReviewPageProps) {
   const articleSlides = project.slides.filter((slide) => Boolean(slide.transcript))
   const initialTitle = project.article?.title?.trim() || project.source.name.replace(/\.[^.]+$/, '')
+  const [summaryModelId, setSummaryModelId] = useState<ArticleModelId>(() =>
+    getArticleModel(
+      project.article?.summary?.model ?? articleSlides[0]?.transcript?.articleModel,
+    ).id,
+  )
+  const summaryGeneration = useArticleSummary(project, summaryModelId, onSaveSummary)
   const initialBodies = Object.fromEntries(
     articleSlides.map((slide) => [slide.id, slide.transcript?.articleBody ?? '']),
   )
@@ -41,7 +58,8 @@ export function ArticleReviewPage({ project, onBack, onSave, onExport, onHome }:
     const body = slide.id === editingSlideId ? bodyDraft : savedBodies[slide.id] ?? ''
     return !body.trim()
   })
-  const canEdit = editingTarget === null && !isSaving
+  const isBusy = isSaving || summaryGeneration.status === 'running'
+  const canEdit = editingTarget === null && !isBusy
 
   const startTitleEditing = () => {
     if (!canEdit) return
@@ -109,7 +127,7 @@ export function ArticleReviewPage({ project, onBack, onSave, onExport, onHome }:
 
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
-      <AppHeader onHome={onHome} homeDisabled={hasUnsavedChanges || isSaving} />
+      <AppHeader onHome={onHome} homeDisabled={hasUnsavedChanges || isBusy} />
       <WorkflowBar activeStep="article-review" />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
@@ -127,7 +145,7 @@ export function ArticleReviewPage({ project, onBack, onSave, onExport, onHome }:
             className="inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-[#71807b] transition hover:bg-[#e2eee8] hover:text-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50"
             type="button"
             onClick={handleBack}
-            disabled={isSaving}
+            disabled={isBusy}
           >
             <ArrowLeft size={15} strokeWidth={1.8} />
             解析に戻る
@@ -206,6 +224,16 @@ export function ArticleReviewPage({ project, onBack, onSave, onExport, onHome }:
           </div>
 
           <div className="space-y-5 p-5 md:p-7">
+            <ArticleSummaryCard
+              summary={project.article?.summary}
+              generation={summaryGeneration}
+              modelId={summaryModelId}
+              onModelChange={setSummaryModelId}
+              disabled={isBusy || hasUnsavedChanges}
+              onGenerate={(force) => void summaryGeneration.generate(force)}
+              onCancel={summaryGeneration.cancel}
+              onSave={onSaveSummary}
+            />
             {articleSlides.length > 0 ? (
               articleSlides.map((slide) => {
                 const isEditing = editingSlideId === slide.id
@@ -249,7 +277,7 @@ export function ArticleReviewPage({ project, onBack, onSave, onExport, onHome }:
             className="inline-flex items-center gap-2 rounded-[9px] bg-[#1d6b50] px-4 py-3 text-xs font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] transition hover:bg-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
             type="button"
             onClick={onExport}
-            disabled={hasUnsavedChanges || isSaving || hasEmptyTitle || hasEmptyBody}
+            disabled={hasUnsavedChanges || isBusy || hasEmptyTitle || hasEmptyBody}
             title={hasUnsavedChanges ? '編集中の変更を保存してください' : undefined}
           >
             Exportへ

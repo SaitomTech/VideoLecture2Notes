@@ -12,6 +12,7 @@ import {
   updateProjectSource,
   updateProjectWorkflow,
   updateProjectArticleDraft,
+  updateProjectArticleSummary,
   updateProjectCrop,
   updateProjectSlideContent,
   updateProjectSlideDetection,
@@ -30,6 +31,7 @@ import {
 import type { SelectedVideo } from '../features/import/types'
 import type {
   ArticleDraft,
+  ArticleSummary,
   ContentProcessingResult,
   CropRegion,
   MediaProject,
@@ -179,6 +181,12 @@ function App() {
     await updateCurrentProject((currentProject) => updateProjectArticleDraft(currentProject, draft))
   }
 
+  const handleSaveArticleSummary = async (summary: ArticleSummary) => {
+    await updateCurrentProject((currentProject) =>
+      updateProjectArticleSummary(currentProject, summary),
+    )
+  }
+
   const handleOpenGenerateNotes = () => {
     if (!project?.slideDetection) return
     void handleProjectStep('generate-notes')
@@ -202,6 +210,7 @@ function App() {
         project={project}
         onBack={() => void handleProjectStep('generate-notes')}
         onSave={handleSaveArticle}
+        onSaveSummary={handleSaveArticleSummary}
         onExport={() => void handleProjectStep('export')}
         onHome={handleGoHome}
       />

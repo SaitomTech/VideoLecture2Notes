@@ -1,7 +1,7 @@
 import { join } from '@tauri-apps/api/path'
 import { copyFile, ensureDirectory, writeTextFile } from '../../lib/tauri/filesystem'
-import { hasCurrentArticle } from '../article/article'
-import type { MediaProject } from '../../types/project'
+import { hasCurrentArticle, hasCurrentArticleSummary } from '../article/article'
+import type { ArticleSummary, MediaProject } from '../../types/project'
 import { renderHtml, renderMarkdown, renderTxt } from './renderers'
 
 export const EXPORT_OPTIONS = [
@@ -39,6 +39,7 @@ export type ExportDocument = {
   title: string
   sourceName: string
   durationMs: number
+  summary?: ArticleSummary
   sections: ExportSection[]
 }
 
@@ -85,6 +86,11 @@ function buildExportDocument(project: MediaProject, includeImages: boolean): Exp
     title: defaultArticleTitle(project),
     sourceName: project.source.name,
     durationMs: project.source.metadata.durationMs,
+    summary:
+      project.article?.summary &&
+      hasCurrentArticleSummary(project, project.article.summary.model)
+        ? project.article.summary
+        : undefined,
     sections: project.slides.map((slide) => ({
       id: slide.id,
       index: slide.index,

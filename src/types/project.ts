@@ -1,6 +1,6 @@
 import type { VideoExtension } from './media'
 
-export const PROJECT_VERSION = 3
+export const PROJECT_VERSION = 5
 
 export type ProjectStep = 'crop' | 'detect-slides' | 'generate-notes' | 'article-review' | 'export'
 
@@ -146,12 +146,22 @@ export type ArticleFormattingResult = {
   generatedAt?: string
 }
 
+export type ArticleSummary = {
+  overview: string
+  mainMessage: string
+  keyPoints: string[]
+  keywords: string[]
+  model: string
+  inputFingerprint: string
+}
+
 export type ContentProcessingResult = {
   article: ArticleFormattingResult
 }
 
 export type ArticleData = {
   title: string
+  summary?: ArticleSummary
 }
 
 export type ArticleDraft = {
