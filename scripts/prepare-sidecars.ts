@@ -19,6 +19,8 @@ const FOUNDATION_MODELS_SOURCE = join(
   'main.swift',
 )
 const FOUNDATION_MODELS_SIDECAR_NAME = 'apple-foundation-models'
+const YT_DLP_SIDECAR_NAME = 'yt-dlp'
+const YT_DLP_VERSION = '2026.08.19'
 const RELEASE_DIRECTORY = '1787073674_9.0.1'
 const DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000
 const DOWNLOAD_PROGRESS_INTERVAL_MS = 30 * 1000
@@ -65,6 +67,13 @@ const SIDECARS = [
     sha256: 'ee3324327d621026ae80c24031670e65fa62a0b23a3a027dbe2f65f240affd30',
   },
 ] as const
+
+const YT_DLP_SIDECAR = {
+  name: YT_DLP_SIDECAR_NAME,
+  version: YT_DLP_VERSION,
+  url: `https://github.com/yt-dlp/yt-dlp/releases/download/${YT_DLP_VERSION}/yt-dlp_macos`,
+  sha256: '0f192b7ec147ab6288885d6351d9ab67367640029b4377576ef46dd79cf7b202',
+} as const
 
 function sidecarPath(name: string) {
   return join(SIDECAR_DIRECTORY, `${name}-${TARGET_TRIPLE}`)
@@ -359,6 +368,37 @@ async function downloadAndExtract(sidecar: (typeof SIDECARS)[number], temporaryD
   console.log(`✓ ${sidecar.name}-${TARGET_TRIPLE} (${Math.round((Date.now() - startedAt) / 1000)}秒)`)
 }
 
+async function downloadBinary(
+  sidecar: typeof YT_DLP_SIDECAR,
+  temporaryDirectory: string,
+) {
+  const temporaryDownloadPath = join(temporaryDirectory, sidecar.name)
+  const startedAt = Date.now()
+  console.log(`[${sidecar.name}] ${sidecar.version}のダウンロード開始: ${sidecar.url}`)
+
+  const response = await fetch(sidecar.url, {
+    signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
+  })
+  if (!response.ok) {
+    throw new Error(`${sidecar.name}のダウンロードに失敗しました: HTTP ${response.status}`)
+  }
+
+  await Bun.write(temporaryDownloadPath, response)
+  const actualHash = await sha256(temporaryDownloadPath)
+  if (actualHash !== sidecar.sha256) {
+    throw new Error(
+      `${sidecar.name}のSHA-256が一致しません (expected ${sidecar.sha256}, got ${actualHash})`,
+    )
+  }
+
+  const destination = sidecarPath(sidecar.name)
+  const temporaryDestination = `${destination}.tmp`
+  await Bun.write(temporaryDestination, await readFile(temporaryDownloadPath))
+  await chmod(temporaryDestination, 0o755)
+  await rename(temporaryDestination, destination)
+  console.log(`✓ ${sidecar.name}-${TARGET_TRIPLE} (${Math.round((Date.now() - startedAt) / 1000)}秒)`)
+}
+
 async function sidecarReady(sidecar: (typeof SIDECARS)[number]) {
   if (!(await pathExists(sidecarPath(sidecar.name)))) return false
   if (!sidecar.runtimeDirectory) return true
@@ -396,12 +436,14 @@ async function main() {
     const foundationModelsSidecarReady = await nonEmptyFileExists(
       sidecarPath(FOUNDATION_MODELS_SIDECAR_NAME),
     )
+    const ytDlpSidecarReady = await nonEmptyFileExists(sidecarPath(YT_DLP_SIDECAR_NAME))
     if (
       !force &&
       downloadedSidecarsReady &&
       visionSidecarReady &&
       speechSidecarReady &&
-      foundationModelsSidecarReady
+      foundationModelsSidecarReady &&
+      ytDlpSidecarReady
     ) {
       console.log(`✓ sidecarは準備済みです (${TARGET_TRIPLE})`)
       return
@@ -414,6 +456,13 @@ async function main() {
       }
       console.log(`[${sidecar.name}] sidecarの準備を開始`)
       await downloadAndExtract(sidecar, cleanTemporaryDirectory)
+    }
+
+    if (!force && ytDlpSidecarReady) {
+      console.log(`✓ ${YT_DLP_SIDECAR_NAME}-${TARGET_TRIPLE} (準備済み、ダウンロードをスキップ)`)
+    } else {
+      console.log(`[${YT_DLP_SIDECAR_NAME}] sidecarの準備を開始`)
+      await downloadBinary(YT_DLP_SIDECAR, cleanTemporaryDirectory)
     }
   } finally {
     await rm(cleanTemporaryDirectory, { force: true, recursive: true })

@@ -259,9 +259,9 @@ function DeleteProjectDialog({
         </div>
         <p id="delete-project-description" className="mt-4 text-xs leading-6 text-[#53615b]">
           {request.kind === 'bulk'
-            ? '選択したプロジェクトのJSON、Slide画像、音声キャッシュ、解析結果を削除します。'
-            : '保存済みのJSON、Slide画像、音声キャッシュ、解析結果を削除します。'}
-          元動画とモデルは削除されません。
+            ? '選択したプロジェクトのJSON、取得した動画コピー、Slide画像、音声キャッシュ、解析結果を削除します。'
+            : '保存済みのJSON、取得した動画コピー、Slide画像、音声キャッシュ、解析結果を削除します。'}
+          元のローカル動画とモデルは削除されません。
         </p>
         <div className="mt-6 flex justify-end gap-2">
           <button
@@ -796,7 +796,7 @@ export function HomePage({
             onClick={onCreateProject}
           >
             <Plus size={15} />
-            新しい動画から作成
+            新規作成
           </button>
         </div>
 
