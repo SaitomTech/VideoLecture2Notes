@@ -18,6 +18,19 @@ struct OcrResponse: Codable {
     let engineVersion: String
 }
 
+struct VisionRegion: Codable {
+    let confidence: Double
+    let polygon: [Point]
+}
+
+struct RectangleDetectionResponse: Codable {
+    let imagePath: String
+    let rectangles: [VisionRegion]
+    let textRegions: [VisionRegion]
+    let faceRegions: [VisionRegion]
+    let engineVersion: String
+}
+
 enum VisionOcrError: LocalizedError {
     case missingImagePath
     case imageCouldNotBeLoaded(String)
@@ -69,6 +82,26 @@ func topLeftPolygon(for box: CGRect) -> [Point] {
         Point(x: maxX, y: minY),
         Point(x: maxX, y: maxY),
         Point(x: minX, y: maxY),
+    ]
+}
+
+func topLeftPoint(for point: CGPoint) -> Point {
+    func clampNormalized(_ value: Double) -> Double {
+        min(max(value, 0), 1)
+    }
+
+    return Point(
+        x: clampNormalized(Double(point.x)),
+        y: clampNormalized(1 - Double(point.y))
+    )
+}
+
+func topLeftPolygon(for observation: VNRectangleObservation) -> [Point] {
+    [
+        topLeftPoint(for: observation.topLeft),
+        topLeftPoint(for: observation.topRight),
+        topLeftPoint(for: observation.bottomRight),
+        topLeftPoint(for: observation.bottomLeft),
     ]
 }
 
@@ -134,6 +167,65 @@ func recognize(imagePath: String, languageValue: String) throws -> OcrResponse {
     )
 }
 
+func detectRectangles(imagePath: String) throws -> RectangleDetectionResponse {
+    let imageURL = URL(fileURLWithPath: imagePath)
+    guard FileManager.default.fileExists(atPath: imagePath) else {
+        throw VisionOcrError.imageCouldNotBeLoaded(imagePath)
+    }
+
+    let rectangleRequest = VNDetectRectanglesRequest()
+    rectangleRequest.maximumObservations = 8
+    rectangleRequest.minimumConfidence = 0.2
+    rectangleRequest.minimumSize = 0.18
+    rectangleRequest.minimumAspectRatio = 0.35
+    rectangleRequest.maximumAspectRatio = 1.0
+    rectangleRequest.quadratureTolerance = 30
+
+    let textRequest = VNDetectTextRectanglesRequest()
+    textRequest.reportCharacterBoxes = false
+
+    let faceRequest = VNDetectFaceRectanglesRequest()
+    let handler = VNImageRequestHandler(url: imageURL, options: [:])
+
+    do {
+        try handler.perform([rectangleRequest, textRequest, faceRequest])
+    } catch {
+        let nsError = error as NSError
+        throw VisionOcrError.recognitionFailed(
+            "矩形検出に失敗しました: \(error.localizedDescription) (domain=\(nsError.domain), code=\(nsError.code))"
+        )
+    }
+
+    let rectangles = (rectangleRequest.results ?? []).map { observation in
+        VisionRegion(
+            confidence: Double(observation.confidence),
+            polygon: topLeftPolygon(for: observation)
+        )
+    }
+
+    let textRegions = (textRequest.results ?? []).map { observation in
+        VisionRegion(
+            confidence: Double(observation.confidence),
+            polygon: topLeftPolygon(for: observation.boundingBox)
+        )
+    }
+
+    let faceRegions = (faceRequest.results ?? []).map { observation in
+        VisionRegion(
+            confidence: Double(observation.confidence),
+            polygon: topLeftPolygon(for: observation.boundingBox)
+        )
+    }
+
+    return RectangleDetectionResponse(
+        imagePath: imagePath,
+        rectangles: rectangles,
+        textRegions: textRegions,
+        faceRegions: faceRegions,
+        engineVersion: "apple-vision-rectangles-\(VNDetectRectanglesRequest.currentRevision)"
+    )
+}
+
 func writeJSON<T: Encodable>(_ value: T) throws {
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.sortedKeys]
@@ -149,9 +241,17 @@ do {
         throw VisionOcrError.missingImagePath
     }
 
-    let imagePath = CommandLine.arguments[1]
-    let languageValue = CommandLine.arguments.count >= 3 ? CommandLine.arguments[2] : "ja+en"
-    try writeJSON(recognize(imagePath: imagePath, languageValue: languageValue))
+    if CommandLine.arguments[1] == "--detect-rectangles" {
+        let imagePaths = Array(CommandLine.arguments.dropFirst(2))
+        guard !imagePaths.isEmpty else {
+            throw VisionOcrError.missingImagePath
+        }
+        try writeJSON(imagePaths.map { try detectRectangles(imagePath: $0) })
+    } else {
+        let imagePath = CommandLine.arguments[1]
+        let languageValue = CommandLine.arguments.count >= 3 ? CommandLine.arguments[2] : "ja+en"
+        try writeJSON(recognize(imagePath: imagePath, languageValue: languageValue))
+    }
 } catch {
     FileHandle.standardError.write(
         Data("\(error.localizedDescription)\n".utf8)
