@@ -153,6 +153,7 @@ export function GenerateNotesPage({
               <div className='mt-6 space-y-10'>
                 <div>
                   <OcrPanel
+                    project={project}
                     ocr={ocr}
                     modelId={ocrModelId}
                     onModelChange={setOcrModelId}
@@ -178,6 +179,7 @@ export function GenerateNotesPage({
                   <TranscriptionSettings
                     language={language}
                     modelId={transcriptionModelId}
+                    durationMs={project.source.metadata.durationMs}
                     status={transcription.status}
                     disabled={isOcrRunning || isContentProcessing || isAlignmentRunning}
                     onLanguageChange={setLanguage}
@@ -214,6 +216,7 @@ export function GenerateNotesPage({
 
                 <div>
                   <ContentProcessingPanel
+                    project={project}
                     processing={processing}
                     model={textModel}
                     modelId={textModelId}

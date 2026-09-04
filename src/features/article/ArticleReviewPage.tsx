@@ -225,6 +225,7 @@ export function ArticleReviewPage({
 
           <div className="space-y-5 p-5 md:p-7">
             <ArticleSummaryCard
+              project={project}
               summary={project.article?.summary}
               generation={summaryGeneration}
               modelId={summaryModelId}
