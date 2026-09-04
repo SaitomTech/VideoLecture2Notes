@@ -19,6 +19,11 @@ export type OpenAiTranscriptionResponse = {
   language?: string
   durationSeconds?: number
   requestId?: string
+  segments?: Array<{
+    startSeconds: number
+    endSeconds: number
+    text: string
+  }>
 }
 
 export type OpenAiOcrResponse = {

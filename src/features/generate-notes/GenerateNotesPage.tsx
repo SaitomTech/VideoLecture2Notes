@@ -9,6 +9,8 @@ import {
   type TranscriptionModelId,
 } from '../../lib/transcription/transcriptionModel'
 import type { MediaProject, SlideResultEdits, TranscriptionResult } from '../../types/project'
+import { TranscriptAlignmentPanel } from '../correction/components/TranscriptAlignmentPanel'
+import { useTranscriptAlignment } from '../correction/hooks/useTranscriptAlignment'
 import { AnalysisResultPreview } from '../content-processing/components/AnalysisResultPreview'
 import {
   ContentProcessingPanel,
@@ -30,6 +32,8 @@ type GenerateNotesPageProps = {
   onCompleted: (result: TranscriptionResult) => void | Promise<void>
   onOcrSlideCompleted: OcrSlideCompleted
   onContentSlideCompleted: ContentProcessingSlideCompleted
+  onTranscriptAlignmentCompleted: Parameters<typeof useTranscriptAlignment>[2]
+  onTranscriptPlacementChange: (unitId: string, slideId: string) => void | Promise<void>
   onSaveSlideResultEdits: (slideId: string, edits: SlideResultEdits) => void | Promise<void>
   onOpenArticleReview: () => void
   onHome: () => void
@@ -41,6 +45,8 @@ export function GenerateNotesPage({
   onCompleted,
   onOcrSlideCompleted,
   onContentSlideCompleted,
+  onTranscriptAlignmentCompleted,
+  onTranscriptPlacementChange,
   onSaveSlideResultEdits,
   onOpenArticleReview,
   onHome,
@@ -63,37 +69,48 @@ export function GenerateNotesPage({
   const [textModelId, setTextModelId] = useState<ArticleModelId>(
     () => getArticleModel(storedTextModelId).id,
   )
+  const [alignmentModelId, setAlignmentModelId] = useState<ArticleModelId>(
+    () => getArticleModel(project.transcriptAlignment?.model ?? storedTextModelId).id,
+  )
   const textModel = getArticleModel(textModelId)
+  const alignmentModel = getArticleModel(alignmentModelId)
   const transcription = useTranscription(project, transcriptionModelId, onCompleted)
   const ocr = useOcr(project, onOcrSlideCompleted, ocrModelId)
+  const alignment = useTranscriptAlignment(
+    project,
+    alignmentModelId,
+    onTranscriptAlignmentCompleted,
+  )
   const processing = useContentProcessing(project, onContentSlideCompleted, textModelId)
   const handleTranscribe = () => transcription.transcribe(language)
   const isOcrRunning = ocr.status === 'running'
   const isContentProcessing = processing.status === 'running'
-  const isProcessing = transcription.status === 'running' || isOcrRunning || isContentProcessing
+  const isAlignmentRunning = alignment.status === 'running'
+  const isProcessing =
+    transcription.status === 'running' || isOcrRunning || isContentProcessing || isAlignmentRunning
   const handleTextModelChange = (nextModelId: ArticleModelId) => {
     processing.reset()
     setTextModelId(nextModelId)
   }
   return (
-    <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
+    <main className='flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]'>
       <AppHeader onHome={onHome} homeDisabled={isProcessing} />
-      <WorkflowBar activeStep="generate-notes" />
+      <WorkflowBar activeStep='generate-notes' />
 
-      <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
-        <div className="mb-6 flex items-center justify-between gap-4">
+      <section className='mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]'>
+        <div className='mb-6 flex items-center justify-between gap-4'>
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
+            <p className='font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]'>
               04 / GENERATE NOTES
             </p>
-            <h1 className="mt-1 text-[27px] font-bold tracking-[-0.06em]">ノートを生成</h1>
-            <p className="mt-1 text-xs text-[#71807b]">
+            <h1 className='mt-1 text-[27px] font-bold tracking-[-0.06em]'>ノートを生成</h1>
+            <p className='mt-1 text-xs text-[#71807b]'>
               OCR、文字起こし、本文生成を順に実行します。
             </p>
           </div>
           <button
-            className="inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-[#71807b] transition hover:bg-[#e2eee8] hover:text-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50"
-            type="button"
+            className='inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-[#71807b] transition hover:bg-[#e2eee8] hover:text-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50'
+            type='button'
             onClick={onBack}
             disabled={isProcessing}
           >
@@ -102,49 +119,57 @@ export function GenerateNotesPage({
           </button>
         </div>
 
-        <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d8e1dc] px-5 py-3.5">
-            <div className="min-w-0">
+        <div className='overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]'>
+          <div className='flex flex-wrap items-center justify-between gap-3 border-b border-[#d8e1dc] px-5 py-3.5'>
+            <div className='min-w-0'>
               <p
-                className="truncate text-xs font-semibold text-[#18211f]"
+                className='truncate text-xs font-semibold text-[#18211f]'
                 title={project.source.path}
               >
                 {project.source.name}
               </p>
-              <p className="mt-0.5 font-mono text-[10px] text-[#71807b]">
+              <p className='mt-0.5 font-mono text-[10px] text-[#71807b]'>
                 {project.slides.length} slides ·{' '}
                 {Math.round(project.source.metadata.durationMs / 1000)}秒
               </p>
             </div>
           </div>
 
-          <div className="p-5 md:p-7">
-            <section aria-labelledby="analysis-settings-heading">
+          <div className='p-5 md:p-7'>
+            <section aria-labelledby='analysis-settings-heading'>
               <div>
                 <h2
-                  id="analysis-settings-heading"
-                  className="text-[21px] font-bold tracking-[-0.05em]"
+                  id='analysis-settings-heading'
+                  className='text-[21px] font-bold tracking-[-0.05em]'
                 >
                   1. 解析の設定・実行
                 </h2>
-                <p className="mt-1 text-xs text-[#71807b]">
+                <p className='mt-1 text-xs text-[#71807b]'>
                   3つの処理に必要な設定を確認して、順番に実行します。解析結果は下の「2.
                   解析結果の確認」で確認できます。
                 </p>
               </div>
 
-              <div className="mt-6 space-y-10">
+              <div className='mt-6 space-y-10'>
                 <div>
                   <OcrPanel
                     ocr={ocr}
                     modelId={ocrModelId}
                     onModelChange={setOcrModelId}
-                    disabled={transcription.status === 'running' || isContentProcessing}
+                    disabled={
+                      transcription.status === 'running' ||
+                      isContentProcessing ||
+                      isAlignmentRunning
+                    }
                   />
-                  <div className="mt-6">
+                  <div className='mt-6'>
                     <OcrStatus
                       ocr={ocr}
-                      disabled={transcription.status === 'running' || isContentProcessing}
+                      disabled={
+                        transcription.status === 'running' ||
+                        isContentProcessing ||
+                        isAlignmentRunning
+                      }
                     />
                   </div>
                 </div>
@@ -154,24 +179,37 @@ export function GenerateNotesPage({
                     language={language}
                     modelId={transcriptionModelId}
                     status={transcription.status}
-                    disabled={isOcrRunning || isContentProcessing}
+                    disabled={isOcrRunning || isContentProcessing || isAlignmentRunning}
                     onLanguageChange={setLanguage}
                     onModelChange={setTranscriptionModelId}
                     onTranscribe={handleTranscribe}
                     onCancel={transcription.cancel}
                   />
-                  <div className="mt-6">
+                  <div className='mt-6'>
                     <TranscriptionStatus
                       status={transcription.status}
-                      provider={getTranscriptionModel(transcriptionModelId).provider}
                       stage={transcription.stage}
                       stageProgress={transcription.stageProgress}
                       chunkProgress={transcription.chunkProgress}
                       error={transcription.error}
-                      disabled={isOcrRunning || isContentProcessing}
+                      disabled={isOcrRunning || isContentProcessing || isAlignmentRunning}
                       onRetry={handleTranscribe}
                     />
                   </div>
+                </div>
+
+                <div>
+                  <TranscriptAlignmentPanel
+                    project={project}
+                    alignment={alignment}
+                    model={alignmentModel}
+                    modelId={alignmentModelId}
+                    onModelChange={setAlignmentModelId}
+                    disabled={
+                      transcription.status === 'running' || isOcrRunning || isContentProcessing
+                    }
+                    onApplySuggestion={onTranscriptPlacementChange}
+                  />
                 </div>
 
                 <div>
@@ -180,12 +218,16 @@ export function GenerateNotesPage({
                     model={textModel}
                     modelId={textModelId}
                     onModelChange={handleTextModelChange}
-                    disabled={transcription.status === 'running' || isOcrRunning}
+                    disabled={
+                      transcription.status === 'running' || isOcrRunning || isAlignmentRunning
+                    }
                   />
-                  <div className="mt-6">
+                  <div className='mt-6'>
                     <ContentProcessingStatus
                       processing={processing}
-                      disabled={transcription.status === 'running' || isOcrRunning}
+                      disabled={
+                        transcription.status === 'running' || isOcrRunning || isAlignmentRunning
+                      }
                     />
                   </div>
                 </div>

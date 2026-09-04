@@ -1,11 +1,9 @@
 import { ProcessingStatusRow } from '../../../components/ProcessingStatusRow'
-import type { TranscriptionModel } from '../../../lib/transcription/transcriptionModel'
 import type { TranscriptionStatus as TranscriptionStatusValue } from '../hooks/useTranscription'
 import type { TranscriptionChunkProgress, TranscriptionStage } from '../transcription'
 
 type TranscriptionStatusProps = {
   status: TranscriptionStatusValue
-  provider: TranscriptionModel['provider']
   stage: TranscriptionStage
   stageProgress: number | null
   chunkProgress: TranscriptionChunkProgress | null
@@ -14,11 +12,9 @@ type TranscriptionStatusProps = {
   onRetry: () => void | Promise<void>
 }
 
-function getStageLabel(stage: TranscriptionStage, provider: TranscriptionModel['provider']) {
+function getStageLabel(stage: TranscriptionStage) {
   if (stage === 'preparing-chunks') {
-    return provider === 'openai'
-      ? '文字起こし用の音声をスライド単位で準備中…'
-      : '文字起こし用の音声を30分単位で準備中…'
+    return '文字起こし用の音声を30分単位で準備中…'
   }
 
   const labels: Record<Exclude<TranscriptionStage, 'preparing-chunks'>, string> = {
@@ -32,18 +28,14 @@ function getStageLabel(stage: TranscriptionStage, provider: TranscriptionModel['
 
 function getProgressLabel({
   status,
-  provider,
   stage,
   stageProgress,
   chunkProgress,
-}: Pick<TranscriptionStatusProps, 'status' | 'provider' | 'stage' | 'stageProgress' | 'chunkProgress'>) {
+}: Pick<TranscriptionStatusProps, 'status' | 'stage' | 'stageProgress' | 'chunkProgress'>) {
   if (status === 'running' && stage === 'preparing-model' && stageProgress !== null) {
     return `モデル ${Math.round(stageProgress * 100)}%`
   }
   if (chunkProgress && chunkProgress.total > 0) {
-    if (provider === 'openai') {
-      return `${chunkProgress.completed} / ${chunkProgress.total} スライド`
-    }
     if (stageProgress !== null) return `${Math.round(stageProgress * 100)}%`
     return `${chunkProgress.completed} / ${chunkProgress.total} 30分単位`
   }
@@ -56,7 +48,6 @@ function getProgressLabel({
 
 export function TranscriptionStatus({
   status,
-  provider,
   stage,
   stageProgress,
   chunkProgress,
@@ -64,8 +55,8 @@ export function TranscriptionStatus({
   disabled = false,
   onRetry,
 }: TranscriptionStatusProps) {
-  const stageLabel = getStageLabel(stage, provider)
-  const progressLabel = getProgressLabel({ status, provider, stage, stageProgress, chunkProgress })
+  const stageLabel = getStageLabel(stage)
+  const progressLabel = getProgressLabel({ status, stage, stageProgress, chunkProgress })
   const message =
     status === 'running'
       ? stageLabel
