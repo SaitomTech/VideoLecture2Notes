@@ -12,6 +12,18 @@ dist
 dist-ssr
 *.local
 
+# Local secrets and signing files
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.key
+*.mobileprovision
+*.provisionprofile
+*.cer
+*.crt
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
