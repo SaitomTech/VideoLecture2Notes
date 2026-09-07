@@ -5,7 +5,12 @@ import {
 } from '../../lib/media/ffmpeg'
 import { hammingDistance } from '../../lib/media/dhash'
 import { getSlideAssetPath } from '../../lib/storage/projectAssets'
-import type { MediaProject, SlideBoundary, SlideData } from '../../types/project'
+import {
+  getActiveMediaSource,
+  type MediaProject,
+  type SlideBoundary,
+  type SlideData,
+} from '../../types/project'
 import type { SlideDetectionOutput, SlideDetectionStage } from './types'
 
 export const MINIMUM_BOUNDARY_GAP_MS = 1500
@@ -90,6 +95,7 @@ async function addRepresentativeFrames(
   slides: SlideData[],
   onProgress?: (progress: number) => void,
 ) {
+  const source = getActiveMediaSource(project)
   const completed: SlideData[] = []
   // Keep ffmpeg sidecars sequential so long videos do not spawn dozens of encoders at once.
   for (let index = 0; index < slides.length; index += 1) {
@@ -97,7 +103,7 @@ async function addRepresentativeFrames(
     try {
       const outputPath = await getSlideAssetPath(project.id, index)
       await extractRepresentativeFrame({
-        path: project.source.path,
+        path: source.path,
         crop: project.crop,
         timestampMs: representativeTimestamp(slide.startMs, slide.endMs),
         outputPath,
@@ -129,13 +135,14 @@ export async function runSlideDetection({
   onProgress,
   onStage,
 }: RunSlideDetectionInput): Promise<SlideDetectionOutput> {
+  const source = getActiveMediaSource(project)
   const { sampleIntervalMs: configuredSampleIntervalMs, threshold: configuredThreshold } =
     project.settings.slideDetection
   const sampleIntervalMs = sampleIntervalOverride ?? configuredSampleIntervalMs
   const threshold = thresholdOverride ?? configuredThreshold
   onStage?.('sampling')
   const frames = await sampleVideoFrames({
-    path: project.source.path,
+    path: source.path,
     crop: project.crop,
     sampleIntervalMs,
   })
@@ -144,7 +151,7 @@ export async function runSlideDetection({
   onStage?.('extracting')
   const slides = await addRepresentativeFrames(
     project,
-    buildSlideData(boundaries, project.source.metadata.durationMs),
+    buildSlideData(boundaries, source.metadata.durationMs),
     onProgress,
   )
 

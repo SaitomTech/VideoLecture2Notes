@@ -4,7 +4,7 @@ import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
 import { formatTimestamp } from '../../lib/time'
 import { pickExportDirectory } from '../../lib/tauri/dialog'
-import type { MediaProject } from '../../types/project'
+import { getActiveMediaSource, type MediaProject } from '../../types/project'
 import { EXPORT_OPTIONS, type ExportFormat } from './export'
 import { useExport, type ExportController } from './hooks/useExport'
 
@@ -28,6 +28,7 @@ function getStatusMessage({ status, progress, files }: ExportController) {
 }
 
 export function ExportPage({ project, onBack, onHome }: ExportPageProps) {
+  const source = getActiveMediaSource(project)
   const [destination, setDestination] = useState('')
   const [selectedFormats, setSelectedFormats] = useState<ExportFormat[]>(['html', 'markdown'])
   const exporter = useExport(project)
@@ -64,7 +65,7 @@ export function ExportPage({ project, onBack, onHome }: ExportPageProps) {
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">05 / EXPORT</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">06 / EXPORT</p>
             <h1 className="mt-1 text-[27px] font-bold tracking-[-0.06em]">記事を書き出す</h1>
             <p className="mt-1 text-xs text-[#71807b]">HTML/Markdownは画像付き、TXTは本文のみでこのMacに保存します。</p>
           </div>
@@ -82,12 +83,12 @@ export function ExportPage({ project, onBack, onHome }: ExportPageProps) {
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d8e1dc] px-5 py-4 md:px-7">
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-[#18211f]" title={project.source.path}>
-                {project.article?.title || project.source.name.replace(/\.[^.]+$/, '')}
+              <p className="truncate text-sm font-semibold text-[#18211f]" title={source.path}>
+                {project.article?.title || source.name.replace(/\.[^.]+$/, '')}
               </p>
               <p className="mt-1 font-mono text-[10px] text-[#71807b]">
-                {project.source.name} · {project.slides.length} Slides ·{' '}
-                {formatTimestamp(project.source.metadata.durationMs)}
+                {source.name} · {project.slides.length} Slides ·{' '}
+                {formatTimestamp(source.metadata.durationMs)}
               </p>
             </div>
           </div>

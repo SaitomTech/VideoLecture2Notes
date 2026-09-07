@@ -1,6 +1,6 @@
 import type { VideoExtension } from './media'
 
-export const PROJECT_VERSION = 6
+export const PROJECT_VERSION = 7
 
 export type ProjectStep = 'crop' | 'detect-slides' | 'generate-notes' | 'article-review' | 'export'
 
@@ -49,6 +49,16 @@ export type MediaSource = {
   sizeBytes?: number
   metadata: MediaMetadata
   origin?: MediaSourceOrigin
+}
+
+export type VideoTrimRange = {
+  startMs: number
+  endMs: number
+}
+
+/** The generated media used by downstream analysis after a temporal trim. */
+export type VideoTrim = VideoTrimRange & {
+  source: MediaSource
 }
 
 /** Coordinates are always expressed in the original video's pixel space. */
@@ -274,6 +284,7 @@ export type MediaProject = {
   version: number
   id: string
   source: MediaSource
+  trim?: VideoTrim
   crop: CropRegion
   settings: ProjectSettings
   slides: SlideData[]
@@ -284,4 +295,8 @@ export type MediaProject = {
   workflow: ProjectWorkflow
   createdAt: string
   updatedAt: string
+}
+
+export function getActiveMediaSource(project: MediaProject): MediaSource {
+  return project.trim?.source ?? project.source
 }
