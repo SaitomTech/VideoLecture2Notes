@@ -8,7 +8,7 @@ import {
   getTranscriptionModel,
   type TranscriptionModelId,
 } from '../../lib/transcription/transcriptionModel'
-import type { MediaProject, SlideResultEdits, TranscriptionResult } from '../../types/project'
+import { getActiveMediaSource, type MediaProject, type SlideResultEdits, type TranscriptionResult } from '../../types/project'
 import { TranscriptAlignmentPanel } from '../correction/components/TranscriptAlignmentPanel'
 import { useTranscriptAlignment } from '../correction/hooks/useTranscriptAlignment'
 import { AnalysisResultPreview } from '../content-processing/components/AnalysisResultPreview'
@@ -51,6 +51,7 @@ export function GenerateNotesPage({
   onOpenArticleReview,
   onHome,
 }: GenerateNotesPageProps) {
+  const source = getActiveMediaSource(project)
   const [language, setLanguage] = useState<TranscriptionLanguage>(
     project.transcription?.language === 'ja' || project.transcription?.language === 'en'
       ? project.transcription.language
@@ -124,13 +125,13 @@ export function GenerateNotesPage({
             <div className='min-w-0'>
               <p
                 className='truncate text-xs font-semibold text-[#18211f]'
-                title={project.source.path}
+                title={source.path}
               >
-                {project.source.name}
+                {source.name}
               </p>
               <p className='mt-0.5 font-mono text-[10px] text-[#71807b]'>
                 {project.slides.length} slides ·{' '}
-                {Math.round(project.source.metadata.durationMs / 1000)}秒
+                {Math.round(source.metadata.durationMs / 1000)}秒
               </p>
             </div>
           </div>
@@ -179,7 +180,7 @@ export function GenerateNotesPage({
                   <TranscriptionSettings
                     language={language}
                     modelId={transcriptionModelId}
-                    durationMs={project.source.metadata.durationMs}
+                    durationMs={source.metadata.durationMs}
                     status={transcription.status}
                     disabled={isOcrRunning || isContentProcessing || isAlignmentRunning}
                     onLanguageChange={setLanguage}

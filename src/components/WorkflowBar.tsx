@@ -8,7 +8,7 @@ export type WorkflowStep =
 
 const WORKFLOW_STEPS: Array<{ id: WorkflowStep; label: string }> = [
   { id: 'import', label: 'Import' },
-  { id: 'crop', label: 'Crop' },
+  { id: 'crop', label: 'Crop & Trim' },
   { id: 'detect-slides', label: 'Detect slides' },
   { id: 'generate-notes', label: 'Generate notes' },
   { id: 'article-review', label: 'Article preview' },

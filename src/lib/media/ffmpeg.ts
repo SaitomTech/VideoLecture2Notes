@@ -26,6 +26,13 @@ type RepresentativeFrameInput = {
   outputPath: string
 }
 
+type CropDetectionFrameInput = {
+  path: string
+  timestampMs: number
+  outputPath: string
+  signal?: AbortSignal
+}
+
 type ExtractAudioInput = {
   path: string
   outputPath: string
@@ -37,6 +44,14 @@ type ExtractAudioChunkInput = {
   outputPath: string
   startMs: number
   durationMs: number
+  signal?: AbortSignal
+}
+
+type TrimVideoInput = {
+  path: string
+  outputPath: string
+  startMs: number
+  endMs: number
   signal?: AbortSignal
 }
 
@@ -127,6 +142,46 @@ export async function extractRepresentativeFrame({
   return outputPath
 }
 
+/** Extracts a small still image for local slide-region detection. */
+export async function extractCropDetectionFrame({
+  path,
+  timestampMs,
+  outputPath,
+  signal,
+}: CropDetectionFrameInput) {
+  const output = await executeSidecar(
+    'binaries/ffmpeg',
+    [
+      '-hide_banner',
+      '-v',
+      'error',
+      '-ss',
+      String(Math.max(0, timestampMs / 1000)),
+      '-i',
+      path,
+      '-an',
+      '-sn',
+      '-dn',
+      '-vf',
+      'scale=640:-2:flags=fast_bilinear',
+      '-frames:v',
+      '1',
+      '-q:v',
+      '6',
+      '-y',
+      outputPath,
+    ],
+    { signal },
+  )
+
+  if (output.code !== 0) {
+    const detail = output.stderr.trim()
+    throw new Error(detail || `crop候補フレームの抽出に失敗しました (code ${output.code})`)
+  }
+
+  return outputPath
+}
+
 export async function extractAudio({ path, outputPath, signal }: ExtractAudioInput) {
   const output = await executeSidecar(
     'binaries/ffmpeg',
@@ -154,6 +209,66 @@ export async function extractAudio({ path, outputPath, signal }: ExtractAudioInp
   if (output.code !== 0) {
     const detail = output.stderr.trim()
     throw new Error(detail || `音声の抽出に失敗しました (code ${output.code})`)
+  }
+
+  return outputPath
+}
+
+/** Creates a frame-accurate, browser-friendly MP4 copy for the selected time range. */
+export async function trimVideo({
+  path,
+  outputPath,
+  startMs,
+  endMs,
+  signal,
+}: TrimVideoInput) {
+  const startSeconds = Math.max(0, startMs / 1000)
+  const durationSeconds = Math.max(0.001, (endMs - startMs) / 1000)
+  if (!Number.isFinite(startSeconds) || !Number.isFinite(durationSeconds) || endMs <= startMs) {
+    throw new Error('動画のトリミング範囲が不正です')
+  }
+
+  const output = await executeSidecar(
+    'binaries/ffmpeg',
+    [
+      '-hide_banner',
+      '-v',
+      'error',
+      '-i',
+      path,
+      '-ss',
+      String(startSeconds),
+      '-t',
+      String(durationSeconds),
+      '-map',
+      '0:v:0',
+      '-map',
+      '0:a:0?',
+      '-c:v',
+      'libx264',
+      '-preset',
+      'veryfast',
+      '-crf',
+      '18',
+      '-c:a',
+      'aac',
+      '-b:a',
+      '160k',
+      '-sn',
+      '-dn',
+      '-avoid_negative_ts',
+      'make_zero',
+      '-movflags',
+      '+faststart',
+      '-y',
+      outputPath,
+    ],
+    { signal },
+  )
+
+  if (output.code !== 0) {
+    const detail = output.stderr.trim()
+    throw new Error(detail || `動画のトリミングに失敗しました (code ${output.code})`)
   }
 
   return outputPath

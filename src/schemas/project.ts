@@ -183,10 +183,29 @@ const SlideDataSchema = z.object({
     .optional(),
 })
 
+const MediaSourceSchema = z.object({
+  path: z.string().min(1),
+  name: z.string().min(1),
+  extension: z.enum(['mp4', 'mov', 'm4v', 'mkv', 'webm']),
+  sizeBytes: z.number().int().nonnegative().optional(),
+  metadata: MediaMetadataSchema,
+  origin: MediaSourceOriginSchema.default({ kind: 'local-file' }),
+})
+
+const VideoTrimSchema = z
+  .object({
+    startMs: z.number().finite().nonnegative(),
+    endMs: z.number().finite().positive(),
+    source: MediaSourceSchema,
+  })
+  .refine((trim) => trim.endMs > trim.startMs, {
+    message: '動画の終了位置は開始位置より後である必要があります。',
+  })
+
 const ProjectWorkflowSchema = z.object({
   cropConfirmedAt: z.iso.datetime().optional(),
   lastVisitedStep: z
-    .enum(['crop', 'detect-slides', 'generate-notes', 'article-review', 'export'])
+    .enum(['trim', 'crop', 'detect-slides', 'generate-notes', 'article-review', 'export'])
     .default('crop'),
   lastOpenedAt: z.iso.datetime().optional(),
   lastExportedAt: z.iso.datetime().optional(),
@@ -195,14 +214,8 @@ const ProjectWorkflowSchema = z.object({
 export const MediaProjectSchema = z.object({
   version: z.number().int().positive(),
   id: z.string().min(1),
-  source: z.object({
-    path: z.string().min(1),
-    name: z.string().min(1),
-    extension: z.enum(['mp4', 'mov', 'm4v', 'mkv', 'webm']),
-    sizeBytes: z.number().int().nonnegative().optional(),
-    metadata: MediaMetadataSchema,
-    origin: MediaSourceOriginSchema.default({ kind: 'local-file' }),
-  }),
+  source: MediaSourceSchema,
+  trim: VideoTrimSchema.optional(),
   crop: CropRegionSchema,
   settings: z.object({
     slideDetection: z.object({
@@ -233,11 +246,13 @@ export function parseMediaProject(value: unknown): MediaProject {
   const parsed = MediaProjectSchema.parse(value)
   const workflow = parsed.workflow
   const fallbackStep = parsed.slideDetection ? 'generate-notes' : 'crop'
+  const lastVisitedStep =
+    workflow?.lastVisitedStep === 'trim' ? 'crop' : (workflow?.lastVisitedStep ?? fallbackStep)
 
   return {
     ...parsed,
     workflow: {
-      lastVisitedStep: workflow?.lastVisitedStep ?? fallbackStep,
+      lastVisitedStep,
       ...(workflow?.cropConfirmedAt || parsed.slideDetection
         ? { cropConfirmedAt: workflow?.cropConfirmedAt ?? parsed.updatedAt }
         : {}),

@@ -130,7 +130,7 @@ export function ArticleReviewPage({
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
-              04 / ARTICLE PREVIEW
+              05 / ARTICLE PREVIEW
             </p>
             <h1 className="mt-1 text-[27px] font-bold tracking-[-0.06em]">記事プレビュー</h1>
             <p className="mt-1 text-xs text-[#71807b]">
