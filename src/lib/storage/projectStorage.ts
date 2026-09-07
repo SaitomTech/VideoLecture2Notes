@@ -134,6 +134,24 @@ export async function loadProjectForResume(projectId: string): Promise<ProjectOp
       return { kind: 'source-missing', project }
     }
 
+    if (project.trim && !(await fileExists(project.trim.source.path))) {
+      const repairedProject: MediaProject = {
+        ...project,
+        trim: undefined,
+        workflow: {
+          ...project.workflow,
+          cropConfirmedAt: undefined,
+          lastVisitedStep: 'crop',
+        },
+        slides: [],
+        slideDetection: undefined,
+        transcription: undefined,
+        transcriptAlignment: undefined,
+        article: project.article ? { title: project.article.title } : undefined,
+      }
+      return { kind: 'ready', project: repairedProject, step: 'crop' }
+    }
+
     const hasMissingSlideAsset = (await Promise.all(
       project.slides.map(async (slide) => {
         const path = slide.image.representativeFramePath

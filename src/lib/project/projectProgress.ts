@@ -1,5 +1,11 @@
 import { hasCurrentArticle } from '../../features/article/article'
-import type { MediaProject, ProjectHealth, ProjectStep, ProjectSummary } from '../../types/project'
+import {
+  getActiveMediaSource,
+  type MediaProject,
+  type ProjectHealth,
+  type ProjectStep,
+  type ProjectSummary,
+} from '../../types/project'
 
 export function getProjectTitle(project: MediaProject) {
   return project.article?.title?.trim() || project.source.name.replace(/\.[^.]+$/, '')
@@ -35,6 +41,7 @@ export function buildProjectSummary(
   health: ProjectHealth = 'ready',
 ): ProjectSummary {
   const progress = getProjectProgress(project)
+  const media = getActiveMediaSource(project)
 
   return {
     projectVersion: project.version,
@@ -43,7 +50,7 @@ export function buildProjectSummary(
     sourceName: project.source.name,
     sourcePath: project.source.path,
     extension: project.source.extension,
-    durationMs: project.source.metadata.durationMs,
+    durationMs: media.metadata.durationMs,
     slideCount: project.slides.length,
     ...progress,
     thumbnailPath: project.slides.find((slide) => slide.image.representativeFramePath)?.image

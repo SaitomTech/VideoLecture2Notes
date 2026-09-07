@@ -23,6 +23,28 @@ export async function prepareProjectSourceAssetDirectory(projectId: string) {
   return prepareProjectAssetDirectory(projectId, 'source')
 }
 
+export async function prepareProjectDerivedAssetDirectory(projectId: string) {
+  return prepareProjectAssetDirectory(projectId, 'derived')
+}
+
+export async function getTrimmedVideoAssetPath(projectId: string) {
+  const directory = await prepareProjectDerivedAssetDirectory(projectId)
+  return join(directory, 'trimmed.mp4')
+}
+
+export async function removeTrimmedVideoAsset(projectId: string) {
+  await removeAppLocalPath(`${projectAssetDirectory(projectId, 'derived')}/trimmed.mp4`)
+}
+
+/** Removes cached media artifacts whose timestamps depend on the selected video range. */
+export async function removeProjectAnalysisAssets(projectId: string) {
+  await Promise.all(
+    ['audio', 'slides', 'transcript'].map((directory) =>
+      removeAppLocalPath(projectAssetDirectory(projectId, directory)).catch(() => undefined),
+    ),
+  )
+}
+
 export async function prepareCropDetectionDirectory(projectId: string) {
   return prepareProjectAssetDirectory(projectId, 'crop-detection')
 }

@@ -12,7 +12,12 @@ import {
 import { ensureWhisperModel } from '../../lib/whisper/modelManager'
 import { runWhisper } from '../../lib/whisper/whisper'
 import { normalizeTranscriptSegments } from '../../lib/pipeline/assignTranscriptToSlides'
-import type { MediaProject, TranscriptSegment, TranscriptionResult } from '../../types/project'
+import {
+  getActiveMediaSource,
+  type MediaProject,
+  type TranscriptSegment,
+  type TranscriptionResult,
+} from '../../types/project'
 
 export type TranscriptionLanguage = 'auto' | 'ja' | 'en'
 export type TranscriptionStage =
@@ -64,10 +69,11 @@ function throwIfAborted(signal?: AbortSignal) {
 }
 
 function inputFingerprint(project: MediaProject, modelId: TranscriptionModelId, language: string) {
-  const metadata = project.source.metadata
+  const source = getActiveMediaSource(project)
+  const metadata = source.metadata
   return [
-    project.source.path,
-    project.source.sizeBytes ?? 'unknown-size',
+    source.path,
+    source.sizeBytes ?? 'unknown-size',
     metadata.durationMs,
     metadata.width,
     metadata.height,
@@ -92,6 +98,7 @@ async function prepareAudio(
   signal: AbortSignal | undefined,
   onStage?: (stage: TranscriptionStage) => void,
 ) {
+  const source = getActiveMediaSource(project)
   throwIfAborted(signal)
   onStage?.('extracting-audio')
   const audioError =
@@ -99,7 +106,7 @@ async function prepareAudio(
   return withUserFacingError(audioError, async () => {
     const path = await getAudioAssetPath(project.id)
     if (!(await fileExists(path))) {
-      await extractAudio({ path: project.source.path, outputPath: path, signal })
+      await extractAudio({ path: source.path, outputPath: path, signal })
     }
     if (!(await fileExists(path))) throw new UserFacingError(audioError)
     return path
@@ -156,7 +163,7 @@ async function runAppleTranscription({
 }
 
 function createAudioRanges(project: MediaProject) {
-  const durationMs = Math.max(1, project.source.metadata.durationMs)
+  const durationMs = Math.max(1, getActiveMediaSource(project).metadata.durationMs)
   return splitRange({ startMs: 0, endMs: durationMs })
 }
 
@@ -170,6 +177,7 @@ async function runLocalTranscription({
 }: RunTranscriptionInput & {
   model: Extract<TranscriptionModel, { provider: 'local' }>
 }): Promise<TranscriptionResult> {
+  const source = getActiveMediaSource(project)
   const effectiveLanguage = model.model.languageSupport === 'ja' ? 'ja' : language
   throwIfAborted(signal)
   onStage?.('preparing-model')
@@ -195,7 +203,7 @@ async function runLocalTranscription({
   const audioPath = await withUserFacingError(audioError, async () => {
     const path = await getAudioAssetPath(project.id)
     if (!(await fileExists(path))) {
-      await extractAudio({ path: project.source.path, outputPath: path, signal })
+      await extractAudio({ path: source.path, outputPath: path, signal })
     }
     if (!(await fileExists(path))) throw new UserFacingError(audioError)
     return path
@@ -318,6 +326,7 @@ export async function runTranscription(input: RunTranscriptionInput): Promise<Tr
   }
 
   const provider = createOpenAiProvider({ ...input, model })
+  const source = getActiveMediaSource(project)
 
   throwIfAborted(signal)
   onStage?.('preparing-model')
@@ -333,7 +342,7 @@ export async function runTranscription(input: RunTranscriptionInput): Promise<Tr
   const audioPath = await withUserFacingError(audioError, async () => {
     const path = await getAudioAssetPath(project.id)
     if (!(await fileExists(path))) {
-      await extractAudio({ path: project.source.path, outputPath: path, signal })
+      await extractAudio({ path: source.path, outputPath: path, signal })
     }
     if (!(await fileExists(path))) throw new UserFacingError(audioError)
     return path

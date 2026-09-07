@@ -2,7 +2,7 @@ import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
-import type { MediaProject, SlideBoundary } from '../../types/project'
+import { getActiveMediaSource, type MediaProject, type SlideBoundary } from '../../types/project'
 import { useSlideDetection } from './hooks/useSlideDetection'
 import { buildSlideData } from './detection'
 import { SlideDetectionResultPanel } from './components/SlideDetectionResultPanel'
@@ -18,7 +18,8 @@ type SlideDetectionPageProps = {
 }
 
 export function SlideDetectionPage({ project, onBack, onCompleted, onContinue, onHome }: SlideDetectionPageProps) {
-  const durationMs = project.source.metadata.durationMs
+  const source = getActiveMediaSource(project)
+  const durationMs = source.metadata.durationMs
   const [reviewBoundaries, setReviewBoundaries] = useState<SlideBoundary[] | null>(
     () => project.slideDetection?.boundaries ?? null,
   )
@@ -130,9 +131,9 @@ export function SlideDetectionPage({ project, onBack, onCompleted, onContinue, o
             <div className="min-w-0">
               <p
                 className="truncate text-xs font-semibold text-[#18211f]"
-                title={project.source.path}
+                title={source.path}
               >
-                {project.source.name}
+                {source.name}
               </p>
               <p className="mt-0.5 font-mono text-[10px] text-[#71807b]">
                 Crop {project.crop.x}, {project.crop.y} · {project.crop.width} ×{' '}
@@ -157,7 +158,7 @@ export function SlideDetectionPage({ project, onBack, onCompleted, onContinue, o
 
             {output && isCompleted && (
               <SlideDetectionResultPanel
-                path={project.source.path}
+                path={source.path}
                 boundaries={boundaries}
                 slides={slides}
                 onChange={updateReviewBoundaries}

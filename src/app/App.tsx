@@ -6,6 +6,7 @@ import { GenerateNotesPage } from '../features/generate-notes/GenerateNotesPage'
 import { ImportPage } from '../features/import/ImportPage'
 import { HomePage } from '../features/home/HomePage'
 import { SlideDetectionPage } from '../features/slide-detection/SlideDetectionPage'
+import { createTrimmedVideo, isFullTrimRange, normalizeTrimRange } from '../features/trim/trim'
 import {
   createMediaProject,
   markProjectOpened,
@@ -13,7 +14,7 @@ import {
   updateProjectWorkflow,
   updateProjectArticleDraft,
   updateProjectArticleSummary,
-  updateProjectCrop,
+  updateProjectCropAndTrim,
   updateProjectSlideContent,
   updateProjectSlideDetection,
   updateProjectSlideOcr,
@@ -28,7 +29,11 @@ import {
   saveProject,
   deleteProject,
 } from '../lib/storage/projectStorage'
-import { removeProjectSourceAssetDirectory } from '../lib/storage/projectAssets'
+import {
+  removeProjectAnalysisAssets,
+  removeProjectSourceAssetDirectory,
+  removeTrimmedVideoAsset,
+} from '../lib/storage/projectAssets'
 import { downloadYoutubeVideo } from '../lib/youtube/downloader'
 import type { SelectedVideo } from '../features/import/types'
 import type { YoutubeImportOptions, YoutubeImportRequest } from '../features/import/types'
@@ -45,6 +50,7 @@ import type {
   SlideResultEdits,
   TranscriptAlignment,
   TranscriptionResult,
+  VideoTrimRange,
 } from '../types/project'
 import type { SlideDetectionOutput } from '../features/slide-detection/types'
 
@@ -160,11 +166,40 @@ function App() {
     setStep(result.step)
   }
 
-  const handleApplyCrop = async (crop: CropRegion) => {
-    const nextProject = await updateCurrentProject((currentProject) =>
-      updateProjectCrop(currentProject, crop),
-    )
-    if (!nextProject) return
+  const handleApplyCrop = async ({
+    crop,
+    trim: range,
+  }: {
+    crop: CropRegion
+    trim: VideoTrimRange
+  }) => {
+    const currentProject = projectRef.current
+    if (!currentProject) return
+
+    const durationMs = currentProject.source.metadata.durationMs
+    const normalizedRange = normalizeTrimRange(range, durationMs)
+    const { startMs, endMs } = normalizedRange
+    const isFullRange = isFullTrimRange(normalizedRange, durationMs)
+    const hasSameRange =
+      currentProject.trim?.startMs === startMs && currentProject.trim?.endMs === endMs
+
+    const nextTrim =
+      isFullRange
+        ? undefined
+        : hasSameRange
+          ? currentProject.trim
+          : await createTrimmedVideo(currentProject, normalizedRange)
+    const trimChanged =
+      currentProject.trim?.startMs !== nextTrim?.startMs ||
+      currentProject.trim?.endMs !== nextTrim?.endMs ||
+      currentProject.trim?.source.path !== nextTrim?.source.path
+    const nextProject = updateProjectCropAndTrim(currentProject, crop, nextTrim)
+    await persistProject(nextProject)
+
+    if (trimChanged) {
+      await removeProjectAnalysisAssets(currentProject.id)
+      if (isFullRange) await removeTrimmedVideoAsset(currentProject.id).catch(() => undefined)
+    }
     setStep('detect-slides')
   }
 

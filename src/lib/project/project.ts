@@ -21,6 +21,7 @@ import {
   type TranscriptAlignment,
   type TranscriptPlacement,
   type TranscriptionResult,
+  type VideoTrim,
 } from '../../types/project'
 
 const DEFAULT_SETTINGS = {
@@ -112,29 +113,48 @@ export function updateProjectSource(project: MediaProject, source: MediaSource):
   }
 }
 
-export function updateProjectCrop(project: MediaProject, crop: CropRegion): MediaProject {
+export function updateProjectCropAndTrim(
+  project: MediaProject,
+  crop: CropRegion,
+  trim?: VideoTrim,
+): MediaProject {
+  const previousTrim = project.trim
+  const trimChanged =
+    previousTrim?.startMs !== trim?.startMs ||
+    previousTrim?.endMs !== trim?.endMs ||
+    previousTrim?.source.path !== trim?.source.path
   const cropChanged =
     project.crop.x !== crop.x ||
     project.crop.y !== crop.y ||
     project.crop.width !== crop.width ||
     project.crop.height !== crop.height
+  const mediaChanged = trimChanged || cropChanged
+  const now = new Date().toISOString()
 
   return {
     ...project,
+    ...(trim ? { trim } : { trim: undefined }),
     crop,
     workflow: {
       ...project.workflow,
-      ...(cropChanged ? { cropConfirmedAt: new Date().toISOString() } : {}),
+      cropConfirmedAt: now,
       lastVisitedStep: 'detect-slides',
+      lastExportedAt: undefined,
     },
-    ...(cropChanged
+    ...(mediaChanged
       ? {
           slides: [],
           slideDetection: undefined,
           transcriptAlignment: undefined,
         }
       : {}),
-    updatedAt: new Date().toISOString(),
+    ...(trimChanged
+      ? {
+          transcription: undefined,
+          article: project.article ? { title: project.article.title } : undefined,
+        }
+      : {}),
+    updatedAt: now,
   }
 }
 

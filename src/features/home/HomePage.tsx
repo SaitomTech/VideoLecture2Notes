@@ -68,7 +68,7 @@ function statusCopy(summary: ProjectSummary) {
 function progressCopy(summary: ProjectSummary) {
   if (summary.health === 'source-missing') return '動画を再指定すると続きから再開できます。'
   if (summary.health === 'needs-repair') return 'Slide画像を再生成すると続きから再開できます。'
-  if (summary.resumeStep === 'crop') return 'スライド領域を設定できます。'
+  if (summary.resumeStep === 'crop') return '動画の範囲とスライド領域を設定できます。'
   if (summary.resumeStep === 'detect-slides') return `${summary.slideCount || 'まだ'}枚のSlideを検出します。`
   if (summary.resumeStep === 'generate-notes') {
     if (summary.articleTarget > 0) {
