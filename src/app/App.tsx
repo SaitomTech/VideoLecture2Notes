@@ -142,12 +142,16 @@ function App() {
       if (!video.metadata) throw new Error('取得した動画のメタデータがありません')
 
       await persistProject(createMediaProject(video, video.metadata, projectId))
-      markStepReached('crop')
-      setStep('crop')
     } catch (error) {
       await removeProjectSourceAssetDirectory(projectId).catch(() => undefined)
       throw error
     }
+  }
+
+  const handleContinueYoutubeImport = () => {
+    if (!projectRef.current) return
+    markStepReached('crop')
+    setStep('crop')
   }
 
   const handleCreateProject = () => {
@@ -374,6 +378,7 @@ function App() {
       initialVideo={initialVideo}
       onContinue={handleImportContinue}
       onContinueYoutube={handleYoutubeImport}
+      onContinueYoutubeImport={handleContinueYoutubeImport}
       onHome={handleGoHome}
       maxReachedStep={maxReachedStep}
       onStepClick={handleWorkflowStep}
