@@ -1,9 +1,4 @@
-import {
-  getTextModel,
-  TEXT_MODELS,
-  type TextModel,
-  type TextModelId,
-} from '../llama/textModel'
+import { getTextModel, TEXT_MODELS, type TextModel, type TextModelId } from '../llama/textModel'
 
 export const OPENAI_LUNA_MODEL = {
   id: 'openai:gpt-5.6-luna',

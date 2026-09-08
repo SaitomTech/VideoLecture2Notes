@@ -54,7 +54,11 @@ async function atomicWriteAppLocalTextFile(path: string, contents: string) {
     if (await appLocalFileExists(temporaryPath)) {
       await removeAppLocalPath(temporaryPath).catch(() => undefined)
     }
-    if (hadOriginal && !(await appLocalFileExists(path)) && (await appLocalFileExists(backupPath))) {
+    if (
+      hadOriginal &&
+      !(await appLocalFileExists(path)) &&
+      (await appLocalFileExists(backupPath))
+    ) {
       await renameAppLocalPath(backupPath, path).catch(() => undefined)
     }
     throw error
@@ -151,12 +155,14 @@ export async function loadProjectForResume(projectId: string): Promise<ProjectOp
       return { kind: 'ready', project: repairedProject, step: 'crop' }
     }
 
-    const hasMissingSlideAsset = (await Promise.all(
-      project.slides.map(async (slide) => {
-        const path = slide.image.representativeFramePath
-        return !path || !(await fileExists(path))
-      }),
-    )).some(Boolean)
+    const hasMissingSlideAsset = (
+      await Promise.all(
+        project.slides.map(async (slide) => {
+          const path = slide.image.representativeFramePath
+          return !path || !(await fileExists(path))
+        }),
+      )
+    ).some(Boolean)
     const step = hasMissingSlideAsset ? 'detect-slides' : getProjectResumeStep(project)
 
     return { kind: 'ready', project, step }

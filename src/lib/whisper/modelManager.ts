@@ -1,11 +1,9 @@
 import { ensureModelFiles, type ModelDownloadProgress, type ModelFile } from '../models/download'
 
 const WHISPER_CPP_REVISION = '5359861c739e955e79d9a303bcbc70fb988958b1'
-const WHISPER_CPP_MODEL_BASE_URL =
-  `https://huggingface.co/ggerganov/whisper.cpp/resolve/${WHISPER_CPP_REVISION}`
+const WHISPER_CPP_MODEL_BASE_URL = `https://huggingface.co/ggerganov/whisper.cpp/resolve/${WHISPER_CPP_REVISION}`
 const KOTOBA_MODEL_REVISION = 'e3a0cf6a62b95911703cfb97d819292e058f12c3'
-const KOTOBA_MODEL_BASE_URL =
-  `https://huggingface.co/kotoba-tech/kotoba-whisper-v2.0-ggml/resolve/${KOTOBA_MODEL_REVISION}`
+const KOTOBA_MODEL_BASE_URL = `https://huggingface.co/kotoba-tech/kotoba-whisper-v2.0-ggml/resolve/${KOTOBA_MODEL_REVISION}`
 
 function createModelFile(
   baseUrl: string,
@@ -216,17 +214,15 @@ export function getWhisperModel(id: string | undefined) {
 
 const MODEL_DIRECTORY = 'models/whisper'
 
-export async function ensureWhisperModel(
-  {
-    modelId = DEFAULT_WHISPER_MODEL.id,
-    onProgress,
-    signal,
-  }: {
-    modelId?: WhisperModelId
-    onProgress?: (progress: ModelDownloadProgress) => void
-    signal?: AbortSignal
-  } = {},
-) {
+export async function ensureWhisperModel({
+  modelId = DEFAULT_WHISPER_MODEL.id,
+  onProgress,
+  signal,
+}: {
+  modelId?: WhisperModelId
+  onProgress?: (progress: ModelDownloadProgress) => void
+  signal?: AbortSignal
+} = {}) {
   const model = getWhisperModel(modelId)
   const [modelPath] = await ensureModelFiles({
     directory: MODEL_DIRECTORY,

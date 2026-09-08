@@ -40,8 +40,7 @@ function slideIndexForSegment(segment: TranscriptSegment, slides: SlideData[]) {
   const midpoint = (segment.startMs + segment.endMs) / 2
   return slides.findIndex(
     (slide, index) =>
-      midpoint >= slide.startMs &&
-      (midpoint < slide.endMs || index === slides.length - 1),
+      midpoint >= slide.startMs && (midpoint < slide.endMs || index === slides.length - 1),
   )
 }
 

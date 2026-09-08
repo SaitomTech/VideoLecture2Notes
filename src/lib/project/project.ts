@@ -317,8 +317,7 @@ export function updateProjectArticleSummary(
   project: MediaProject,
   summary: ArticleSummary,
 ): MediaProject {
-  const title =
-    project.article?.title?.trim() || project.source.name.replace(/\.[^.]+$/, '')
+  const title = project.article?.title?.trim() || project.source.name.replace(/\.[^.]+$/, '')
 
   return {
     ...project,

@@ -122,7 +122,9 @@ function keywordKey(keyword: string) {
 }
 
 function cleanKeyword(value: string) {
-  return normalizeOcrText(value).replace(/^[-–—•*]+|[-–—•*]+$/gu, '').trim()
+  return normalizeOcrText(value)
+    .replace(/^[-–—•*]+|[-–—•*]+$/gu, '')
+    .trim()
 }
 
 function classifyToken(value: string): WordToken['kind'] {
@@ -192,7 +194,8 @@ function addCandidate(
     slideIds: new Set<string>(),
     kind,
   }
-  stats.score += roleWeight * kindScore + positionScore + confidenceScore + layoutScore + lengthScore
+  stats.score +=
+    roleWeight * kindScore + positionScore + confidenceScore + layoutScore + lengthScore
   stats.occurrences += 1
   stats.slideIds.add(slideId)
   if (kind === 'phrase' || kind === 'technical') stats.kind = kind

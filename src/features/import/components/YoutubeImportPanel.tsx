@@ -1,30 +1,30 @@
-import { Check, Download, Link, LoaderCircle, Search } from "lucide-react";
-import { formatDuration } from "../utils";
-import type { YoutubeDownloadProgress, YoutubeVideoInfo } from "../../../lib/youtube/types";
-import type { YoutubeImportQuality } from "../../../types/project";
-import type { YoutubeResolveStatus } from "../types";
+import { Check, Download, Link, LoaderCircle, Search } from 'lucide-react'
+import { formatDuration } from '../utils'
+import type { YoutubeDownloadProgress, YoutubeVideoInfo } from '../../../lib/youtube/types'
+import type { YoutubeImportQuality } from '../../../types/project'
+import type { YoutubeResolveStatus } from '../types'
 
 type YoutubeImportPanelProps = {
-  url: string;
-  info: YoutubeVideoInfo | null;
-  status: YoutubeResolveStatus;
-  error: string | null;
-  quality: YoutubeImportQuality;
-  isImporting: boolean;
-  progress: YoutubeDownloadProgress | null;
-  externalError: string | null;
-  onUrlChange: (value: string) => void;
-  onResolve: () => void | Promise<void>;
-  onQualityChange: (quality: YoutubeImportQuality) => void;
-  onImport: () => void | Promise<void>;
-  onCancel: () => void;
-};
+  url: string
+  info: YoutubeVideoInfo | null
+  status: YoutubeResolveStatus
+  error: string | null
+  quality: YoutubeImportQuality
+  isImporting: boolean
+  progress: YoutubeDownloadProgress | null
+  externalError: string | null
+  onUrlChange: (value: string) => void
+  onResolve: () => void | Promise<void>
+  onQualityChange: (quality: YoutubeImportQuality) => void
+  onImport: () => void | Promise<void>
+  onCancel: () => void
+}
 
 function progressLabel(progress: YoutubeDownloadProgress | null) {
-  if (!progress) return "動画を取得しています…";
-  if (progress.phase === "finalizing") return "動画を確認しています…";
-  if (progress.percent === undefined) return "動画を取得しています…";
-  return `動画を取得しています… ${Math.round(progress.percent)}%`;
+  if (!progress) return '動画を取得しています…'
+  if (progress.phase === 'finalizing') return '動画を確認しています…'
+  if (progress.percent === undefined) return '動画を取得しています…'
+  return `動画を取得しています… ${Math.round(progress.percent)}%`
 }
 
 export function YoutubeImportPanel({
@@ -42,7 +42,7 @@ export function YoutubeImportPanel({
   onImport,
   onCancel,
 }: YoutubeImportPanelProps) {
-  const canImport = Boolean(info && !isImporting);
+  const canImport = Boolean(info && !isImporting)
 
   return (
     <section
@@ -69,8 +69,8 @@ export function YoutubeImportPanel({
       <form
         className="mt-5"
         onSubmit={(event) => {
-          event.preventDefault();
-          void onResolve();
+          event.preventDefault()
+          void onResolve()
         }}
       >
         <label className="text-xs font-semibold text-[#53615b]" htmlFor="youtube-url">
@@ -92,14 +92,14 @@ export function YoutubeImportPanel({
           <button
             className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-[9px] border border-[#b7cbc0] bg-[#eef3ef] px-4 text-xs font-semibold text-[#1d6b50] transition hover:border-[#1d6b50] hover:bg-[#e2eee8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/25 disabled:cursor-not-allowed disabled:opacity-50"
             type="submit"
-            disabled={isImporting || status === "resolving" || !url.trim()}
+            disabled={isImporting || status === 'resolving' || !url.trim()}
           >
-            {status === "resolving" ? (
+            {status === 'resolving' ? (
               <LoaderCircle className="animate-spin" size={15} />
             ) : (
               <Search size={15} />
             )}
-            {status === "resolving" ? "解析中…" : "動画を確認"}
+            {status === 'resolving' ? '解析中…' : '動画を確認'}
           </button>
         </div>
         <p id="youtube-url-help" className="mt-2 text-[10px] leading-5 text-[#9aa6a1]">
@@ -204,5 +204,5 @@ export function YoutubeImportPanel({
         </p>
       )}
     </section>
-  );
+  )
 }

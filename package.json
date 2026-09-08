@@ -1,13 +1,15 @@
 {
   "name": "videolecture2notes",
-  "private": true,
   "version": "0.9.0",
+  "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun run prepare:sidecars && vite",
-    "build": "bun run prepare:sidecars && tsc -b && vite build",
-    "lint": "oxlint",
-    "preview": "vite preview",
+    "dev": "bun run prepare:sidecars && vp dev",
+    "build": "bun run prepare:sidecars && tsc -b && vp build",
+    "fmt": "vp fmt",
+    "fmt:check": "vp fmt --check",
+    "lint": "vp lint",
+    "preview": "vp preview",
     "prepare:sidecars": "bun scripts/prepare-sidecars.ts",
     "setup": "bun run prepare:sidecars"
   },
@@ -24,13 +26,24 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "@tauri-apps/cli": "^2.11.4",
+    "@types/bun": "^1.4.2",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.1.0",
-    "oxlint": "^1.79.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
-    "vite": "^8.2.2"
+    "vite": "npm:@voidzero-dev/vite-plus-core@0.3.0",
+    "vite-plus": "0.3.0"
+  },
+  "overrides": {
+    "vite": "npm:@voidzero-dev/vite-plus-core@0.3.0"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "bun",
+      "version": "1.4.2",
+      "onFail": "download"
+    }
   }
 }

@@ -1,4 +1,14 @@
-import { AlertTriangle, ArrowRight, FileVideo, FolderOpen, Plus, RefreshCw, Search, Trash2, X } from 'lucide-react'
+import {
+  AlertTriangle,
+  ArrowRight,
+  FileVideo,
+  FolderOpen,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import { AppHeader } from '../../components/AppHeader'
@@ -69,7 +79,8 @@ function progressCopy(summary: ProjectSummary) {
   if (summary.health === 'source-missing') return '動画を再指定すると続きから再開できます。'
   if (summary.health === 'needs-repair') return 'Slide画像を再生成すると続きから再開できます。'
   if (summary.resumeStep === 'crop') return '動画の範囲とスライド領域を設定できます。'
-  if (summary.resumeStep === 'detect-slides') return `${summary.slideCount || 'まだ'}枚のSlideを検出します。`
+  if (summary.resumeStep === 'detect-slides')
+    return `${summary.slideCount || 'まだ'}枚のSlideを検出します。`
   if (summary.resumeStep === 'generate-notes') {
     if (summary.articleTarget > 0) {
       return `本文 ${summary.articleCompleted} / ${summary.articleTarget} · OCR ${summary.ocrCompleted} / ${summary.slideCount}`
@@ -143,7 +154,9 @@ function ProjectRow({
           <h2 className="min-w-0 truncate text-[15px] font-semibold tracking-[-0.02em] text-[#18211f]">
             {summary.title}
           </h2>
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${status.className}`}>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${status.className}`}
+          >
             {status.label}
           </span>
         </div>
@@ -226,12 +239,17 @@ function DeleteProjectDialog({
               <Trash2 size={16} />
             </span>
             <div>
-              <h2 id="delete-project-title" className="text-[17px] font-bold tracking-[-0.04em] text-[#18211f]">
+              <h2
+                id="delete-project-title"
+                className="text-[17px] font-bold tracking-[-0.04em] text-[#18211f]"
+              >
                 {request.kind === 'bulk'
                   ? `${deleteTargets.length}件のプロジェクトを完全に削除しますか？`
                   : 'プロジェクトを完全に削除しますか？'}
               </h2>
-              <p className="mt-1 text-xs font-semibold text-[#a4573e]">この操作は元に戻せません。</p>
+              <p className="mt-1 text-xs font-semibold text-[#a4573e]">
+                この操作は元に戻せません。
+              </p>
             </div>
           </div>
           <button
@@ -246,14 +264,17 @@ function DeleteProjectDialog({
         </div>
         <div className="mt-5 rounded-[9px] border border-[#e8d4cc] bg-[#fff8f5] px-3 py-3">
           <p className="truncate text-sm font-semibold text-[#18211f]">
-            {request.kind === 'bulk' ? `${deleteTargets.length}件のプロジェクト` : deleteTargets[0]?.title}
+            {request.kind === 'bulk'
+              ? `${deleteTargets.length}件のプロジェクト`
+              : deleteTargets[0]?.title}
           </p>
           <p className="mt-1 truncate font-mono text-[10px] text-[#71807b]">
             {request.kind === 'bulk'
               ? deleteTargets
                   .slice(0, 3)
                   .map((project) => project.title)
-                  .join('、') + (deleteTargets.length > 3 ? ` ほか${deleteTargets.length - 3}件` : '')
+                  .join('、') +
+                (deleteTargets.length > 3 ? ` ほか${deleteTargets.length - 3}件` : '')
               : deleteTargets[0]?.sourceName}
           </p>
         </div>
@@ -279,7 +300,11 @@ function DeleteProjectDialog({
             disabled={isDeleting}
           >
             {isDeleting ? <RefreshCw className="animate-spin" size={14} /> : <Trash2 size={14} />}
-            {isDeleting ? '削除中…' : request.kind === 'bulk' ? `${deleteTargets.length}件を削除` : '完全に削除'}
+            {isDeleting
+              ? '削除中…'
+              : request.kind === 'bulk'
+                ? `${deleteTargets.length}件を削除`
+                : '完全に削除'}
           </button>
         </div>
       </section>
@@ -308,7 +333,10 @@ function ProjectSearchTools({
   return (
     <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <label className="relative block min-w-0 flex-1 sm:max-w-[440px]">
-        <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa6a1]" size={15} />
+        <Search
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa6a1]"
+          size={15}
+        />
         <input
           className="h-10 w-full rounded-[9px] border border-[#b7cbc0] bg-[#fbfcfa] pl-9 pr-3 text-xs text-[#18211f] outline-none transition placeholder:text-[#9aa6a1] focus:border-[#1d6b50] focus:ring-2 focus:ring-[#1d6b50]/15"
           type="search"
@@ -320,7 +348,9 @@ function ProjectSearchTools({
       </label>
       <div className="flex shrink-0 items-center gap-2 text-[10px] text-[#71807b]">
         <span>{normalizedSearchQuery ? `${filteredCount}件` : `${projectCount}件`}</span>
-        {selectedCount > 0 && <span className="font-semibold text-[#1d6b50]">{selectedCount}件を選択中</span>}
+        {selectedCount > 0 && (
+          <span className="font-semibold text-[#1d6b50]">{selectedCount}件を選択中</span>
+        )}
       </div>
     </div>
   )
@@ -460,7 +490,10 @@ function ProjectListPanel({
         />
       ))}
       {invalidEntries.map((entry) => (
-        <div className="flex items-start gap-3 border-b border-[#d8e1dc] px-4 py-4 text-xs text-[#a4573e] last:border-b-0 sm:px-5" key={entry.id}>
+        <div
+          className="flex items-start gap-3 border-b border-[#d8e1dc] px-4 py-4 text-xs text-[#a4573e] last:border-b-0 sm:px-5"
+          key={entry.id}
+        >
           <AlertTriangle className="mt-0.5 shrink-0" size={15} />
           <div>
             <p className="font-semibold">読み込めないプロジェクトがあります</p>
@@ -538,7 +571,10 @@ function HomeContent({
 }) {
   if (isLoading) {
     return (
-      <div className="mt-10 flex items-center justify-center gap-2 py-20 text-xs text-[#71807b]" aria-live="polite">
+      <div
+        className="mt-10 flex items-center justify-center gap-2 py-20 text-xs text-[#71807b]"
+        aria-live="polite"
+      >
         <RefreshCw className="animate-spin" size={15} />
         プロジェクトを確認しています…
       </div>
@@ -549,8 +585,12 @@ function HomeContent({
     return (
       <div className="mt-10 flex flex-1 flex-col items-center justify-center border-y border-dashed border-[#b7cbc0] px-6 py-16 text-center">
         <FileVideo className="text-[#9aada3]" size={32} strokeWidth={1.3} />
-        <h2 className="mt-4 text-[17px] font-semibold tracking-[-0.03em]">まだプロジェクトがありません</h2>
-        <p className="mt-2 max-w-[360px] text-xs leading-6 text-[#71807b]">動画を読み込むと、ここに作業の進行状況と再開ボタンが表示されます。</p>
+        <h2 className="mt-4 text-[17px] font-semibold tracking-[-0.03em]">
+          まだプロジェクトがありません
+        </h2>
+        <p className="mt-2 max-w-[360px] text-xs leading-6 text-[#71807b]">
+          動画を読み込むと、ここに作業の進行状況と再開ボタンが表示されます。
+        </p>
         <button
           className="mt-6 inline-flex items-center gap-2 rounded-[9px] border border-[#b7cbc0] bg-[#fbfcfa] px-4 py-3 text-xs font-semibold text-[#1d6b50] transition hover:border-[#1d6b50] hover:bg-[#e2eee8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30"
           type="button"
@@ -568,7 +608,9 @@ function HomeContent({
       <div className="mt-10 flex flex-col items-center border-y border-dashed border-[#b7cbc0] px-6 py-16 text-center">
         <Search className="text-[#9aada3]" size={29} strokeWidth={1.4} />
         <h2 className="mt-4 text-[17px] font-semibold tracking-[-0.03em]">検索結果がありません</h2>
-        <p className="mt-2 max-w-[360px] text-xs leading-6 text-[#71807b]">別のキーワードで検索するか、検索条件をクリアしてください。</p>
+        <p className="mt-2 max-w-[360px] text-xs leading-6 text-[#71807b]">
+          別のキーワードで検索するか、検索条件をクリアしてください。
+        </p>
         <button
           className="mt-5 rounded-[8px] border border-[#b7cbc0] px-3 py-2 text-xs font-semibold text-[#1d6b50] transition hover:border-[#1d6b50] hover:bg-[#e2eee8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/25"
           type="button"
@@ -772,16 +814,18 @@ export function HomePage({
         ),
       )
     : projectEntries
-  const visibleProjectEntries = showAllProjects || normalizedSearchQuery
-    ? filteredProjectEntries
-    : filteredProjectEntries.slice(0, RECENT_PROJECT_LIMIT)
+  const visibleProjectEntries =
+    showAllProjects || normalizedSearchQuery
+      ? filteredProjectEntries
+      : filteredProjectEntries.slice(0, RECENT_PROJECT_LIMIT)
   const visibleProjectIds = visibleProjectEntries.map(({ summary }) => summary.id)
   const selectedProjects: ProjectSummary[] = []
   for (const { summary } of projectEntries) {
     if (selectedProjectIds.has(summary.id)) selectedProjects.push(summary)
   }
   const areAllVisibleSelected =
-    visibleProjectIds.length > 0 && visibleProjectIds.every((projectId) => selectedProjectIds.has(projectId))
+    visibleProjectIds.length > 0 &&
+    visibleProjectIds.every((projectId) => selectedProjectIds.has(projectId))
   const hasHiddenProjects = visibleProjectEntries.length < filteredProjectEntries.length
   const isDeleting = busyAction === 'delete'
 
@@ -801,7 +845,10 @@ export function HomePage({
         </div>
 
         {error && (
-          <div className="mt-6 flex items-start gap-2 rounded-[9px] border border-[#d6a18f] bg-[#fff8f5] px-4 py-3 text-xs text-[#a4573e]" role="alert">
+          <div
+            className="mt-6 flex items-start gap-2 rounded-[9px] border border-[#d6a18f] bg-[#fff8f5] px-4 py-3 text-xs text-[#a4573e]"
+            role="alert"
+          >
             <AlertTriangle className="mt-0.5 shrink-0" size={14} />
             <span>{error}</span>
           </div>

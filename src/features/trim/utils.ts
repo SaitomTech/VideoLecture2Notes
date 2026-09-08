@@ -3,7 +3,8 @@ import type { VideoTrimRange } from '../../types/project'
 export const MINIMUM_TRIM_DURATION_MS = 500
 
 export function clampTrimRange(range: VideoTrimRange, durationMs: number): VideoTrimRange {
-  const safeDurationMs = Number.isFinite(durationMs) && durationMs > 0 ? durationMs : MINIMUM_TRIM_DURATION_MS
+  const safeDurationMs =
+    Number.isFinite(durationMs) && durationMs > 0 ? durationMs : MINIMUM_TRIM_DURATION_MS
   const minimumDurationMs = Math.min(MINIMUM_TRIM_DURATION_MS, safeDurationMs)
   const startMs = Math.min(
     Math.max(0, Math.round(range.startMs)),

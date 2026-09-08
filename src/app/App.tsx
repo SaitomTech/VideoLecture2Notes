@@ -6,6 +6,8 @@ import { GenerateNotesPage } from '../features/generate-notes/GenerateNotesPage'
 import { ImportPage } from '../features/import/ImportPage'
 import { HomePage } from '../features/home/HomePage'
 import { SlideDetectionPage } from '../features/slide-detection/SlideDetectionPage'
+import { getWorkflowStepIndex } from '../lib/workflow'
+import type { WorkflowStep } from '../lib/workflow'
 import { createTrimmedVideo, isFullTrimRange, normalizeTrimRange } from '../features/trim/trim'
 import {
   createMediaProject,
@@ -82,8 +84,23 @@ async function removeProject(projectId: string) {
 
 function App() {
   const [step, setStep] = useState<AppStep>('home')
+  const [maxReachedStep, setMaxReachedStep] = useState<WorkflowStep>('import')
   const [project, setProject] = useState<MediaProject | null>(null)
   const projectRef = useRef<MediaProject | null>(null)
+
+  const markStepReached = (nextStep: WorkflowStep) => {
+    setMaxReachedStep((currentStep) =>
+      getWorkflowStepIndex(nextStep) > getWorkflowStepIndex(currentStep) ? nextStep : currentStep,
+    )
+  }
+
+  const handleWorkflowStep = (nextStep: WorkflowStep) => {
+    if (nextStep === step) return
+    if (getWorkflowStepIndex(nextStep) > getWorkflowStepIndex(maxReachedStep)) return
+    if (nextStep !== 'import' && !projectRef.current) return
+
+    setStep(nextStep)
+  }
 
   const persistProject = async (nextProject: MediaProject) => {
     await saveProject(nextProject)
@@ -104,6 +121,7 @@ function App() {
     if (!video.metadata) throw new Error('動画メタデータがありません')
 
     await persistProject(createMediaProject(video, video.metadata))
+    markStepReached('crop')
     setStep('crop')
   }
 
@@ -124,6 +142,7 @@ function App() {
       if (!video.metadata) throw new Error('取得した動画のメタデータがありません')
 
       await persistProject(createMediaProject(video, video.metadata, projectId))
+      markStepReached('crop')
       setStep('crop')
     } catch (error) {
       await removeProjectSourceAssetDirectory(projectId).catch(() => undefined)
@@ -134,6 +153,7 @@ function App() {
   const handleCreateProject = () => {
     projectRef.current = null
     setProject(null)
+    setMaxReachedStep('import')
     setStep('import')
   }
 
@@ -146,6 +166,7 @@ function App() {
     if (!currentProject) return
 
     await persistProject(updateProjectWorkflow(currentProject, nextStep))
+    markStepReached(nextStep)
     setStep(nextStep)
   }
 
@@ -160,6 +181,7 @@ function App() {
 
     const nextProject = markProjectOpened(result.project, result.step)
     await persistProject(nextProject)
+    setMaxReachedStep(result.step)
     setStep(result.step)
   }
 
@@ -180,16 +202,21 @@ function App() {
     const hasSameRange =
       currentProject.trim?.startMs === startMs && currentProject.trim?.endMs === endMs
 
-    const nextTrim =
-      isFullRange
-        ? undefined
-        : hasSameRange
-          ? currentProject.trim
-          : await createTrimmedVideo(currentProject, normalizedRange)
+    const nextTrim = isFullRange
+      ? undefined
+      : hasSameRange
+        ? currentProject.trim
+        : await createTrimmedVideo(currentProject, normalizedRange)
     const trimChanged =
       currentProject.trim?.startMs !== nextTrim?.startMs ||
       currentProject.trim?.endMs !== nextTrim?.endMs ||
       currentProject.trim?.source.path !== nextTrim?.source.path
+    const cropChanged =
+      currentProject.crop.x !== crop.x ||
+      currentProject.crop.y !== crop.y ||
+      currentProject.crop.width !== crop.width ||
+      currentProject.crop.height !== crop.height
+    const mediaChanged = trimChanged || cropChanged
     const nextProject = updateProjectCropAndTrim(currentProject, crop, nextTrim)
     await persistProject(nextProject)
 
@@ -197,6 +224,8 @@ function App() {
       await removeProjectAnalysisAssets(currentProject.id)
       if (isFullRange) await removeTrimmedVideoAsset(currentProject.id).catch(() => undefined)
     }
+    if (mediaChanged) setMaxReachedStep('detect-slides')
+    else markStepReached('detect-slides')
     setStep('detect-slides')
   }
 
@@ -266,6 +295,8 @@ function App() {
         onSaveSummary={handleSaveArticleSummary}
         onExport={() => void handleProjectStep('export')}
         onHome={handleGoHome}
+        maxReachedStep={maxReachedStep}
+        onStepClick={handleWorkflowStep}
       />
     )
   }
@@ -276,6 +307,8 @@ function App() {
         project={project}
         onBack={() => void handleProjectStep('article-review')}
         onHome={handleGoHome}
+        maxReachedStep={maxReachedStep}
+        onStepClick={handleWorkflowStep}
       />
     )
   }
@@ -292,6 +325,8 @@ function App() {
         onSaveSlideResultEdits={handleSaveSlideResultEdits}
         onOpenArticleReview={() => void handleProjectStep('article-review')}
         onHome={handleGoHome}
+        maxReachedStep={maxReachedStep}
+        onStepClick={handleWorkflowStep}
       />
     )
   }
@@ -304,6 +339,8 @@ function App() {
         onCompleted={handleSlideDetectionCompleted}
         onContinue={handleOpenGenerateNotes}
         onHome={handleGoHome}
+        maxReachedStep={maxReachedStep}
+        onStepClick={handleWorkflowStep}
       />
     )
   }
@@ -315,6 +352,8 @@ function App() {
         onBack={() => setStep('import')}
         onApply={handleApplyCrop}
         onHome={handleGoHome}
+        maxReachedStep={maxReachedStep}
+        onStepClick={handleWorkflowStep}
       />
     )
   }
@@ -336,6 +375,8 @@ function App() {
       onContinue={handleImportContinue}
       onContinueYoutube={handleYoutubeImport}
       onHome={handleGoHome}
+      maxReachedStep={maxReachedStep}
+      onStepClick={handleWorkflowStep}
     />
   )
 }

@@ -18,7 +18,10 @@ export type UpdateCheckResult = {
 }
 
 function normalizeVersion(value: string) {
-  const match = value.trim().replace(/^v/i, '').match(/^(\d+)\.(\d+)\.(\d+)/)
+  const match = value
+    .trim()
+    .replace(/^v/i, '')
+    .match(/^(\d+)\.(\d+)\.(\d+)/)
   if (!match) return null
 
   return [Number(match[1]), Number(match[2]), Number(match[3])] as const

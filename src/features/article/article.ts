@@ -56,9 +56,9 @@ export function hasCurrentArticleSummary(
   const summary = project.article?.summary
   return Boolean(
     summary?.overview.trim() &&
-      summary.mainMessage.trim() &&
-      summary.keyPoints.length > 0 &&
-      summary.keywords.length > 0 &&
-      summary.inputFingerprint === articleSummaryInputFingerprint(project, modelId),
+    summary.mainMessage.trim() &&
+    summary.keyPoints.length > 0 &&
+    summary.keywords.length > 0 &&
+    summary.inputFingerprint === articleSummaryInputFingerprint(project, modelId),
   )
 }

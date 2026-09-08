@@ -1,13 +1,7 @@
 import { UserFacingError, withUserFacingError } from '../../lib/errors'
-import {
-  extractAudio,
-  extractAudioChunkForOpenAi,
-} from '../../lib/media/ffmpeg'
+import { extractAudio, extractAudioChunkForOpenAi } from '../../lib/media/ffmpeg'
 import { transcribeOpenAiAudio } from '../../lib/openai/openai'
-import {
-  getAudioAssetPath,
-  getTranscriptionAudioChunkPath,
-} from '../../lib/storage/projectAssets'
+import { getAudioAssetPath, getTranscriptionAudioChunkPath } from '../../lib/storage/projectAssets'
 import { fileExists, getFileSize } from '../../lib/tauri/filesystem'
 import { runAppleSpeech } from '../../lib/speech/appleSpeech'
 import {

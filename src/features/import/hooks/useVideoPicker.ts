@@ -11,7 +11,9 @@ import type { MetadataLoadStatus, SelectedVideo, VideoLoadStatus } from '../type
 export function useVideoPicker(initialVideo?: SelectedVideo) {
   const [selectedVideo, setSelectedVideo] = useState<SelectedVideo | null>(initialVideo ?? null)
   const [videoStatus, setVideoStatus] = useState<VideoLoadStatus>('checking')
-  const [metadataStatus, setMetadataStatus] = useState<MetadataLoadStatus>(initialVideo?.metadata ? 'ready' : 'idle')
+  const [metadataStatus, setMetadataStatus] = useState<MetadataLoadStatus>(
+    initialVideo?.metadata ? 'ready' : 'idle',
+  )
   const [metadataError, setMetadataError] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isSelecting, setIsSelecting] = useState(false)
@@ -44,7 +46,9 @@ export function useVideoPicker(initialVideo?: SelectedVideo) {
     try {
       const sizeBytes = await getFileSize(path)
       if (selectionVersion.current === currentVersion) {
-        setSelectedVideo((current) => (current?.path === path ? { ...current, sizeBytes } : current))
+        setSelectedVideo((current) =>
+          current?.path === path ? { ...current, sizeBytes } : current,
+        )
       }
     } catch (sizeError) {
       console.error(sizeError)

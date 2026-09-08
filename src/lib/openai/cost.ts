@@ -83,8 +83,7 @@ export function estimateOpenAiArticleCost({
   )
   const outputTokens = slides.reduce(
     (total, slide) =>
-      total +
-      Math.max(ARTICLE_OUTPUT_MIN_TOKENS, estimateTextTokens(slide.transcriptCharacters)),
+      total + Math.max(ARTICLE_OUTPUT_MIN_TOKENS, estimateTextTokens(slide.transcriptCharacters)),
     0,
   )
   return costForTokens(inputTokens, outputTokens)

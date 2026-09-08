@@ -14,6 +14,19 @@
 - Markdown・HTML・TXTへのエクスポート
 - プロジェクトのローカル保存と再開
 
+## ダウンロードして使う
+
+[Releases](https://github.com/SaitomTech/VideoLecture2Notes/releases)からDMGをダウンロードし、アプリを`Applications`へ移動して起動してください。
+
+Apple Developer Program未使用の未署名アプリのため、macOSに起動を止められる場合があります。信頼できるGitHub Releaseからダウンロードした場合に限り、ターミナルで次を実行してください。
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/videolecture2notes.app"
+open "/Applications/videolecture2notes.app"
+```
+
+アプリを`Applications`以外に置いた場合は、パスを実際の`.app`の場所に置き換えてください。Finderでアプリを右クリックして「開く」でも起動できる場合があります。
+
 ## 動作環境
 
 - Apple Silicon搭載Mac
@@ -41,17 +54,6 @@ bunx tauri build --bundles dmg
 
 生成物は`src-tauri/target/release/bundle/`以下に作成されます。現在の配布物はApple Silicon用DMGのみです。
 
-## macOSで「アプリが壊れているため開けません」と表示される場合
-
-自分でビルドしたもの、または信頼できるGitHub Releaseからダウンロードしたものに限り、ターミナルでダウンロード時の隔離属性を外して起動できます。
-
-```bash
-xattr -dr com.apple.quarantine "/Applications/videolecture2notes.app"
-open "/Applications/videolecture2notes.app"
-```
-
-アプリを`Applications`以外に置いている場合は、パスを実際の`.app`の場所に置き換えてください。Finderでアプリを右クリックして「開く」を選ぶ方法でも起動できる場合があります。この対応はAppleのコード署名やnotarizationの代わりにはなりません。
-
 ## OpenAI APIの利用
 
 OpenAIの機能を使う場合は、アプリ内に自分のOpenAI APIキーを入力します。キーはmacOS Keychainに保存され、リポジトリやGitHub Actionsには保存しません。OpenAI APIの利用料金は入力したAPIキーのアカウントに発生します。
@@ -64,13 +66,9 @@ OpenAIを選択した処理では、選択した音声・画像・文字起こ�
 
 ## リリース
 
-リリースは、GitHub画面でタグとReleaseを作成し、GitHub ActionsでDMGをビルドしてReleaseへ添付します。詳しい手順は[macOS版リリース手順](./docs/リリース手順.md)を確認してください。
+リリースは、GitHub画面でタグとReleaseを作成すると、GitHub ActionsがDMGをビルドしてReleaseへ添付します。
 
 アプリ内の更新確認はGitHub Releases APIを認証なしで参照するため、リポジトリとReleaseをPublicにする必要があります。現在はReleaseページを開くだけで、自動インストールは行いません。
-
-## 公開前の確認
-
-公開範囲、秘密情報、Git履歴、Actions、外部バイナリ・モデルのライセンスは[公開前チェックリスト](./docs/公開前チェックリスト.md)に沿って確認してください。
 
 ## ライセンス
 

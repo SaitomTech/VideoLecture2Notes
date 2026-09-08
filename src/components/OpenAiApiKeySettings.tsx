@@ -151,87 +151,87 @@ export function OpenAiApiKeySettings({
         </button>
 
         {isExpanded || !credential?.configured ? (
-            <>
-              <p className="mt-1 text-[10px] leading-4 text-[#71807b]">
-                入力したAPIキーはmacOSの安全なKeychainに保存され、次回から再入力せずに利用できます。
-              </p>
-              {billingNote ? (
-                <p className="mt-1 text-[10px] leading-4 text-[#9a7a35]">{billingNote}</p>
-              ) : null}
+          <>
+            <p className="mt-1 text-[10px] leading-4 text-[#71807b]">
+              入力したAPIキーはmacOSの安全なKeychainに保存され、次回から再入力せずに利用できます。
+            </p>
+            {billingNote ? (
+              <p className="mt-1 text-[10px] leading-4 text-[#9a7a35]">{billingNote}</p>
+            ) : null}
 
-              {credential?.configured ? (
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e2eee8] px-2.5 py-1 text-[10px] font-semibold text-[#174d3c]">
-                    <Check size={11} />
-                    設定済み{credential.lastFour ? `（末尾 ${credential.lastFour}）` : ''}
-                  </span>
-                  <button
-                    className="rounded-md border border-[#b7cbc0] px-2.5 py-1.5 text-[10px] font-semibold text-[#174d3c] hover:bg-[#eaf3ee] disabled:cursor-not-allowed disabled:opacity-50"
-                    type="button"
-                    onClick={() => void handleTest()}
-                    disabled={disabled || isBusy}
-                  >
-                    {action === 'testing' ? '確認中…' : '接続を確認'}
-                  </button>
-                  <button
-                    className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[10px] font-semibold text-[#9d422d] hover:bg-[#fff0eb] disabled:cursor-not-allowed disabled:opacity-50"
-                    type="button"
-                    onClick={() => void handleDelete()}
-                    disabled={disabled || isBusy}
-                  >
-                    <Trash2 size={11} />
-                    {action === 'deleting' ? '削除中…' : '削除'}
-                  </button>
-                </div>
-              ) : (
-                <p className="mt-3 text-[10px] font-semibold text-[#9a7a35]">
-                  APIキーはまだ設定されていません。
-                </p>
-              )}
-
-              <form
-                className="mt-3 flex flex-col gap-2 sm:flex-row"
-                onSubmit={(event) => void handleSave(event)}
-              >
-                <label className="sr-only" htmlFor={inputId}>
-                  OpenAI APIキー
-                </label>
-                <input
-                  id={inputId}
-                  className="min-w-0 flex-1 rounded-[8px] border border-[#b7cbc0] bg-white px-3 py-2 text-xs outline-none placeholder:text-[#9aa6a1] focus:border-[#1d6b50] focus:ring-2 focus:ring-[#1d6b50]/20 disabled:cursor-not-allowed disabled:opacity-50"
-                  type="password"
-                  value={apiKey}
-                  onChange={(event) => {
-                    setApiKey(event.target.value)
-                    setError(null)
-                    setMessage(null)
-                  }}
-                  autoComplete="off"
-                  spellCheck={false}
-                  placeholder={credential?.configured ? '新しいキーへ差し替える' : 'sk-...'}
-                  disabled={disabled || isBusy}
-                />
+            {credential?.configured ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e2eee8] px-2.5 py-1 text-[10px] font-semibold text-[#174d3c]">
+                  <Check size={11} />
+                  設定済み{credential.lastFour ? `（末尾 ${credential.lastFour}）` : ''}
+                </span>
                 <button
-                  className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[8px] bg-[#1d6b50] px-3 py-2 text-[10px] font-semibold text-white hover:bg-[#174d3c] disabled:cursor-not-allowed disabled:opacity-50"
-                  type="submit"
-                  disabled={disabled || isBusy || apiKey.trim().length < 20}
+                  className="rounded-md border border-[#b7cbc0] px-2.5 py-1.5 text-[10px] font-semibold text-[#174d3c] hover:bg-[#eaf3ee] disabled:cursor-not-allowed disabled:opacity-50"
+                  type="button"
+                  onClick={() => void handleTest()}
+                  disabled={disabled || isBusy}
                 >
-                  {action === 'saving' && <LoaderCircle className="animate-spin" size={12} />}
-                  {credential?.configured ? '接続して差し替え' : '接続して保存'}
+                  {action === 'testing' ? '確認中…' : '接続を確認'}
                 </button>
-              </form>
+                <button
+                  className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[10px] font-semibold text-[#9d422d] hover:bg-[#fff0eb] disabled:cursor-not-allowed disabled:opacity-50"
+                  type="button"
+                  onClick={() => void handleDelete()}
+                  disabled={disabled || isBusy}
+                >
+                  <Trash2 size={11} />
+                  {action === 'deleting' ? '削除中…' : '削除'}
+                </button>
+              </div>
+            ) : (
+              <p className="mt-3 text-[10px] font-semibold text-[#9a7a35]">
+                APIキーはまだ設定されていません。
+              </p>
+            )}
 
-              {message && (
-                <p className="mt-2 text-[10px] text-[#1d6b50]" role="status">
-                  {message}
-                </p>
-              )}
-              {error && (
-                <p className="mt-2 text-[10px] text-[#b6533a]" role="alert">
-                  {error}
-                </p>
-              )}
-            </>
+            <form
+              className="mt-3 flex flex-col gap-2 sm:flex-row"
+              onSubmit={(event) => void handleSave(event)}
+            >
+              <label className="sr-only" htmlFor={inputId}>
+                OpenAI APIキー
+              </label>
+              <input
+                id={inputId}
+                className="min-w-0 flex-1 rounded-[8px] border border-[#b7cbc0] bg-white px-3 py-2 text-xs outline-none placeholder:text-[#9aa6a1] focus:border-[#1d6b50] focus:ring-2 focus:ring-[#1d6b50]/20 disabled:cursor-not-allowed disabled:opacity-50"
+                type="password"
+                value={apiKey}
+                onChange={(event) => {
+                  setApiKey(event.target.value)
+                  setError(null)
+                  setMessage(null)
+                }}
+                autoComplete="off"
+                spellCheck={false}
+                placeholder={credential?.configured ? '新しいキーへ差し替える' : 'sk-...'}
+                disabled={disabled || isBusy}
+              />
+              <button
+                className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[8px] bg-[#1d6b50] px-3 py-2 text-[10px] font-semibold text-white hover:bg-[#174d3c] disabled:cursor-not-allowed disabled:opacity-50"
+                type="submit"
+                disabled={disabled || isBusy || apiKey.trim().length < 20}
+              >
+                {action === 'saving' && <LoaderCircle className="animate-spin" size={12} />}
+                {credential?.configured ? '接続して差し替え' : '接続して保存'}
+              </button>
+            </form>
+
+            {message && (
+              <p className="mt-2 text-[10px] text-[#1d6b50]" role="status">
+                {message}
+              </p>
+            )}
+            {error && (
+              <p className="mt-2 text-[10px] text-[#b6533a]" role="alert">
+                {error}
+              </p>
+            )}
+          </>
         ) : null}
       </div>
     </div>

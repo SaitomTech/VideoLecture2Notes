@@ -78,8 +78,7 @@ function buildExportDocument(project: MediaProject, includeImages: boolean): Exp
     sourceName: source.name,
     durationMs: source.metadata.durationMs,
     summary:
-      project.article?.summary &&
-      hasCurrentArticleSummary(project, project.article.summary.model)
+      project.article?.summary && hasCurrentArticleSummary(project, project.article.summary.model)
         ? project.article.summary
         : undefined,
     sections: project.slides.map((slide) => ({
@@ -87,7 +86,9 @@ function buildExportDocument(project: MediaProject, includeImages: boolean): Exp
       index: slide.index,
       startMs: slide.startMs,
       endMs: slide.endMs,
-      imagePath: slide.image.representativeFramePath ? `./assets/${imageFilename(slide.index)}` : '',
+      imagePath: slide.image.representativeFramePath
+        ? `./assets/${imageFilename(slide.index)}`
+        : '',
       sourceImagePath: slide.image.representativeFramePath ?? '',
       ocrText: slide.ocr?.rawText ?? '',
       transcriptRaw: slide.transcript?.raw ?? '',
@@ -122,7 +123,10 @@ export async function exportProject(
     report('copying-images')
     await Promise.all(
       document.sections.map(async (section) => {
-        await copyFile(section.sourceImagePath, await join(assetsDirectory, imageFilename(section.index)))
+        await copyFile(
+          section.sourceImagePath,
+          await join(assetsDirectory, imageFilename(section.index)),
+        )
         completed += 1
         report('copying-images')
       }),
@@ -132,7 +136,10 @@ export async function exportProject(
   report('writing-files')
   await Promise.all(
     files.map(async (file) => {
-      await writeTextFile(await join(destination, file.filename), EXPORT_RENDERERS[file.format](document))
+      await writeTextFile(
+        await join(destination, file.filename),
+        EXPORT_RENDERERS[file.format](document),
+      )
       completed += 1
       report('writing-files')
     }),

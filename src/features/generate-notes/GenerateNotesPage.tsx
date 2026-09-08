@@ -2,13 +2,19 @@ import { ArrowLeft, Play, Square } from 'lucide-react'
 import { useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
+import type { WorkflowStep } from '../../lib/workflow'
 import { getArticleModel, type ArticleModelId } from '../../lib/article/articleModel'
 import { getOcrModel, type OcrModelId } from '../../lib/ocr/modelManager'
 import {
   getTranscriptionModel,
   type TranscriptionModelId,
 } from '../../lib/transcription/transcriptionModel'
-import { getActiveMediaSource, type MediaProject, type SlideResultEdits, type TranscriptionResult } from '../../types/project'
+import {
+  getActiveMediaSource,
+  type MediaProject,
+  type SlideResultEdits,
+  type TranscriptionResult,
+} from '../../types/project'
 import { AnalysisResultPreview } from '../content-processing/components/AnalysisResultPreview'
 import {
   ContentProcessingPanel,
@@ -35,6 +41,8 @@ type GenerateNotesPageProps = {
   onSaveSlideResultEdits: (slideId: string, edits: SlideResultEdits) => void | Promise<void>
   onOpenArticleReview: () => void
   onHome: () => void
+  maxReachedStep: WorkflowStep
+  onStepClick: (step: WorkflowStep) => void
 }
 
 type BatchStage = 'idle' | 'ocr' | 'transcription' | 'content'
@@ -49,6 +57,8 @@ export function GenerateNotesPage({
   onSaveSlideResultEdits,
   onOpenArticleReview,
   onHome,
+  maxReachedStep,
+  onStepClick,
 }: GenerateNotesPageProps) {
   const source = getActiveMediaSource(project)
   const [language, setLanguage] = useState<TranscriptionLanguage>(
@@ -118,24 +128,29 @@ export function GenerateNotesPage({
     setTextModelId(nextModelId)
   }
   return (
-    <main className='flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]'>
+    <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
       <AppHeader onHome={onHome} homeDisabled={isProcessing} />
-      <WorkflowBar activeStep='generate-notes' />
+      <WorkflowBar
+        activeStep="generate-notes"
+        maxReachedStep={maxReachedStep}
+        onStepClick={onStepClick}
+        disabled={isProcessing}
+      />
 
-      <section className='mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]'>
-        <div className='mb-6 flex items-center justify-between gap-4'>
+      <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
+        <div className="mb-6 flex items-center justify-between gap-4">
           <div>
-            <p className='font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]'>
+            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
               04 / GENERATE NOTES
             </p>
-            <h1 className='mt-1 text-[27px] font-bold tracking-[-0.06em]'>ノートを生成</h1>
-            <p className='mt-1 text-xs text-[#71807b]'>
+            <h1 className="mt-1 text-[27px] font-bold tracking-[-0.06em]">ノートを生成</h1>
+            <p className="mt-1 text-xs text-[#71807b]">
               OCR、文字起こし、本文生成を順に実行します。
             </p>
           </div>
           <button
-            className='inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-[#71807b] transition hover:bg-[#e2eee8] hover:text-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50'
-            type='button'
+            className="inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-[#71807b] transition hover:bg-[#e2eee8] hover:text-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50"
+            type="button"
             onClick={onBack}
             disabled={isProcessing}
           >
@@ -144,40 +159,36 @@ export function GenerateNotesPage({
           </button>
         </div>
 
-        <div className='overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]'>
-          <div className='flex flex-wrap items-center justify-between gap-3 border-b border-[#d8e1dc] px-5 py-3.5'>
-            <div className='min-w-0'>
-              <p
-                className='truncate text-xs font-semibold text-[#18211f]'
-                title={source.path}
-              >
+        <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d8e1dc] px-5 py-3.5">
+            <div className="min-w-0">
+              <p className="truncate text-xs font-semibold text-[#18211f]" title={source.path}>
                 {source.name}
               </p>
-              <p className='mt-0.5 font-mono text-[10px] text-[#71807b]'>
-                {project.slides.length} slides ·{' '}
-                {Math.round(source.metadata.durationMs / 1000)}秒
+              <p className="mt-0.5 font-mono text-[10px] text-[#71807b]">
+                {project.slides.length} slides · {Math.round(source.metadata.durationMs / 1000)}秒
               </p>
             </div>
           </div>
 
-          <div className='p-5 md:p-7'>
-            <section aria-labelledby='analysis-settings-heading'>
-              <div className='flex flex-wrap items-start justify-between gap-4'>
+          <div className="p-5 md:p-7">
+            <section aria-labelledby="analysis-settings-heading">
+              <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <h2
-                    id='analysis-settings-heading'
-                    className='text-[21px] font-bold tracking-[-0.05em]'
+                    id="analysis-settings-heading"
+                    className="text-[21px] font-bold tracking-[-0.05em]"
                   >
                     1. 解析の設定・実行
                   </h2>
-                  <p className='mt-1 text-xs text-[#71807b]'>
+                  <p className="mt-1 text-xs text-[#71807b]">
                     3つの処理に必要な設定を確認して、順番に実行します。解析結果は下の「2.
                     解析結果の確認」で確認できます。
                   </p>
                 </div>
                 <button
                   className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-[9px] px-4 py-3 text-xs font-semibold shadow-[0_7px_16px_rgba(49,95,117,0.2)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#315f75]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${isBatchRunning ? 'border border-[#d28d7a] bg-[#fff5f1] text-[#9d422d] shadow-none hover:bg-[#fbe8e2]' : 'bg-[#315f75] text-[#f4fbff] hover:bg-[#264b5d]'}`}
-                  type='button'
+                  type="button"
                   onClick={() => {
                     if (isBatchRunning) {
                       handleCancelBatch()
@@ -189,15 +200,15 @@ export function GenerateNotesPage({
                   aria-label={isBatchRunning ? '一括実行を停止' : undefined}
                 >
                   {isBatchRunning ? (
-                    <Square size={13} fill='currentColor' />
+                    <Square size={13} fill="currentColor" />
                   ) : (
-                    <Play size={13} fill='currentColor' />
+                    <Play size={13} fill="currentColor" />
                   )}
                   {isBatchRunning ? '停止' : '一括実行'}
                 </button>
               </div>
 
-              <div className='mt-6 space-y-10'>
+              <div className="mt-6 space-y-10">
                 <div>
                   <OcrPanel
                     project={project}
@@ -208,7 +219,7 @@ export function GenerateNotesPage({
                       isBatchRunning || transcription.status === 'running' || isContentProcessing
                     }
                   />
-                  <div className='mt-6'>
+                  <div className="mt-6">
                     <OcrStatus
                       ocr={ocr}
                       disabled={
@@ -230,7 +241,7 @@ export function GenerateNotesPage({
                     onTranscribe={handleTranscribe}
                     onCancel={transcription.cancel}
                   />
-                  <div className='mt-6'>
+                  <div className="mt-6">
                     <TranscriptionStatus
                       status={transcription.status}
                       stage={transcription.stage}
@@ -253,7 +264,7 @@ export function GenerateNotesPage({
                     onModelChange={handleTextModelChange}
                     disabled={isBatchRunning || transcription.status === 'running' || isOcrRunning}
                   />
-                  <div className='mt-6'>
+                  <div className="mt-6">
                     <ContentProcessingStatus
                       processing={processing}
                       disabled={

@@ -1,12 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { appLocalDataDir, join } from '@tauri-apps/api/path'
-import {
-  BaseDirectory,
-  exists,
-  remove,
-  rename,
-  writeFile,
-} from '@tauri-apps/plugin-fs'
+import { BaseDirectory, exists, remove, rename, writeFile } from '@tauri-apps/plugin-fs'
 import { ensureAppLocalDirectory } from '../tauri/filesystem'
 
 export type ModelFile = {

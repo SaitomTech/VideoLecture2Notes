@@ -121,11 +121,15 @@ export function ArticleSectionEditor({
           </summary>
           <div className="mt-4 grid gap-4 text-xs leading-6 text-[#53615b] md:grid-cols-2">
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">raw 発話</p>
+              <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
+                raw 発話
+              </p>
               <p className="mt-1 whitespace-pre-wrap">{rawTranscript}</p>
             </div>
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">スライド内の文字</p>
+              <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
+                スライド内の文字
+              </p>
               <p className="mt-1 whitespace-pre-wrap">{ocrText}</p>
             </div>
           </div>

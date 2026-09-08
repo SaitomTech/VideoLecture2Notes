@@ -1,14 +1,14 @@
-import { SelectedVideoSummary } from "./SelectedVideoSummary";
-import { VideoDropZone } from "./VideoDropZone";
-import { VideoPreview } from "./VideoPreview";
-import { useVideoPicker } from "../hooks/useVideoPicker";
+import { SelectedVideoSummary } from './SelectedVideoSummary'
+import { VideoDropZone } from './VideoDropZone'
+import { VideoPreview } from './VideoPreview'
+import { useVideoPicker } from '../hooks/useVideoPicker'
 
 type LocalVideoImportPanelProps = {
-  picker: ReturnType<typeof useVideoPicker>;
-  isContinuing: boolean;
-  continueError: string | null;
-  onContinue: () => void | Promise<void>;
-};
+  picker: ReturnType<typeof useVideoPicker>
+  isContinuing: boolean
+  continueError: string | null
+  onContinue: () => void | Promise<void>
+}
 
 export function LocalVideoImportPanel({
   picker,
@@ -56,16 +56,16 @@ export function LocalVideoImportPanel({
             !picker.selectedVideo ||
             picker.isSelecting ||
             isContinuing ||
-            picker.videoStatus !== "ready" ||
-            picker.metadataStatus !== "ready"
+            picker.videoStatus !== 'ready' ||
+            picker.metadataStatus !== 'ready'
           }
         >
-          <span>{isContinuing ? "準備中…" : "スライド領域を設定"}</span>
+          <span>{isContinuing ? '準備中…' : 'スライド領域を設定'}</span>
           <span className="text-[17px] font-normal leading-none" aria-hidden="true">
             →
           </span>
         </button>
       </div>
     </>
-  );
+  )
 }

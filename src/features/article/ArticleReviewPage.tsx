@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
 import { getArticleModel, type ArticleModelId } from '../../lib/article/articleModel'
+import type { WorkflowStep } from '../../lib/workflow'
 import type { ArticleDraft, ArticleSummary, MediaProject } from '../../types/project'
 import { ArticleSummaryCard } from './components/ArticleSummaryCard'
 import { ArticleSectionEditor } from './components/ArticleSectionEditor'
@@ -15,6 +16,8 @@ type ArticleReviewPageProps = {
   onSaveSummary: (summary: ArticleSummary) => void | Promise<void>
   onExport: () => void
   onHome: () => void
+  maxReachedStep: WorkflowStep
+  onStepClick: (step: WorkflowStep) => void
 }
 
 type EditingTarget = { type: 'title' } | { type: 'slide'; slideId: string } | null
@@ -26,13 +29,15 @@ export function ArticleReviewPage({
   onSaveSummary,
   onExport,
   onHome,
+  maxReachedStep,
+  onStepClick,
 }: ArticleReviewPageProps) {
   const articleSlides = project.slides.filter((slide) => Boolean(slide.transcript))
   const initialTitle = project.article?.title?.trim() || project.source.name.replace(/\.[^.]+$/, '')
-  const [summaryModelId, setSummaryModelId] = useState<ArticleModelId>(() =>
-    getArticleModel(
-      project.article?.summary?.model ?? articleSlides[0]?.transcript?.articleModel,
-    ).id,
+  const [summaryModelId, setSummaryModelId] = useState<ArticleModelId>(
+    () =>
+      getArticleModel(project.article?.summary?.model ?? articleSlides[0]?.transcript?.articleModel)
+        .id,
   )
   const summaryGeneration = useArticleSummary(project, summaryModelId, onSaveSummary)
   const initialBodies = Object.fromEntries(
@@ -48,8 +53,7 @@ export function ArticleReviewPage({
 
   const isEditingTitle = editingTarget?.type === 'title'
   const editingSlideId = editingTarget?.type === 'slide' ? editingTarget.slideId : null
-  const isBodyDirty =
-    editingSlideId !== null && bodyDraft !== (savedBodies[editingSlideId] ?? '')
+  const isBodyDirty = editingSlideId !== null && bodyDraft !== (savedBodies[editingSlideId] ?? '')
   const isTitleDirty = isEditingTitle && titleDraft.trim() !== savedTitle
   const hasUnsavedChanges = isBodyDirty || isTitleDirty
   const currentTitle = isEditingTitle ? titleDraft : savedTitle
@@ -117,14 +121,29 @@ export function ArticleReviewPage({
   }
 
   const handleBack = () => {
-    if (hasUnsavedChanges && !window.confirm('未保存の変更があります。保存せずに解析へ戻りますか？')) return
+    if (
+      hasUnsavedChanges &&
+      !window.confirm('未保存の変更があります。保存せずに解析へ戻りますか？')
+    )
+      return
     onBack()
+  }
+
+  const handleWorkflowNavigation = (nextStep: WorkflowStep) => {
+    if (hasUnsavedChanges && !window.confirm('未保存の変更があります。保存せずに移動しますか？'))
+      return
+    onStepClick(nextStep)
   }
 
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
       <AppHeader onHome={onHome} homeDisabled={hasUnsavedChanges || isBusy} />
-      <WorkflowBar activeStep="article-review" />
+      <WorkflowBar
+        activeStep="article-review"
+        maxReachedStep={maxReachedStep}
+        onStepClick={handleWorkflowNavigation}
+        disabled={isBusy}
+      />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
         <div className="mb-6 flex items-center justify-between gap-4">
@@ -154,7 +173,10 @@ export function ArticleReviewPage({
               <div className="min-w-0 flex-1">
                 {isEditingTitle ? (
                   <>
-                    <label className="block text-xs font-semibold text-[#18211f]" htmlFor="article-title">
+                    <label
+                      className="block text-xs font-semibold text-[#18211f]"
+                      htmlFor="article-title"
+                    >
                       記事タイトル
                     </label>
                     <input
@@ -216,7 +238,9 @@ export function ArticleReviewPage({
             {isEditingTitle && hasEmptyTitle && (
               <p className="mt-3 text-xs text-[#b6533a]">記事タイトルを入力してください。</p>
             )}
-            {isEditingTitle && saveError && <p className="mt-3 text-xs text-[#b6533a]">{saveError}</p>}
+            {isEditingTitle && saveError && (
+              <p className="mt-3 text-xs text-[#b6533a]">{saveError}</p>
+            )}
           </div>
 
           <div className="space-y-5 p-5 md:p-7">
@@ -238,7 +262,7 @@ export function ArticleReviewPage({
                   <ArticleSectionEditor
                     key={slide.id}
                     slide={slide}
-                    body={isEditing ? bodyDraft : savedBodies[slide.id] ?? ''}
+                    body={isEditing ? bodyDraft : (savedBodies[slide.id] ?? '')}
                     editing={isEditing}
                     editDisabled={!isEditing && !canEdit}
                     saving={isSaving && isEditing}
@@ -263,7 +287,9 @@ export function ArticleReviewPage({
         </div>
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-[#d8e1dc] pt-5">
-          <p className={`text-xs ${hasUnsavedChanges || hasEmptyTitle ? 'text-[#9a7a35]' : 'text-[#71807b]'}`}>
+          <p
+            className={`text-xs ${hasUnsavedChanges || hasEmptyTitle ? 'text-[#9a7a35]' : 'text-[#71807b]'}`}
+          >
             {hasUnsavedChanges
               ? '未保存の変更があります。保存してからExportできます。'
               : hasEmptyTitle
