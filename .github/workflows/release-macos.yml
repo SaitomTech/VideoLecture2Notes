@@ -84,11 +84,6 @@ jobs:
           releaseName: VideoLecture2Notes ${{ github.event.ref }}
           releaseBody: macOS Apple Silicon向けDMGです。
           generateReleaseNotes: true
+          # Keep the release as a draft for human review after the DMG upload.
           releaseDraft: true
           args: --bundles dmg
-
-      - name: Publish release after DMG upload
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.event.ref }}
-        run: gh release edit "$RELEASE_TAG" --draft=false

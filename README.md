@@ -81,7 +81,7 @@ bunx tauri build --bundles dmg
 
 ## リリース
 
-リリースは、バージョンを更新して`main`のコミットにタグを作成すると開始します。GitHub画面のタグ作成でも、コマンドラインからのタグpushでも構いません。
+リリースは、バージョンを更新して`main`のコミットにタグを作成すると開始します。タグはGitHub Desktopまたはコマンドラインから作成・pushします。Release画面からタグとReleaseを同時に公開する操作は、ビルド前にReleaseが公開されるため使用しません。
 
 バージョンは`package.json`を基準に、関連するTauri/Cargoのマニフェストへ一括反映します。
 
@@ -91,13 +91,16 @@ bun run version:check
 ```
 
 ```bash
+git fetch origin main
+git switch main
+git pull --ff-only origin main
 git tag vX.Y.Z
 git push origin vX.Y.Z
 ```
 
 GitHub Actionsはタグのコミットが`main`の履歴に含まれているかを確認します。`develop`にしかない未マージのコミットを指定した場合はビルドを開始せず失敗します。
 
-その後、DMGを先にビルドしてDraft Releaseへ添付し、ビルドが成功した場合だけReleaseを公開します。ビルド中や失敗時のDraft Releaseは、アプリ内の更新確認からは見えません。Release notesはGitHubの自動生成機能で作成されます。
+その後、DMGをビルドしてDraft Releaseへ添付します。Release notesはGitHubの自動生成機能で下書きされます。ビルドが成功したら、Release notesとDMGを確認・編集してから手動でReleaseを公開します。ビルド中や失敗時のDraft Releaseは、アプリ内の更新確認からは見えません。
 
 アプリ内の更新確認はGitHub Releases APIを認証なしで参照するため、リポジトリとReleaseをPublicにする必要があります。現在はReleaseページを開くだけで、自動インストールは行いません。
 

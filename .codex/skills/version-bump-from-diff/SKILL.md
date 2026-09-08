@@ -71,16 +71,17 @@ After choosing the next version:
 
 ## GitHub GUI handoff after the push
 
-Tell the user to complete these steps in the GitHub web UI:
+Tell the user to complete these steps in GitHub and GitHub Desktop:
 
 1. Open the repository's **Pull requests** tab and open the automatically created `develop` → `main` PR. Wait for required checks/review, then click **Merge pull request**.
 2. After the merge completes, create the tag `v<next-version>` on `main`. Tag creation is the actual trigger for `.github/workflows/release-macos.yml`; publishing a Release by itself is not a separate trigger.
-3. For a GUI-only flow, open **Releases** → **Draft a new release**, enter `v<next-version>` in **Choose a tag**, select **Create new tag: v<next-version> on publish**, and set **Target** to `main`. Clicking **Publish release** creates the tag and therefore starts the workflow. Never target `develop`.
-4. Do not upload a DMG manually; the repository workflow builds it, creates/updates the draft release, and publishes it after a successful build. Check the **Actions** tab for `Build macOS release assets` and the **Releases** page for the generated Apple Silicon DMG.
+3. For a GUI flow, open the merged `main` commit in **GitHub Desktop**, choose **Create Tag**, enter `v<next-version>`, and push the tag. A CLI alternative is `git fetch origin main && git switch main && git pull --ff-only origin main && git tag v<next-version> && git push origin v<next-version>`. Do not use **Releases** → **Draft a new release** to start this workflow, because that operation publishes a Release together with the new tag. Never target `develop`.
+4. Wait for the **Actions** tab's `Build macOS release assets` workflow to finish. Do not upload a DMG manually; the repository workflow builds it, creates/updates the draft release, and generates the initial release notes.
+5. Open the generated Draft Release, review and edit the release notes, confirm the Apple Silicon DMG is attached, then click **Publish release**. If the build fails, do not publish the draft; fix the cause and rerun the workflow.
 
-The release workflow verifies that the tag is based on `main`, checks the tag/version match, builds the DMG, and publishes the release after a successful build. Do not create a second tag or manually upload another DMG if the workflow is still running.
+The release workflow verifies that the tag is based on `main`, checks the tag/version match, builds the DMG, and leaves the release as a draft after uploading the artifact. Do not create a second tag or manually upload another DMG if the workflow is still running.
 
-The release notes are generated automatically through `tauri-action`'s GitHub Release Notes API (`generateReleaseNotes: true`) as part of the automated release handling. The workflow does not pause for a human to write or edit release notes after the DMG finishes; the final `gh release edit ... --draft=false` step publishes the draft after the DMG upload succeeds.
+The initial release notes are generated automatically through `tauri-action`'s GitHub Release Notes API (`generateReleaseNotes: true`). After the DMG upload, the draft intentionally remains unpublished so a human can review and edit the notes before publishing it.
 
 ## Validate and report
 
