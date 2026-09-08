@@ -10,7 +10,7 @@ export const TEXT_MODELS = [
     files: [
       {
         filename: 'Qwen3-1.7B-Q8_0.gguf',
-        url: 'https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q8_0.gguf?download=true',
+        url: 'https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/resolve/90862c4b9d2787eaed51d12237eafdfe7c5f6077/Qwen3-1.7B-Q8_0.gguf?download=true',
         sizeBytes: 1_834_426_016,
         sha256: '061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a',
       },
@@ -25,7 +25,7 @@ export const TEXT_MODELS = [
     files: [
       {
         filename: 'qwen3-4b-instruct-2507-q8_0.gguf',
-        url: 'https://huggingface.co/ggml-org/Qwen3-4B-Instruct-2507-Q8_0-GGUF/resolve/main/qwen3-4b-instruct-2507-q8_0.gguf?download=true',
+        url: 'https://huggingface.co/ggml-org/Qwen3-4B-Instruct-2507-Q8_0-GGUF/resolve/e6f794d/qwen3-4b-instruct-2507-q8_0.gguf?download=true',
         sizeBytes: 4_280_403_520,
         sha256: 'ae916ede1c010a26955ee8ae2e908bf8815a3f135ec860439ab924701c69d5f1',
       },
@@ -40,7 +40,7 @@ export const TEXT_MODELS = [
     files: [
       {
         filename: 'Qwen3-8B-Q4_K_M.gguf',
-        url: 'https://huggingface.co/Qwen/Qwen3-8B-GGUF/resolve/main/Qwen3-8B-Q4_K_M.gguf?download=true',
+        url: 'https://huggingface.co/Qwen/Qwen3-8B-GGUF/resolve/7c41481/Qwen3-8B-Q4_K_M.gguf?download=true',
         sizeBytes: 5_027_783_488,
         sha256: 'd98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785',
       },

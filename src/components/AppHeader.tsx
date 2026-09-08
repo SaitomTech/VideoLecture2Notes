@@ -1,8 +1,9 @@
-import { ExternalLink, RefreshCw } from 'lucide-react'
+import { ExternalLink, RefreshCw, Scale } from 'lucide-react'
 import { useState } from 'react'
 import { getErrorDetail } from '../lib/errors'
 import { checkForUpdates, openUpdateRelease, type UpdateCheckResult } from '../lib/updates'
 import { AppIcon } from './AppIcon'
+import { LicenseDialog } from './LicenseDialog'
 
 type AppHeaderProps = {
   onHome?: () => void
@@ -22,6 +23,7 @@ export function AppHeader({ onHome, homeDisabled = false }: AppHeaderProps) {
   const [isCheckingForUpdates, setIsCheckingForUpdates] = useState(false)
   const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null)
   const [updateMessage, setUpdateMessage] = useState<string | null>(null)
+  const [isLicenseDialogOpen, setIsLicenseDialogOpen] = useState(false)
 
   const handleCheckForUpdates = async () => {
     setIsCheckingForUpdates(true)
@@ -96,7 +98,18 @@ export function AppHeader({ onHome, homeDisabled = false }: AppHeaderProps) {
           <RefreshCw className={isCheckingForUpdates ? 'animate-spin' : ''} size={13} />
           更新を確認
         </button>
+        <button
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-[8px] px-2.5 py-2 text-[11px] font-semibold text-[#53615b] transition hover:bg-[#e8f2ec] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/25"
+          type="button"
+          onClick={() => setIsLicenseDialogOpen(true)}
+          title="ライセンス情報を表示"
+          aria-label="ライセンス情報を表示"
+        >
+          <Scale size={13} />
+          <span className="hidden sm:inline">ライセンス</span>
+        </button>
       </div>
+      {isLicenseDialogOpen && <LicenseDialog onClose={() => setIsLicenseDialogOpen(false)} />}
     </header>
   )
 }

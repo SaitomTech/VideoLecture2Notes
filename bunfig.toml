@@ -1,0 +1,3 @@
+[install]
+# 新しく解決するnpmパッケージは公開から3日以上経過したものに限定する。
+minimumReleaseAge = 259200

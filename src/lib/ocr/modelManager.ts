@@ -55,13 +55,13 @@ const OCR_LOCAL_MODEL_DEFINITIONS = [
     files: [
       {
         filename: 'GLM-OCR-Q8_0.gguf',
-        url: 'https://huggingface.co/ggml-org/GLM-OCR-GGUF/resolve/main/GLM-OCR-Q8_0.gguf?download=true',
+        url: 'https://huggingface.co/ggml-org/GLM-OCR-GGUF/resolve/65a42de/GLM-OCR-Q8_0.gguf?download=true',
         sizeBytes: 950_433_408,
         sha256: '45bc244a6446aff850521dc41f18bc8d7105ad5f0c2c8c28af04e7cc4f4d50b1',
       },
       {
         filename: 'mmproj-GLM-OCR-Q8_0.gguf',
-        url: 'https://huggingface.co/ggml-org/GLM-OCR-GGUF/resolve/main/mmproj-GLM-OCR-Q8_0.gguf?download=true',
+        url: 'https://huggingface.co/ggml-org/GLM-OCR-GGUF/resolve/65a42de/mmproj-GLM-OCR-Q8_0.gguf?download=true',
         sizeBytes: 484_403_648,
         sha256: '9c4b58e33e316ed142eb5dcb41abec3844d3e6e5dc361ffb782c3fa9d175141f',
       },
@@ -77,13 +77,13 @@ const OCR_LOCAL_MODEL_DEFINITIONS = [
     files: [
       {
         filename: 'PaddleOCR-VL-1.6-GGUF.gguf',
-        url: 'https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.6-GGUF/resolve/main/PaddleOCR-VL-1.6-GGUF.gguf?download=true',
+        url: 'https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.6-GGUF/resolve/511b096/PaddleOCR-VL-1.6-GGUF.gguf?download=true',
         sizeBytes: 935_769_056,
         sha256: 'f3ae46ec885050acf4b3d31944431e1fd90d50664fb09126af4a3c050ba14ee8',
       },
       {
         filename: 'PaddleOCR-VL-1.6-GGUF-mmproj.gguf',
-        url: 'https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.6-GGUF/resolve/main/PaddleOCR-VL-1.6-GGUF-mmproj.gguf?download=true',
+        url: 'https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.6-GGUF/resolve/511b096/PaddleOCR-VL-1.6-GGUF-mmproj.gguf?download=true',
         sizeBytes: 881_770_560,
         sha256: '204d757d7610d9b3faab10d506d69e5b244e32bf765e2bab2d0167e65e0a058a',
       },
