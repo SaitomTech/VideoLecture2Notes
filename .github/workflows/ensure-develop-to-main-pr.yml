@@ -45,20 +45,6 @@ jobs:
           body=$(cat <<'EOF'
           ## 概要
           `develop` の内容を `main` へ反映するための自動生成PRです。
-
-          ## リリース手順
-          1. `src-tauri/tauri.conf.json` と `src-tauri/Cargo.toml` の `version` が同じ値になっていることを確認する
-          2. このPRを `main` に merge する
-          3. GitHubの `Releases` から新しいReleaseを作成する
-          4. バージョンに対応するタグ（例: `v0.2.0`）を作成し、対象を `main` のリリースコミットにする
-          5. ReleaseをPublishする
-          6. `Build macOS release assets` workflowの完了を確認する
-          7. GitHub ReleaseのAssetsにmacOS Apple Silicon用DMGが追加されたことを確認する
-          8. DMGをダウンロードしてApplicationsへコピーし、アプリを起動して主要フローを確認する
-
-          ## 補足
-          Releaseのタグからバージョンを除いた値は、`src-tauri/tauri.conf.json` の `version` と一致させてください。
-          ReleaseのPublishを起点に、GitHub ActionsがDMGをビルドしてReleaseへ添付します。
           EOF
           )
 
