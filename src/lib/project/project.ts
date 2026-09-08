@@ -1,7 +1,6 @@
 import type { SelectedVideo } from '../../features/import/types'
 import {
   assignTranscriptToSlides,
-  buildSlidesFromTranscript,
   normalizeTranscriptSegments,
 } from '../pipeline/assignTranscriptToSlides'
 import {
@@ -18,8 +17,6 @@ import {
   type SlideDetectionResult,
   type SlideOcrResult,
   type SlideResultEdits,
-  type TranscriptAlignment,
-  type TranscriptPlacement,
   type TranscriptionResult,
   type VideoTrim,
 } from '../../types/project'
@@ -145,7 +142,6 @@ export function updateProjectCropAndTrim(
       ? {
           slides: [],
           slideDetection: undefined,
-          transcriptAlignment: undefined,
         }
       : {}),
     ...(trimChanged
@@ -171,7 +167,6 @@ export function updateProjectSlideDetection(
     ...project,
     slideDetection: result,
     slides: nextSlides,
-    transcriptAlignment: undefined,
     settings: {
       ...project.settings,
       slideDetection: {
@@ -194,7 +189,6 @@ export function updateProjectTranscription(
   return {
     ...project,
     transcription: normalizedTranscription,
-    transcriptAlignment: undefined,
     slides: assignTranscriptToSlides(
       project.slides,
       normalizedTranscription.segments,
@@ -204,100 +198,27 @@ export function updateProjectTranscription(
   }
 }
 
-export function updateProjectTranscriptAlignment(
-  project: MediaProject,
-  alignment: TranscriptAlignment,
-): MediaProject {
-  if (!project.transcription) return project
-
-  return {
-    ...project,
-    transcriptAlignment: alignment,
-    slides: buildSlidesFromTranscript(
-      project.slides,
-      alignment.units,
-      alignment.placements,
-      project.transcription.model,
-    ),
-    updatedAt: new Date().toISOString(),
-  }
-}
-
-export function updateProjectTranscriptPlacement(
-  project: MediaProject,
-  unitId: string,
-  slideId: string,
-): MediaProject {
-  if (
-    !project.transcription ||
-    !project.transcriptAlignment ||
-    !project.slides.some((slide) => slide.id === slideId)
-  )
-    return project
-
-  const existing = project.transcriptAlignment
-  const { units, placements } = existing
-  if (!units.some((unit) => unit.id === unitId)) return project
-
-  const nextPlacements: TranscriptPlacement[] = placements.map((placement) =>
-    placement.unitId === unitId
-      ? {
-          ...placement,
-          slideId,
-          method: 'manual',
-          confidence: 1,
-          reason: 'ユーザーによる所属変更',
-        }
-      : placement,
-  )
-  const nextSuggestions = existing.suggestions.map((suggestion) =>
-    suggestion.unitId === unitId
-      ? {
-          ...suggestion,
-          status: slideId === suggestion.fromSlideId ? ('reverted' as const) : ('accepted' as const),
-        }
-      : suggestion,
-  )
-  const nextAlignment: TranscriptAlignment = {
-    version: 1,
-    units,
-    placements: nextPlacements,
-    suggestions: nextSuggestions,
-    model: existing.model,
-    inputFingerprint: existing.inputFingerprint,
-    alignedAt: new Date().toISOString(),
-  }
-
-  return updateProjectTranscriptAlignment(project, nextAlignment)
-}
-
 export function updateProjectSlideOcr(
   project: MediaProject,
   slideId: string,
   ocr: SlideOcrResult,
 ): MediaProject {
-  const nextSlides = project.slides.map((slide) => {
-    if (slide.id !== slideId) return slide
-
-    return {
-      ...slide,
-      ocr,
-      transcript: slide.transcript
-        ? {
-            raw: slide.transcript.raw,
-            segments: slide.transcript.segments,
-            alignmentMethod: slide.transcript.alignmentMethod,
-            model: slide.transcript.model,
-          }
-        : undefined,
-    }
-  })
   return {
     ...project,
-    slides: project.transcription
-      ? assignTranscriptToSlides(nextSlides, project.transcription.segments, project.transcription.model)
-      : nextSlides,
-    transcriptAlignment: undefined,
+    slides: project.slides.map((slide) => {
+      if (slide.id !== slideId) return slide
+
+      return {
+        ...slide,
+        ocr,
+        transcript: slide.transcript
+          ? {
+              raw: slide.transcript.raw,
+              model: slide.transcript.model,
+            }
+          : undefined,
+      }
+    }),
     updatedAt: new Date().toISOString(),
   }
 }
@@ -316,8 +237,6 @@ export function updateProjectSlideContent(
         ...slide,
         transcript: {
           raw: slide.transcript.raw,
-          segments: slide.transcript.segments,
-          alignmentMethod: slide.transcript.alignmentMethod,
           model: slide.transcript.model,
           articleBody: result.article.body,
           articleModel: result.article.model,

@@ -91,25 +91,6 @@ export type TranscriptSegment = {
   text: string
 }
 
-export type TranscriptUnit = {
-  id: string
-  sourceSegmentId: string
-  startMs: number
-  endMs: number
-  text: string
-  textStart: number
-  textEnd: number
-  timingQuality: 'source' | 'estimated'
-}
-
-export type TranscriptPlacement = {
-  unitId: string
-  slideId: string
-  method: 'time' | 'semantic' | 'manual'
-  confidence?: number
-  reason?: string
-}
-
 export type TranscriptionKeywordChunk = {
   startMs: number
   endMs: number
@@ -119,25 +100,6 @@ export type TranscriptionKeywordChunk = {
 export type TranscriptionKeywordContext = {
   chunks: TranscriptionKeywordChunk[]
   generatedAt: string
-}
-
-export type TranscriptAlignmentSuggestion = {
-  unitId: string
-  fromSlideId: string
-  toSlideId: string
-  confidence: number
-  reason?: string
-  status: 'pending' | 'auto-applied' | 'accepted' | 'reverted'
-}
-
-export type TranscriptAlignment = {
-  version: 1
-  units: TranscriptUnit[]
-  placements: TranscriptPlacement[]
-  suggestions: TranscriptAlignmentSuggestion[]
-  model: string
-  inputFingerprint: string
-  alignedAt: string
 }
 
 export type TranscriptionResult = {
@@ -277,8 +239,6 @@ export type SlideData = {
   ocr?: SlideOcrResult
   transcript?: {
     raw: string
-    segments: TranscriptUnit[]
-    alignmentMethod: 'time' | 'semantic' | 'manual'
     articleBody?: string
     articleModel?: string
     articleInputFingerprint?: string
@@ -302,7 +262,6 @@ export type MediaProject = {
   slides: SlideData[]
   slideDetection?: SlideDetectionResult
   transcription?: TranscriptionResult
-  transcriptAlignment?: TranscriptAlignment
   article?: ArticleData
   workflow: ProjectWorkflow
   createdAt: string

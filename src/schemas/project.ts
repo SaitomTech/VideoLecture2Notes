@@ -60,44 +60,6 @@ const TranscriptSegmentSchema = z.object({
   text: z.string(),
 })
 
-const TranscriptUnitSchema = z.object({
-  id: z.string().min(1),
-  sourceSegmentId: z.string().min(1),
-  startMs: z.number().finite().nonnegative(),
-  endMs: z.number().finite().nonnegative(),
-  text: z.string(),
-  textStart: z.number().int().nonnegative(),
-  textEnd: z.number().int().nonnegative(),
-  timingQuality: z.enum(['source', 'estimated']),
-})
-
-const TranscriptPlacementSchema = z.object({
-  unitId: z.string().min(1),
-  slideId: z.string().min(1),
-  method: z.enum(['time', 'semantic', 'manual']),
-  confidence: z.number().finite().min(0).max(1).optional(),
-  reason: z.string().min(1).optional(),
-})
-
-const TranscriptAlignmentSuggestionSchema = z.object({
-  unitId: z.string().min(1),
-  fromSlideId: z.string().min(1),
-  toSlideId: z.string().min(1),
-  confidence: z.number().finite().min(0).max(1),
-  reason: z.string().min(1).optional(),
-  status: z.enum(['pending', 'auto-applied', 'accepted', 'reverted']),
-})
-
-const TranscriptAlignmentSchema = z.object({
-  version: z.literal(1),
-  units: z.array(TranscriptUnitSchema),
-  placements: z.array(TranscriptPlacementSchema),
-  suggestions: z.array(TranscriptAlignmentSuggestionSchema),
-  model: z.string().min(1),
-  inputFingerprint: z.string().min(1),
-  alignedAt: z.iso.datetime(),
-})
-
 const TranscriptionKeywordContextSchema = z.object({
   chunks: z.array(
     z.object({
@@ -179,8 +141,6 @@ const SlideDataSchema = z.object({
   transcript: z
     .object({
       raw: z.string(),
-      segments: z.array(TranscriptUnitSchema),
-      alignmentMethod: z.enum(['time', 'semantic', 'manual']),
       articleBody: z.string().optional(),
       articleModel: z.string().optional(),
       articleInputFingerprint: z.string().optional(),
@@ -242,7 +202,6 @@ export const MediaProjectSchema = z.object({
   slides: z.array(SlideDataSchema),
   slideDetection: SlideDetectionResultSchema.optional(),
   transcription: TranscriptionResultSchema.optional(),
-  transcriptAlignment: TranscriptAlignmentSchema.optional(),
   article: z
     .object({
       title: z.string(),

@@ -9,8 +9,6 @@ import {
   type TranscriptionModelId,
 } from '../../lib/transcription/transcriptionModel'
 import { getActiveMediaSource, type MediaProject, type SlideResultEdits, type TranscriptionResult } from '../../types/project'
-import { TranscriptAlignmentPanel } from '../correction/components/TranscriptAlignmentPanel'
-import { useTranscriptAlignment } from '../correction/hooks/useTranscriptAlignment'
 import { AnalysisResultPreview } from '../content-processing/components/AnalysisResultPreview'
 import {
   ContentProcessingPanel,
@@ -33,8 +31,6 @@ type GenerateNotesPageProps = {
   onCompleted: (result: TranscriptionResult) => void | Promise<void>
   onOcrSlideCompleted: OcrSlideCompleted
   onContentSlideCompleted: ContentProcessingSlideCompleted
-  onTranscriptAlignmentCompleted: Parameters<typeof useTranscriptAlignment>[2]
-  onTranscriptPlacementChange: (unitId: string, slideId: string) => void | Promise<void>
   onSaveSlideResultEdits: (slideId: string, edits: SlideResultEdits) => void | Promise<void>
   onOpenArticleReview: () => void
   onHome: () => void
@@ -46,8 +42,6 @@ export function GenerateNotesPage({
   onCompleted,
   onOcrSlideCompleted,
   onContentSlideCompleted,
-  onTranscriptAlignmentCompleted,
-  onTranscriptPlacementChange,
   onSaveSlideResultEdits,
   onOpenArticleReview,
   onHome,
@@ -71,25 +65,14 @@ export function GenerateNotesPage({
   const [textModelId, setTextModelId] = useState<ArticleModelId>(
     () => getArticleModel(storedTextModelId).id,
   )
-  const [alignmentModelId, setAlignmentModelId] = useState<ArticleModelId>(
-    () => getArticleModel(project.transcriptAlignment?.model ?? storedTextModelId).id,
-  )
   const textModel = getArticleModel(textModelId)
-  const alignmentModel = getArticleModel(alignmentModelId)
   const transcription = useTranscription(project, transcriptionModelId, onCompleted)
   const ocr = useOcr(project, onOcrSlideCompleted, ocrModelId)
-  const alignment = useTranscriptAlignment(
-    project,
-    alignmentModelId,
-    onTranscriptAlignmentCompleted,
-  )
   const processing = useContentProcessing(project, onContentSlideCompleted, textModelId)
   const handleTranscribe = () => transcription.transcribe(language)
   const isOcrRunning = ocr.status === 'running'
   const isContentProcessing = processing.status === 'running'
-  const isAlignmentRunning = alignment.status === 'running'
-  const isProcessing =
-    transcription.status === 'running' || isOcrRunning || isContentProcessing || isAlignmentRunning
+  const isProcessing = transcription.status === 'running' || isOcrRunning || isContentProcessing
   const handleTextModelChange = (nextModelId: ArticleModelId) => {
     processing.reset()
     setTextModelId(nextModelId)
@@ -161,8 +144,7 @@ export function GenerateNotesPage({
                     onModelChange={setOcrModelId}
                     disabled={
                       transcription.status === 'running' ||
-                      isContentProcessing ||
-                      isAlignmentRunning
+                      isContentProcessing
                     }
                   />
                   <div className='mt-6'>
@@ -170,8 +152,7 @@ export function GenerateNotesPage({
                       ocr={ocr}
                       disabled={
                         transcription.status === 'running' ||
-                        isContentProcessing ||
-                        isAlignmentRunning
+                        isContentProcessing
                       }
                     />
                   </div>
@@ -183,7 +164,7 @@ export function GenerateNotesPage({
                     modelId={transcriptionModelId}
                     durationMs={source.metadata.durationMs}
                     status={transcription.status}
-                    disabled={isOcrRunning || isContentProcessing || isAlignmentRunning}
+                    disabled={isOcrRunning || isContentProcessing}
                     onLanguageChange={setLanguage}
                     onModelChange={setTranscriptionModelId}
                     onTranscribe={handleTranscribe}
@@ -196,25 +177,11 @@ export function GenerateNotesPage({
                       stageProgress={transcription.stageProgress}
                       chunkProgress={transcription.chunkProgress}
                       error={transcription.error}
-                      disabled={isOcrRunning || isContentProcessing || isAlignmentRunning}
+                      disabled={isOcrRunning || isContentProcessing}
                       onRetry={handleTranscribe}
                     />
                     <TranscriptionKeywordsPanel context={project.transcription?.keywordContext} />
                   </div>
-                </div>
-
-                <div>
-                  <TranscriptAlignmentPanel
-                    project={project}
-                    alignment={alignment}
-                    model={alignmentModel}
-                    modelId={alignmentModelId}
-                    onModelChange={setAlignmentModelId}
-                    disabled={
-                      transcription.status === 'running' || isOcrRunning || isContentProcessing
-                    }
-                    onApplySuggestion={onTranscriptPlacementChange}
-                  />
                 </div>
 
                 <div>
@@ -225,15 +192,13 @@ export function GenerateNotesPage({
                     modelId={textModelId}
                     onModelChange={handleTextModelChange}
                     disabled={
-                      transcription.status === 'running' || isOcrRunning || isAlignmentRunning
+                      transcription.status === 'running' || isOcrRunning
                     }
                   />
                   <div className='mt-6'>
                     <ContentProcessingStatus
                       processing={processing}
-                      disabled={
-                        transcription.status === 'running' || isOcrRunning || isAlignmentRunning
-                      }
+                      disabled={transcription.status === 'running' || isOcrRunning}
                     />
                   </div>
                 </div>
