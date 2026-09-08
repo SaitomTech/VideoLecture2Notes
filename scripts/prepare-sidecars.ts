@@ -7,6 +7,7 @@ const TARGET_TRIPLE =
   process.env.TAURI_ENV_TARGET_TRIPLE ??
   (process.platform === 'darwin' && process.arch === 'arm64' ? 'aarch64-apple-darwin' : '')
 const SIDECAR_DIRECTORY = join(import.meta.dir, '..', 'src-tauri', 'binaries')
+const SIDECAR_METADATA_SUFFIX = '.sha256'
 const VISION_SOURCE = join(import.meta.dir, '..', 'src-tauri', 'vision-ocr', 'main.swift')
 const VISION_SIDECAR_NAME = 'apple-vision-ocr'
 const SPEECH_SOURCE = join(import.meta.dir, '..', 'src-tauri', 'speech-transcriber', 'main.swift')
@@ -26,15 +27,15 @@ const DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000
 const DOWNLOAD_PROGRESS_INTERVAL_MS = 30 * 1000
 const LLAMA_RUNTIME_FILES = {
   'libllama-server-impl.dylib': 'libllama-server-impl.dylib',
-  'libllama-common.0.dylib': 'libllama-common.0.1.2.dylib',
-  'libmtmd.0.dylib': 'libmtmd.0.1.2.dylib',
-  'libllama.0.dylib': 'libllama.0.1.2.dylib',
-  'libggml.0.dylib': 'libggml.0.20.2.dylib',
-  'libggml-cpu.0.dylib': 'libggml-cpu.0.20.2.dylib',
-  'libggml-blas.0.dylib': 'libggml-blas.0.20.2.dylib',
-  'libggml-metal.0.dylib': 'libggml-metal.0.20.2.dylib',
-  'libggml-rpc.0.dylib': 'libggml-rpc.0.20.2.dylib',
-  'libggml-base.0.dylib': 'libggml-base.0.20.2.dylib',
+  'libllama-common.0.dylib': 'libllama-common.0.4.0.dylib',
+  'libmtmd.0.dylib': 'libmtmd.0.4.0.dylib',
+  'libllama.0.dylib': 'libllama.0.4.0.dylib',
+  'libggml.0.dylib': 'libggml.0.23.0.dylib',
+  'libggml-cpu.0.dylib': 'libggml-cpu.0.23.0.dylib',
+  'libggml-blas.0.dylib': 'libggml-blas.0.23.0.dylib',
+  'libggml-metal.0.dylib': 'libggml-metal.0.23.0.dylib',
+  'libggml-rpc.0.dylib': 'libggml-rpc.0.23.0.dylib',
+  'libggml-base.0.dylib': 'libggml-base.0.23.0.dylib',
 } as const
 
 type Sidecar = {
@@ -73,8 +74,8 @@ const SIDECARS: Sidecar[] = [
     archiveEntry: 'llama-server',
     runtimeDirectory: 'llama-runtime',
     runtimeFiles: LLAMA_RUNTIME_FILES,
-    url: 'https://github.com/ggml-org/llama.cpp/releases/download/b10516/llama-b10516-bin-macos-arm64.tar.gz',
-    sha256: 'ee3324327d621026ae80c24031670e65fa62a0b23a3a027dbe2f65f240affd30',
+    url: 'https://github.com/ggml-org/llama.cpp/releases/download/b10853/llama-b10853-bin-macos-arm64.tar.gz',
+    sha256: '44ac38967081c681880467e7d8ffed0fa4389797a659f446e87bc31c7e82c48b',
   },
 ]
 
@@ -87,6 +88,10 @@ const YT_DLP_SIDECAR = {
 
 function sidecarPath(name: string) {
   return join(SIDECAR_DIRECTORY, `${name}-${TARGET_TRIPLE}`)
+}
+
+function sidecarMetadataPath(name: string) {
+  return `${sidecarPath(name)}${SIDECAR_METADATA_SUFFIX}`
 }
 
 async function buildVisionSidecar(temporaryDirectory: string, force: boolean) {
@@ -371,6 +376,7 @@ async function downloadAndExtract(sidecar: (typeof SIDECARS)[number], temporaryD
   console.log(`[${sidecar.name}] 実行ファイルの展開完了`)
   if (sidecar.runtimeDirectory) console.log(`[${sidecar.name}] runtimeを展開中`)
   await prepareRuntimeFiles(sidecar, archivePath, destination, entries)
+  await Bun.write(sidecarMetadataPath(sidecar.name), `${sidecar.sha256}\n`)
   console.log(
     `✓ ${sidecar.name}-${TARGET_TRIPLE} (${Math.round((Date.now() - startedAt) / 1000)}秒)`,
   )
@@ -401,13 +407,25 @@ async function downloadBinary(sidecar: typeof YT_DLP_SIDECAR, temporaryDirectory
   await Bun.write(temporaryDestination, await readFile(temporaryDownloadPath))
   await chmod(temporaryDestination, 0o755)
   await rename(temporaryDestination, destination)
+  await Bun.write(sidecarMetadataPath(sidecar.name), `${sidecar.sha256}\n`)
   console.log(
     `✓ ${sidecar.name}-${TARGET_TRIPLE} (${Math.round((Date.now() - startedAt) / 1000)}秒)`,
   )
 }
 
+async function sidecarFileReady(name: string, sha256: string) {
+  if (!(await nonEmptyFileExists(sidecarPath(name)))) return false
+  try {
+    const recordedSha256 = (await readFile(sidecarMetadataPath(name), 'utf8')).trim()
+    return recordedSha256 === sha256
+  } catch {
+    return false
+  }
+}
+
 async function sidecarReady(sidecar: Sidecar) {
-  if (!(await pathExists(sidecarPath(sidecar.name)))) return false
+  if (!(await sidecarFileReady(sidecar.name, sidecar.sha256))) return false
+
   if (!sidecar.runtimeDirectory) return true
 
   const runtimeDirectory = join(SIDECAR_DIRECTORY, sidecar.runtimeDirectory)
@@ -443,7 +461,7 @@ async function main() {
     const foundationModelsSidecarReady = await nonEmptyFileExists(
       sidecarPath(FOUNDATION_MODELS_SIDECAR_NAME),
     )
-    const ytDlpSidecarReady = await nonEmptyFileExists(sidecarPath(YT_DLP_SIDECAR_NAME))
+    const ytDlpSidecarReady = await sidecarFileReady(YT_DLP_SIDECAR.name, YT_DLP_SIDECAR.sha256)
     if (
       !force &&
       downloadedSidecarsReady &&
