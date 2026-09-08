@@ -65,7 +65,7 @@ function TranscriptionModelDetails({
       return (
         <ModelDescription
           description={model.description}
-          annotation="音声データと、該当スライドおよび前後スライドのOCRから抽出した用語はOpenAIへ送信されます。スライド単位で最大5件を並列処理します。"
+          annotation="音声データと、該当スライドおよび前後スライドのOCRから抽出した用語はOpenAIへ送信されます。スライド単位で最大8件を並列処理します。"
         >
           <OpenAiApiKeySettings
             verificationModel={model.apiModel}
