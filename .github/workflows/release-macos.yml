@@ -83,7 +83,7 @@ jobs:
         with:
           tauriScript: bunx tauri
           tagName: ${{ github.event.ref }}
-          releaseName: VideoLecture2Notes ${{ github.event.ref }}
+          releaseName: ${{ github.event.ref }}
           releaseBody: macOS Apple Silicon向けDMGです。
           generateReleaseNotes: true
           # Keep the release as a draft for human review after the DMG upload.
