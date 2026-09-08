@@ -78,6 +78,8 @@ jobs:
         uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # action-v1.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tauriScript: bunx tauri
           tagName: ${{ github.event.ref }}
@@ -86,4 +88,5 @@ jobs:
           generateReleaseNotes: true
           # Keep the release as a draft for human review after the DMG upload.
           releaseDraft: true
+          uploadUpdaterJson: true
           args: --bundles dmg

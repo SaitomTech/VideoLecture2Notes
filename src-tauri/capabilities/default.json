@@ -7,9 +7,11 @@
     "core:default",
     "dialog:default",
     "fs:default",
+    "process:allow-restart",
     "shell:allow-kill",
     "shell:allow-open",
     "shell:allow-stdin-write",
+    "updater:default",
     {
       "identifier": "fs:allow-stat",
       "allow": [

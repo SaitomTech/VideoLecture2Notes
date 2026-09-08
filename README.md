@@ -43,14 +43,26 @@ OpenAIを選択した処理では、選択した音声・画像・文字起こ�
 
 DMGからインストールして使う場合、Bun・Rust toolchain・Xcode Command Line Toolsは不要です。
 
-Apple Developer Program未使用の未署名アプリのため、macOSに起動を止められる場合があります。信頼できるGitHub Releaseからダウンロードした場合に限り、ターミナルで次を実行してください。
+Apple Developer Program未使用の未署名アプリのため、初回起動時にmacOSの確認が表示される場合があります。信頼できるGitHub Releaseからダウンロードした場合に限り、次の手順で起動してください。
+
+1. DMGからアプリを`Applications`へ移動します。
+2. Finderの`Applications`フォルダで`videolecture2notes`をControlクリック（または右クリック）し、「開く」を選びます。
+3. 確認ダイアログが表示されたら、もう一度「開く」を選びます。
+
+「開く」が表示されない場合は、いったんアプリをダブルクリックして警告を表示したあと、システム設定の「プライバシーとセキュリティ」を開き、「セキュリティ」欄の「このまま開く」を選んでください。その後、確認ダイアログで「開く」を選びます。許可したアプリは、次回から通常どおり起動できます。
+
+この初回許可は、アプリ内Updater経由で更新する限り、バージョンアップのたびに繰り返す必要はありません。手動で新しいDMGをダウンロードして入れ直す場合は、macOSが再度確認を表示することがあります。
+
+#### ターミナルで許可する場合
+
+GUI操作の代わりに、信頼できるGitHub Releaseからダウンロードしたアプリに限り、次のコマンドでも許可できます。
 
 ```bash
 xattr -dr com.apple.quarantine "/Applications/videolecture2notes.app"
 open "/Applications/videolecture2notes.app"
 ```
 
-アプリを`Applications`以外に置いた場合は、パスを実際の`.app`の場所に置き換えてください。Finderでアプリを右クリックして「開く」でも起動できる場合があります。
+アプリを`Applications`以外に置いた場合は、パスを実際の`.app`の場所に置き換えてください。
 
 ## 開発者向け
 
@@ -100,9 +112,11 @@ git push origin vX.Y.Z
 
 GitHub Actionsはタグのコミットが`main`の履歴に含まれているかを確認します。`develop`にしかない未マージのコミットを指定した場合はビルドを開始せず失敗します。
 
-その後、DMGをビルドしてDraft Releaseへ添付します。Release notesはGitHubの自動生成機能で下書きされます。ビルドが成功したら、Release notesとDMGを確認・編集してから手動でReleaseを公開します。ビルド中や失敗時のDraft Releaseは、アプリ内の更新確認からは見えません。
+その後、DMGとアプリ内Updater用の更新パッケージをビルドしてDraft Releaseへ添付します。Release notesはGitHubの自動生成機能で下書きされます。ビルドが成功したら、Release notes、DMG、`latest.json`、更新パッケージを確認・編集してから手動でReleaseを公開します。ビルド中や失敗時のDraft Releaseは、アプリ内の更新確認からは見えません。
 
-アプリ内の更新確認はGitHub Releases APIを認証なしで参照するため、リポジトリとReleaseをPublicにする必要があります。現在はReleaseページを開くだけで、自動インストールは行いません。
+アプリ内の更新確認はGitHub Releaseの`latest.json`を参照し、見つかった更新をアプリ内でダウンロード・インストールして再起動できます。「更新を自動確認」を有効にすると、アプリ起動時にも更新を確認します。更新を見つけても作業中に再起動せず、表示された「インストール」ボタンから適用できます。更新パッケージの署名にはTauri Updater用の鍵を使います。これはAppleのDeveloper IDとは別の鍵なので、Apple Developer Programへの加入は必要ありません。
+
+Release workflowで更新パッケージに署名するため、GitHubリポジトリのActions secretsに`TAURI_SIGNING_PRIVATE_KEY`を登録してください。パスワード付きの鍵を使う場合は`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`も登録します。秘密鍵はリポジトリへコミットしないでください。
 
 ## ライセンス
 
