@@ -7,6 +7,7 @@ use std::{
 use tauri::Manager;
 
 mod openai;
+mod video_server;
 
 #[tauri::command]
 async fn sha256_app_local_file(
@@ -74,6 +75,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
+            app.manage(video_server::start()?);
             if cfg!(debug_assertions) {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()
@@ -85,6 +87,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             sha256_app_local_file,
+            video_server::video_stream_url,
             openai::get_openai_api_key_status,
             openai::validate_and_save_openai_api_key,
             openai::test_openai_connection,

@@ -1,4 +1,5 @@
-import { convertFileSrc } from '@tauri-apps/api/core'
+import { describeVideoPlaybackError, logVideoPlaybackError } from '../../../lib/media/videoError'
+import { useVideoSourceUrl } from '../../../lib/media/useVideoSourceUrl'
 import type { SelectedVideo } from '../types'
 
 type VideoPreviewProps = {
@@ -8,7 +9,7 @@ type VideoPreviewProps = {
   isSelecting: boolean
   onChoose: () => void | Promise<void>
   onVideoReady: () => void
-  onVideoError: () => void
+  onVideoError: (message?: string) => void
 }
 
 export function VideoPreview({
@@ -20,6 +21,8 @@ export function VideoPreview({
   onVideoReady,
   onVideoError,
 }: VideoPreviewProps) {
+  const videoSource = useVideoSourceUrl(video.path)
+
   return (
     <div
       className={`overflow-hidden rounded-[18px] border bg-[#14231d] shadow-[0_18px_52px_rgba(22,54,42,0.07)] transition-[border-color,box-shadow] duration-200 ${videoStatus === 'error' ? 'border-[#b6533a]' : isDragging ? 'border-[#1d6b50] shadow-[0_22px_70px_rgba(22,54,42,0.14)]' : 'border-[#b7cbc0]'}`}
@@ -36,15 +39,19 @@ export function VideoPreview({
       </div>
 
       <video
-        key={video.path}
+        key={`${video.path}:${videoSource.src ?? 'loading'}`}
         className="block aspect-video w-full bg-[#0b1712] object-contain"
         controls
         playsInline
         preload="auto"
-        src={convertFileSrc(video.path)}
+        src={videoSource.src ?? undefined}
         aria-label="動画プレビュー"
         onCanPlay={onVideoReady}
-        onError={onVideoError}
+        onError={(event) => {
+          const video = event.currentTarget
+          logVideoPlaybackError(video)
+          onVideoError(describeVideoPlaybackError(video))
+        }}
       />
     </div>
   )

@@ -71,9 +71,9 @@ export function useVideoPicker(initialVideo?: SelectedVideo) {
     setVideoStatus('ready')
   }
 
-  const handleVideoError = () => {
+  const handleVideoError = (message?: string) => {
     setVideoStatus('error')
-    setError('動画として読み込めないファイルです。別の動画を選択してください。')
+    setError(message ?? '動画として読み込めないファイルです。別の動画を選択してください。')
   }
 
   useEffect(() => {
