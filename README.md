@@ -68,7 +68,7 @@ OpenAIを選択した処理では、選択した音声・画像・文字起こ�
 
 ## リリース
 
-リリースは、GitHub画面でタグとReleaseを作成し、GitHub ActionsでDMGをビルドしてReleaseへ添付します。詳しい手順は[macOS版リリース手順](./docs/リリース手順.md)を確認してください。
+リリースは、GitHub画面でタグとReleaseを作成すると、GitHub ActionsがDMGをビルドしてReleaseへ添付します。
 
 アプリ内の更新確認はGitHub Releases APIを認証なしで参照するため、リポジトリとReleaseをPublicにする必要があります。現在はReleaseページを開くだけで、自動インストールは行いません。
 
