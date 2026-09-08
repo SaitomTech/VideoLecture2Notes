@@ -10,10 +10,11 @@ export type YoutubeVideoInfo = {
 }
 
 export type YoutubeDownloadProgress = {
-  phase: 'downloading' | 'finalizing'
+  phase: 'downloading' | 'merging' | 'transcoding' | 'checking' | 'finalizing'
   percent?: number
   speed?: string
   eta?: string
+  stream?: 'video' | 'audio'
 }
 
 export type YoutubeDownloadInput = {

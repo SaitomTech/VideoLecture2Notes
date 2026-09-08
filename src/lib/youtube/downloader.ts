@@ -87,18 +87,20 @@ async function downloadFormat({
   info,
   format,
   outputTemplate,
+  stream,
   signal,
   onProgress,
 }: {
   info: YoutubeDownloadInput['info']
   format: string
   outputTemplate: string
+  stream: 'video' | 'audio'
   signal?: AbortSignal
   onProgress?: (progress: YoutubeDownloadProgress) => void
 }) {
   const handleOutput = (chunk: string) => {
     const progress = parseProgress(chunk)
-    if (progress) onProgress?.(progress)
+    if (progress) onProgress?.({ ...progress, stream })
   }
   const output = await executeSidecarStreaming(
     'binaries/yt-dlp',
@@ -149,6 +151,7 @@ export async function downloadYoutubeVideo({
       info,
       format: formats.video,
       outputTemplate: videoTemplate,
+      stream: 'video',
       signal,
       onProgress,
     })
@@ -164,6 +167,7 @@ export async function downloadYoutubeVideo({
       info,
       format: formats.audio,
       outputTemplate: audioTemplate,
+      stream: 'audio',
       signal,
       onProgress,
     })
@@ -181,6 +185,7 @@ export async function downloadYoutubeVideo({
 
     const outputExtension = videoExtension === 'webm' ? 'mkv' : 'mp4'
     const outputPath = await join(sourceDirectory, `source.${outputExtension}`)
+    onProgress?.({ phase: 'merging' })
     const mergeOutput = await executeSidecar(
       'binaries/ffmpeg',
       [
@@ -213,6 +218,7 @@ export async function downloadYoutubeVideo({
       throw new Error(detail || '映像と音声の結合に失敗しました。')
     }
 
+    onProgress?.({ phase: 'checking' })
     await Promise.all([
       removeProjectSourceAsset(projectId, videoName),
       removeProjectSourceAsset(projectId, audioPath.split(/[\\/]/).pop() ?? audioPath),
@@ -226,8 +232,10 @@ export async function downloadYoutubeVideo({
     let metadata = mergedMetadata
 
     if (requiresTranscode) {
+      onProgress?.({ phase: 'transcoding' })
       finalPath = await join(sourceDirectory, 'source.compatible.mp4')
-      await transcodeVideoForBrowser({ path: outputPath, outputPath: finalPath })
+      await transcodeVideoForBrowser({ path: outputPath, outputPath: finalPath, signal })
+      onProgress?.({ phase: 'checking' })
       metadata = await probeVideo(finalPath)
       if (metadata.videoCodec !== 'h264' || metadata.audioCodec !== 'aac') {
         throw new Error(
@@ -237,8 +245,8 @@ export async function downloadYoutubeVideo({
       await removeProjectSourceAsset(projectId, outputPath.split(/[\\/]/).pop() ?? outputPath)
     }
 
+    onProgress?.({ phase: 'finalizing' })
     const sizeBytes = await getFileSize(finalPath)
-    onProgress?.({ phase: 'finalizing', percent: 100 })
     return {
       name: safeSourceName(info.title, 'mp4', info.videoId),
       path: finalPath,

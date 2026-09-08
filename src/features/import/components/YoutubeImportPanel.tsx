@@ -22,9 +22,17 @@ type YoutubeImportPanelProps = {
 
 function progressLabel(progress: YoutubeDownloadProgress | null) {
   if (!progress) return '動画を取得しています…'
-  if (progress.phase === 'finalizing') return '動画を確認しています…'
+  if (progress.phase === 'merging') return '映像と音声を結合しています…'
+  if (progress.phase === 'transcoding') return '再生用に動画を変換しています…'
+  if (progress.phase === 'checking') return '動画を確認しています…'
+  if (progress.phase === 'finalizing') return '動画を保存しています…'
   if (progress.percent === undefined) return '動画を取得しています…'
-  return `動画を取得しています… ${Math.round(progress.percent)}%`
+  const streamLabel = progress.stream === 'audio' ? '音声' : '映像'
+  return `${streamLabel}を取得しています… ${Math.round(progress.percent)}%`
+}
+
+function isPostProcessing(progress: YoutubeDownloadProgress | null) {
+  return Boolean(progress && progress.phase !== 'downloading')
 }
 
 export function YoutubeImportPanel({
@@ -166,10 +174,14 @@ export function YoutubeImportPanel({
                 )}
               </div>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#d8e1dc]">
-                <div
-                  className="h-full rounded-full bg-[#1d6b50] transition-[width] duration-300"
-                  style={{ width: `${Math.min(100, Math.max(4, progress?.percent ?? 4))}%` }}
-                />
+                {isPostProcessing(progress) ? (
+                  <div className="h-full w-1/3 rounded-full bg-[#1d6b50] animate-pulse" />
+                ) : (
+                  <div
+                    className="h-full rounded-full bg-[#1d6b50] transition-[width] duration-300"
+                    style={{ width: `${Math.min(100, Math.max(4, progress?.percent ?? 4))}%` }}
+                  />
+                )}
               </div>
               <button
                 className="mt-3 rounded-md px-2 py-1.5 text-[10px] font-semibold text-[#a4573e] transition hover:bg-[#fff0e9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b6533a]/25"
