@@ -76,15 +76,21 @@ Tell the user to complete these steps after the push:
 1. Open the repository's **Pull requests** tab and open the automatically created `develop` → `main` PR. Wait for required checks/review, then click **Merge pull request**.
 2. After the merge completes, create and push the tag `v<next-version>` from the merged `main` commit. Tag creation is the actual trigger for `.github/workflows/release-macos.yml`; do not create or publish a Release at this point. Before creating it, confirm that the tag does not already exist locally or on `origin`; never force-push or move an existing release tag.
 
+   CLIで行う場合:
+
    ```bash
    git fetch origin main --no-tags
    git switch main
    git pull --ff-only origin main
+   git tag --list v<next-version>
+   git ls-remote --tags origin v<next-version>
    git tag -a v<next-version> -m "v<next-version>"
    git push origin v<next-version>
    ```
 
-   If `git switch` or `git pull --ff-only` cannot proceed because of local changes or diverged history, stop and resolve that state without discarding user work. Never target `develop`.
+   `git ls-remote`にタグが表示された場合は、既存タグを上書きせず停止する。`git switch`または`git pull --ff-only`がローカル変更や履歴の分岐で止まった場合も、ユーザーの変更を破棄せず停止する。
+
+   Never target `develop` when creating the release tag.
 3. Wait for the **Actions** tab's `Build macOS release assets` workflow to finish. Do not upload a DMG manually; the repository workflow builds it, creates/updates the draft release, and generates the initial release notes.
 4. Open the generated Draft Release, review and edit the release notes, confirm the Apple Silicon DMG is attached, then click **Publish release**. If the build fails, do not publish the draft; fix the cause and rerun the workflow.
 
