@@ -38,6 +38,36 @@ function throwIfAborted(signal?: AbortSignal) {
   if (signal?.aborted) throw new DOMException('処理を中止しました。', 'AbortError')
 }
 
+async function mapWithConcurrency<T>(
+  items: T[],
+  concurrency: number,
+  task: (item: T, index: number) => Promise<void>,
+  signal?: AbortSignal,
+) {
+  let nextIndex = 0
+  let failure: unknown
+
+  async function worker() {
+    while (failure === undefined) {
+      throwIfAborted(signal)
+      const index = nextIndex
+      nextIndex += 1
+      if (index >= items.length) return
+
+      try {
+        await task(items[index], index)
+      } catch (error) {
+        failure ??= error
+        return
+      }
+    }
+  }
+
+  const workerCount = Math.min(Math.max(1, concurrency), items.length)
+  await Promise.all(Array.from({ length: workerCount }, () => worker()))
+  if (failure !== undefined) throw failure
+}
+
 export function hasCurrentContent(slide: MediaProject['slides'][number], modelId: ArticleModelId) {
   return hasCurrentArticle(slide, modelId)
 }
@@ -80,23 +110,40 @@ export async function runContentProcessing({
         report(null)
       },
       work: async (generate) => {
-        for (const slide of pendingSlides) {
-          throwIfAborted(signal)
-          const result = await generate(slide, signal)
-          if (!result) {
-            onSlideSkipped?.(slide.id, slide.index, 'unsupported-language')
+        // Generation can run concurrently, but project updates must stay ordered because
+        // each completion callback reads and writes the current project snapshot.
+        let completionTail = Promise.resolve()
+        const completeSlide = (
+          slide: (typeof pendingSlides)[number],
+          result: ContentProcessingResult | undefined,
+        ) => {
+          const completion = completionTail.then(async () => {
+            throwIfAborted(signal)
+            if (!result) {
+              onSlideSkipped?.(slide.id, slide.index, 'unsupported-language')
+            } else {
+              await withUserFacingError(
+                `Slide ${slide.index + 1}の解析結果を保存できませんでした。空き容量を確認して、再試行してください。`,
+                () => onSlideCompleted(slide.id, result),
+              )
+            }
+            throwIfAborted(signal)
             completed += 1
             report(null)
-            continue
-          }
-          await withUserFacingError(
-            `Slide ${slide.index + 1}の解析結果を保存できませんでした。空き容量を確認して、再試行してください。`,
-            () => onSlideCompleted(slide.id, result),
-          )
-          throwIfAborted(signal)
-          completed += 1
-          report(null)
+          })
+          completionTail = completion
+          return completion
         }
+
+        await mapWithConcurrency(
+          pendingSlides,
+          generator.maxConcurrentRequests,
+          async (slide) => {
+            const result = await generate(slide, signal)
+            await completeSlide(slide, result)
+          },
+          signal,
+        )
       },
     }),
   )

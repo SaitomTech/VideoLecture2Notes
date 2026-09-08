@@ -64,7 +64,7 @@ export function ArticleModelDetails({
       return (
         <ModelDescription
           description={model.description}
-          annotation="文字起こしとOCRテキストを外部送信します。動画・音声・画像は送信しません。"
+          annotation="文字起こしとOCRテキストを外部送信します。動画・音声・画像は送信しません。Slide単位で最大8件を並列処理します。"
         >
           <OpenAiApiKeySettings
             verificationModel={OPENAI_LUNA_MODEL.apiModel}
