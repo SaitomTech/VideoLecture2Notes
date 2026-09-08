@@ -19,6 +19,7 @@ type ImportPageProps = {
     request: YoutubeImportRequest,
     options: YoutubeImportOptions,
   ) => void | Promise<void>
+  onContinueYoutubeImport: () => void | Promise<void>
   onHome: () => void
   maxReachedStep: WorkflowStep
   onStepClick: (step: WorkflowStep) => void
@@ -28,6 +29,7 @@ export function ImportPage({
   initialVideo,
   onContinue,
   onContinueYoutube,
+  onContinueYoutubeImport,
   onHome,
   maxReachedStep,
   onStepClick,
@@ -38,6 +40,7 @@ export function ImportPage({
   const [isContinuing, setIsContinuing] = useState(false)
   const [continueError, setContinueError] = useState<string | null>(null)
   const [isYoutubeImporting, setIsYoutubeImporting] = useState(false)
+  const [isYoutubeImportComplete, setIsYoutubeImportComplete] = useState(false)
   const [youtubeProgress, setYoutubeProgress] = useState<YoutubeDownloadProgress | null>(null)
   const youtubeAbortRef = useRef<AbortController | null>(null)
 
@@ -71,6 +74,7 @@ export function ImportPage({
     const controller = new AbortController()
     youtubeAbortRef.current = controller
     setIsYoutubeImporting(true)
+    setIsYoutubeImportComplete(false)
     setYoutubeProgress(null)
     setContinueError(null)
 
@@ -85,6 +89,7 @@ export function ImportPage({
           onProgress: setYoutubeProgress,
         },
       )
+      setIsYoutubeImportComplete(true)
     } catch (error) {
       if (!controller.signal.aborted) {
         console.error(error)
@@ -102,6 +107,27 @@ export function ImportPage({
 
   const handleYoutubeCancel = () => {
     youtubeAbortRef.current?.abort()
+  }
+
+  const handleContinueYoutubeImport = async () => {
+    if (!isYoutubeImportComplete || isContinuing) return
+
+    setIsContinuing(true)
+    setContinueError(null)
+    try {
+      await onContinueYoutubeImport()
+    } catch (error) {
+      console.error(error)
+      setContinueError('スライド領域設定を開けませんでした。もう一度お試しください。')
+    } finally {
+      setIsContinuing(false)
+    }
+  }
+
+  const handleYoutubeUrlChange = (value: string) => {
+    setIsYoutubeImportComplete(false)
+    setContinueError(null)
+    youtube.changeUrl(value)
   }
 
   const handleModeChange = (nextMode: ImportMode) => {
@@ -135,12 +161,15 @@ export function ImportPage({
               error={youtube.error}
               quality={youtube.quality}
               isImporting={isYoutubeImporting}
+              isImportComplete={isYoutubeImportComplete}
+              isContinuing={isContinuing}
               progress={youtubeProgress}
               externalError={continueError}
-              onUrlChange={youtube.changeUrl}
+              onUrlChange={handleYoutubeUrlChange}
               onResolve={youtube.resolve}
               onQualityChange={youtube.setQuality}
               onImport={handleYoutubeImport}
+              onContinue={handleContinueYoutubeImport}
               onCancel={handleYoutubeCancel}
             />
           ) : (

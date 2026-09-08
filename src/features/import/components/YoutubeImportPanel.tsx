@@ -11,12 +11,15 @@ type YoutubeImportPanelProps = {
   error: string | null
   quality: YoutubeImportQuality
   isImporting: boolean
+  isImportComplete: boolean
+  isContinuing: boolean
   progress: YoutubeDownloadProgress | null
   externalError: string | null
   onUrlChange: (value: string) => void
   onResolve: () => void | Promise<void>
   onQualityChange: (quality: YoutubeImportQuality) => void
   onImport: () => void | Promise<void>
+  onContinue: () => void | Promise<void>
   onCancel: () => void
 }
 
@@ -42,12 +45,15 @@ export function YoutubeImportPanel({
   error,
   quality,
   isImporting,
+  isImportComplete,
+  isContinuing,
   progress,
   externalError,
   onUrlChange,
   onResolve,
   onQualityChange,
   onImport,
+  onContinue,
   onCancel,
 }: YoutubeImportPanelProps) {
   const canImport = Boolean(info && !isImporting)
@@ -191,6 +197,23 @@ export function YoutubeImportPanel({
                 取得をキャンセル
               </button>
             </div>
+          ) : isImportComplete ? (
+            <div className="mt-4 border-t border-[#d8e1dc] pt-4">
+              <p className="text-xs font-semibold text-[#1d6b50]">動画の保存が完了しました。</p>
+              <div className="mt-3 flex justify-end">
+                <button
+                  className="inline-flex items-center gap-[18px] rounded-[9px] bg-[#1d6b50] px-5 py-3.5 text-xs font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] transition hover:-translate-y-0.5 hover:bg-[#174d3c] hover:shadow-[0_9px_20px_rgba(29,107,80,0.24)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-35 disabled:shadow-none"
+                  type="button"
+                  onClick={() => void onContinue()}
+                  disabled={isContinuing}
+                >
+                  <span>{isContinuing ? '準備中…' : 'スライド領域を設定'}</span>
+                  <span className="text-[17px] font-normal leading-none" aria-hidden="true">
+                    →
+                  </span>
+                </button>
+              </div>
+            </div>
           ) : (
             <button
               className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-[9px] bg-[#1d6b50] px-4 py-3 text-xs font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] transition hover:-translate-y-0.5 hover:bg-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-35 disabled:shadow-none"
@@ -209,7 +232,7 @@ export function YoutubeImportPanel({
         <p className="mt-3 text-xs leading-5 text-[#b6533a]">{error || externalError}</p>
       )}
 
-      {info && !isImporting && !error && !externalError && (
+      {info && !isImporting && !isImportComplete && !error && !externalError && (
         <p className="mt-3 inline-flex items-center gap-1.5 text-[10px] text-[#1d6b50]">
           <Check size={13} />
           取得後は動画をプロジェクト内に保存します。

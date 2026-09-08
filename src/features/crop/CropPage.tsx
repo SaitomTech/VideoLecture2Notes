@@ -1,6 +1,5 @@
 import { ArrowLeft, Check, RotateCcw, ScanLine } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, type SyntheticEvent } from 'react'
-import { convertFileSrc } from '@tauri-apps/api/core'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
 import type { WorkflowStep } from '../../lib/workflow'
@@ -12,6 +11,8 @@ import { CropSelector } from './components/CropSelector'
 import { clampTrimRange, MINIMUM_TRIM_DURATION_MS } from '../trim/utils'
 import type { NormalizedCropRegion } from './types'
 import { normalizedToPixelCrop, pixelToNormalizedCrop } from './utils'
+import { describeVideoPlaybackError, logVideoPlaybackError } from '../../lib/media/videoError'
+import { useVideoSourceUrl } from '../../lib/media/useVideoSourceUrl'
 
 type CropPageProps = {
   project: MediaProject
@@ -54,6 +55,7 @@ export function CropPage({
   const savedRegionRef = useRef(initialRegion)
   const savedTrimRangeRef = useRef(initialTrimRange)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const videoSource = useVideoSourceUrl(source.path)
   const [region, setRegion] = useState<NormalizedCropRegion>(initialRegion)
   const [trimRange, setTrimRange] = useState<VideoTrimRange>(initialTrimRange)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -84,8 +86,8 @@ export function CropPage({
         setCurrentTime(video.currentTime)
       }
       void video.play().catch((playError) => {
-        console.error(playError)
-        setError('動画を再生できませんでした。')
+        logVideoPlaybackError(video, playError)
+        setError(describeVideoPlaybackError(video, playError))
       })
     } else {
       video.pause()
@@ -181,6 +183,11 @@ export function CropPage({
     }
   }
 
+  const sourceError = videoSource.error
+    ? `動画ソースを準備できませんでした（${videoSource.error}）。`
+    : null
+  const displayedError = error ?? sourceError
+
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
       <AppHeader onHome={onHome} homeDisabled={isApplying || isDetecting} />
@@ -243,15 +250,21 @@ export function CropPage({
             >
               <video
                 ref={videoRef}
+                key={videoSource.src ?? source.path}
                 className="absolute inset-0 h-full w-full bg-[#0b1712] object-contain"
                 playsInline
                 preload="metadata"
-                src={convertFileSrc(source.path)}
+                src={videoSource.src ?? undefined}
                 aria-label="Crop対象の動画"
                 onLoadedMetadata={(event) => {
                   const loadedDuration = event.currentTarget.duration
                   if (Number.isFinite(loadedDuration) && loadedDuration > 0)
                     setDuration(loadedDuration)
+                }}
+                onError={(event) => {
+                  const video = event.currentTarget
+                  logVideoPlaybackError(video)
+                  setError(describeVideoPlaybackError(video))
                 }}
                 onTimeUpdate={handleTimeUpdate}
                 onPlay={() => setIsPlaying(true)}
@@ -316,14 +329,14 @@ export function CropPage({
 
           <div className="flex flex-col gap-3 border-t border-[#d8e1dc] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-h-5 text-xs" aria-live="polite">
-              {error && <p className="text-[#b6533a]">{error}</p>}
-              {!error && notice && (
+              {displayedError && <p className="text-[#b6533a]">{displayedError}</p>}
+              {!displayedError && notice && (
                 <p className="inline-flex items-center gap-1.5 text-[#1d6b50]">
                   <Check size={14} />
                   {notice}
                 </p>
               )}
-              {!error && !notice && isDetecting && autoCropProgress && (
+              {!displayedError && !notice && isDetecting && autoCropProgress && (
                 <p className="text-[#71807b]">
                   {autoCropProgress.phase === 'extracting'
                     ? '動画のフレームを準備中'
@@ -331,7 +344,7 @@ export function CropPage({
                   … {autoCropProgress.completed} / {autoCropProgress.total}
                 </p>
               )}
-              {!error && !notice && !isDetecting && (
+              {!displayedError && !notice && !isDetecting && (
                 <p className="text-[#9aa6a1]">
                   {autoCropConfidence === null
                     ? '時間範囲と座標をまとめて保存し、解析に進みます。'

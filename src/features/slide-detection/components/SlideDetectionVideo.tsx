@@ -1,8 +1,8 @@
-import { convertFileSrc } from '@tauri-apps/api/core'
 import type { ReactNode, RefObject, SyntheticEvent } from 'react'
 import { VideoPlayButton } from '../../../components/VideoPlaybackControls'
 import type { SlideData } from '../../../types/project'
 import { formatTimestamp } from '../../../lib/time'
+import { useVideoSourceUrl } from '../../../lib/media/useVideoSourceUrl'
 
 type SlideDetectionVideoProps = {
   path: string
@@ -31,6 +31,8 @@ export function SlideDetectionVideo({
   onToggle,
   children,
 }: SlideDetectionVideoProps) {
+  const videoSource = useVideoSourceUrl(path)
+
   return (
     <section className="min-w-0" aria-labelledby="slide-detection-video-heading">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -48,10 +50,11 @@ export function SlideDetectionVideo({
       <div className="mt-4 overflow-hidden rounded-[12px] border border-[#b7cbc0] bg-[#0b1712] shadow-[0_14px_36px_rgba(22,54,42,0.1)]">
         <video
           ref={videoRef}
+          key={videoSource.src ?? path}
           className="block aspect-video w-full bg-[#0b1712] object-contain"
           playsInline
           preload="metadata"
-          src={convertFileSrc(path)}
+          src={videoSource.src ?? undefined}
           aria-label="スライド検出対象の動画"
           onLoadedMetadata={onLoadedMetadata}
           onPlay={onPlay}
