@@ -98,6 +98,17 @@ const TranscriptAlignmentSchema = z.object({
   alignedAt: z.iso.datetime(),
 })
 
+const TranscriptionKeywordContextSchema = z.object({
+  chunks: z.array(
+    z.object({
+      startMs: z.number().finite().nonnegative(),
+      endMs: z.number().finite().nonnegative(),
+      keywords: z.array(z.string()),
+    }),
+  ),
+  generatedAt: z.iso.datetime(),
+})
+
 const TranscriptionResultSchema = z.object({
   model: z.string().min(1),
   provider: z.enum(['local', 'openai', 'apple']).optional(),
@@ -107,6 +118,7 @@ const TranscriptionResultSchema = z.object({
   segments: z.array(TranscriptSegmentSchema),
   transcribedAt: z.iso.datetime(),
   inputFingerprint: z.string().min(1),
+  keywordContext: TranscriptionKeywordContextSchema.optional(),
 })
 
 const ArticleSummarySchema = z.object({

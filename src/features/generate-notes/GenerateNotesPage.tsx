@@ -23,6 +23,7 @@ import { useOcr } from '../ocr/hooks/useOcr'
 import type { OcrSlideCompleted } from '../ocr/ocr'
 import { TranscriptionSettings } from './components/TranscriptionSettings'
 import { TranscriptionStatus } from './components/TranscriptionStatus'
+import { TranscriptionKeywordsPanel } from './components/TranscriptionKeywordsPanel'
 import { useTranscription } from './hooks/useTranscription'
 import type { TranscriptionLanguage } from './transcription'
 
@@ -198,6 +199,7 @@ export function GenerateNotesPage({
                       disabled={isOcrRunning || isContentProcessing || isAlignmentRunning}
                       onRetry={handleTranscribe}
                     />
+                    <TranscriptionKeywordsPanel context={project.transcription?.keywordContext} />
                   </div>
                 </div>
 

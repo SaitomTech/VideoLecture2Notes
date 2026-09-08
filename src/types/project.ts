@@ -110,6 +110,17 @@ export type TranscriptPlacement = {
   reason?: string
 }
 
+export type TranscriptionKeywordChunk = {
+  startMs: number
+  endMs: number
+  keywords: string[]
+}
+
+export type TranscriptionKeywordContext = {
+  chunks: TranscriptionKeywordChunk[]
+  generatedAt: string
+}
+
 export type TranscriptAlignmentSuggestion = {
   unitId: string
   fromSlideId: string
@@ -138,6 +149,7 @@ export type TranscriptionResult = {
   segments: TranscriptSegment[]
   transcribedAt: string
   inputFingerprint: string
+  keywordContext?: TranscriptionKeywordContext
 }
 
 export type SlideOcrResult = {

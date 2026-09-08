@@ -67,6 +67,8 @@ pub struct OpenAiArticleResponse {
 pub struct OpenAiTranscriptionRequest {
     audio_path: String,
     language: Option<String>,
+    prompt: Option<String>,
+    keywords: Option<Vec<String>>,
     client_request_id: String,
 }
 
@@ -637,11 +639,21 @@ pub async fn transcribe_openai_audio(
         .map_err(|error| format!("OpenAI送信用音声の形式を設定できません: {error}"))?;
     let mut form = multipart::Form::new()
         .text("model", OPENAI_TRANSCRIPTION_MODEL)
-        .text("response_format", "verbose_json")
-        .text("timestamp_granularities[]", "segment")
+        .text("response_format", "json")
         .part("file", audio_part);
     if let Some(language) = request.language.as_deref() {
         form = form.text("language", language.to_string());
+    }
+    if let Some(prompt) = request.prompt.filter(|prompt| !prompt.trim().is_empty()) {
+        form = form.text("prompt", prompt);
+    }
+    if let Some(keywords) = request.keywords {
+        for keyword in keywords {
+            let keyword = keyword.trim();
+            if !keyword.is_empty() {
+                form = form.text("keywords[]", keyword.to_string());
+            }
+        }
     }
 
     let (abort_handle, abort_registration) = AbortHandle::new_pair();
