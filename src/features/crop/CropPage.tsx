@@ -1,5 +1,5 @@
 import { ArrowLeft, Check, RotateCcw, ScanLine } from 'lucide-react'
-import { useRef, useState, type SyntheticEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type SyntheticEvent } from 'react'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
@@ -65,6 +65,8 @@ export function CropPage({
   const [autoCropConfidence, setAutoCropConfidence] = useState<number | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const autoCropControllerRef = useRef<AbortController | null>(null)
+  const initialAutoCropStartedRef = useRef(false)
 
   const pixelRegion = normalizedToPixelCrop(region, metadata)
   const durationMs = Math.max(MINIMUM_TRIM_DURATION_MS, Math.round(duration * 1000))
@@ -103,7 +105,9 @@ export function CropPage({
     setCurrentTime(Math.min(time, duration))
   }
 
-  const handleAutomaticCrop = async () => {
+  const handleAutomaticCrop = useCallback(async () => {
+    if (autoCropControllerRef.current) return
+
     setIsDetecting(true)
     setAutoCropProgress(null)
     setAutoCropConfidence(null)
@@ -111,6 +115,7 @@ export function CropPage({
     setError(null)
 
     const controller = new AbortController()
+    autoCropControllerRef.current = controller
     try {
       const result = await detectAutomaticCrop({
         projectId: project.id,
@@ -134,10 +139,18 @@ export function CropPage({
       console.error(detectionError)
       setError('スライド領域の自動検出に失敗しました。手動で範囲を指定してください。')
     } finally {
+      if (autoCropControllerRef.current === controller) autoCropControllerRef.current = null
       setIsDetecting(false)
       setAutoCropProgress(null)
     }
-  }
+  }, [activeSource.metadata, activeSource.path, metadata, project.id])
+
+  useEffect(() => {
+    if (project.workflow.cropConfirmedAt || initialAutoCropStartedRef.current) return
+
+    initialAutoCropStartedRef.current = true
+    void handleAutomaticCrop()
+  }, [handleAutomaticCrop, project.workflow.cropConfirmedAt])
 
   const handleTrimChange = (nextRange: VideoTrimRange) => {
     setTrimRange(clampTrimRange(nextRange, durationMs))
