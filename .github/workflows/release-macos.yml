@@ -89,4 +89,6 @@ jobs:
           # Keep the release as a draft for human review after the DMG upload.
           releaseDraft: true
           uploadUpdaterJson: true
-          args: --bundles dmg
+          # The app bundle is also required to create the signed .app.tar.gz
+          # artifact consumed by Tauri Updater. Keep the DMG for manual installs.
+          args: --bundles app,dmg
