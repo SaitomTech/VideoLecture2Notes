@@ -110,6 +110,7 @@ type RunArticleGeneratorInput = {
 
 export type ArticleGenerator = {
   failureMessage: string
+  maxConcurrentRequests: number
   run: (input: RunArticleGeneratorInput) => Promise<void>
 }
 
@@ -207,6 +208,7 @@ function createLocalArticleGenerator(
   return {
     failureMessage:
       '文章処理エンジンを起動または実行できませんでした。アプリを再起動して、再試行してください。',
+    maxConcurrentRequests: 1,
     run: async ({ signal, onPreparationProgress, onReady, work }) => {
       const model = await withUserFacingError(
         '文章処理モデルを準備できませんでした。通信状況と空き容量を確認して、再試行してください。',
@@ -265,6 +267,7 @@ function createAppleArticleGenerator(
   return {
     failureMessage:
       'Apple Foundation Modelsを起動できませんでした。Apple Intelligenceが有効な対応Macか確認してください。',
+    maxConcurrentRequests: 1,
     run: async ({ signal, onPreparationProgress, onReady, work }) => {
       const client = await withUserFacingError(
         'Apple Foundation Modelsを準備できませんでした。Apple Intelligenceの設定を確認して、再試行してください。',
@@ -309,6 +312,7 @@ function createOpenAiArticleGenerator(
   return {
     failureMessage:
       'OpenAIによる本文生成を完了できませんでした。APIキーと通信状況を確認してください。',
+    maxConcurrentRequests: 8,
     run: async ({ signal, onPreparationProgress, onReady, work }) => {
       await withUserFacingError(
         'OpenAI APIキーを確認できませんでした。APIキー設定を確認してください。',

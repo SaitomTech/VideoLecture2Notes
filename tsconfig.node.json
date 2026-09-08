@@ -19,5 +19,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts", "scripts/prepare-sidecars.ts"]
+  "include": ["vite.config.ts", "scripts/prepare-sidecars.ts", "scripts/version.ts"]
 }

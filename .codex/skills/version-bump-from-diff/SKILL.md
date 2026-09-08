@@ -1,11 +1,11 @@
 ---
 name: version-bump-from-diff
-description: Compare unreleased VideoLecture2Notes changes since the current release baseline, choose an evidence-based SemVer bump, and update the app version consistently across its frontend and Tauri manifests.
+description: Compare unreleased VideoLecture2Notes changes, choose and apply the SemVer bump, then for an explicit release request commit and push to develop before handing off main merge and tag creation through GitHub's web UI.
 ---
 
 # Version Bump From Diff
 
-Use this project skill when the user asks to raise the VideoLecture2Notes version based on the changes in the repository.
+Use this project skill when the user asks to raise the VideoLecture2Notes version based on repository changes, or asks for the complete version-to-release sequence. A request such as `バージョン上げて` authorizes this skill to proceed through the version commit and `develop` push; it does not authorize merging a PR, creating a tag, or publishing a GitHub release.
 
 ## Scope and safety
 
@@ -45,6 +45,42 @@ The application version must stay synchronized in exactly these four places:
 
 Update only those application version fields. Cargo.lock contains unrelated dependency versions; never replace every occurrence of the old version. If the current values disagree, report the inconsistency and use the canonical `package.json` value only when the other three fields clearly mirror it; otherwise stop for clarification.
 
+## Commit and push to develop
+
+Leave changes uncommitted when the user asks only for a version assessment or version candidate. For an explicit version-bump request such as `バージョン上げて`, commit the version files and push to `develop` as described below. Never create or push the release tag from this skill.
+
+After choosing the next version:
+
+1. Update all four application-version fields with `bun run version:set <next-version>`.
+2. Verify the result with `bun scripts/version.ts check <next-version>`.
+3. Inspect the four-file diff and run `git diff --check`. Do not include unrelated product changes in the version commit.
+4. Run proportionate validation, at minimum `bunx tsc -b --noEmit`; run `bun run lint` when appropriate.
+5. Stage only the application-version files:
+
+   `git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock`
+
+6. Commit with a concise Japanese message:
+
+   `git commit -m "バージョンを<next-version>に更新"`
+
+7. Confirm the commit and push the version commit to the development branch:
+
+   `git push origin develop`
+
+8. After the push completes, stop local release work and give the user the GitHub GUI handoff below. Do not merge, tag, publish, or run a tag push.
+
+## GitHub GUI handoff after the push
+
+Tell the user to complete these steps in the GitHub web UI:
+
+1. Open the repository's **Pull requests** tab and open the automatically created `develop` → `main` PR. Wait for required checks/review, then click **Merge pull request**.
+2. After the merge completes, open **Releases** → **Draft a new release**.
+3. In **Choose a tag**, enter `v<next-version>` and select **Create new tag: v<next-version> on publish**. Set **Target** to `main`. Never target `develop`.
+4. Click **Generate release notes** if appropriate. Do not upload a DMG manually; the repository workflow builds it.
+5. Click **Publish release** to create the tag and trigger `.github/workflows/release-macos.yml`. Then check the **Actions** tab for `Build macOS release assets` and the **Releases** page for the generated Apple Silicon DMG.
+
+The release workflow verifies that the tag is based on `main`, checks the tag/version match, builds the DMG, and publishes the release after a successful build. Do not create a second tag or manually upload another DMG if the workflow is still running.
+
 ## Validate and report
 
 After editing:
@@ -53,4 +89,4 @@ After editing:
 - run `cargo metadata --locked --no-deps --format-version 1 --manifest-path src-tauri/Cargo.toml`;
 - run `bun run lint` and `bun run build` when the change scope and available time make a project check appropriate.
 
-Report both the repository context (`origin/main` and its merge-base) and the selected release baseline, detected change category, old → new version, four updated files, and validation results. Explicitly note when features visible in the `origin/main` comparison predate the selected release baseline and were therefore excluded. Leave edits uncommitted unless the user separately requests a commit.
+Report both the repository context (`origin/main` and its merge-base) and the selected release baseline, detected change category, old → new version, four updated files, and validation results. When the version-bump request authorized the release preparation, also report the commit hash, pushed branch, and the remaining GitHub GUI handoff; explicitly state that no tag was created by Codex. Note when features visible in the `origin/main` comparison predate the selected release baseline and were therefore excluded. Leave edits uncommitted only for assessment/candidate requests; commit and push to `develop` for an explicit version-bump request.
