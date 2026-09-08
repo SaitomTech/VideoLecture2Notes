@@ -1,6 +1,6 @@
 [package]
 name = "videolecture2notes"
-version = "0.12.2"
+version = "0.12.3"
 description = "A macOS app for turning lecture videos into structured notes"
 authors = ["SaitomTech"]
 license = "MIT"
