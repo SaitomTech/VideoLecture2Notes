@@ -1,11 +1,11 @@
 ---
 name: version-bump-from-diff
-description: Compare unreleased VideoLecture2Notes changes since the current release baseline, choose an evidence-based SemVer bump, and update the app version consistently across its frontend and Tauri manifests.
+description: Compare unreleased VideoLecture2Notes changes, choose and apply the SemVer bump, and optionally complete the explicitly requested commit, develop push, and main-based tag release flow.
 ---
 
 # Version Bump From Diff
 
-Use this project skill when the user asks to raise the VideoLecture2Notes version based on the changes in the repository.
+Use this project skill when the user asks to raise the VideoLecture2Notes version based on repository changes, or asks for the complete version-to-release sequence.
 
 ## Scope and safety
 
@@ -45,6 +45,37 @@ The application version must stay synchronized in exactly these four places:
 
 Update only those application version fields. Cargo.lock contains unrelated dependency versions; never replace every occurrence of the old version. If the current values disagree, report the inconsistency and use the canonical `package.json` value only when the other three fields clearly mirror it; otherwise stop for clarification.
 
+## Commit and release flow
+
+Leave changes uncommitted when the user asks only for a version assessment or version bump. Commit, push, and tag are separate external mutations and require an explicit request for the corresponding release action.
+
+When the user explicitly requests the complete release flow after choosing the next version:
+
+1. Update all four application-version fields with `bun run version:set <next-version>`.
+2. Verify the result with `bun scripts/version.ts check <next-version>`.
+3. Inspect the four-file diff and run `git diff --check`. Do not include unrelated product changes in the version commit.
+4. Run proportionate validation, at minimum `bunx tsc -b --noEmit`; run `bun run lint` when appropriate.
+5. Stage only the application-version files:
+
+   `git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock`
+
+6. Commit with a concise Japanese message:
+
+   `git commit -m "バージョンを<next-version>に更新"`
+
+7. Confirm the commit and push the version commit to the development branch:
+
+   `git push origin develop`
+
+8. Wait for the `develop` → `main` merge. Never create the release tag on `develop`; the release workflow rejects tags whose commits are not included in `main`.
+9. After the merge, update the local checkout to `main`, run `bun scripts/version.ts check <next-version>`, then create and push an annotated tag:
+
+   `git tag -a v<next-version> -m "v<next-version>"`
+
+   `git push origin v<next-version>`
+
+The tag triggers `.github/workflows/release-macos.yml`, which checks the tag/version match, builds the Apple Silicon DMG as a draft release, and publishes it after a successful build. If the user has not explicitly asked to publish or tag, stop after the version commit and explain the remaining main-merge/tag steps.
+
 ## Validate and report
 
 After editing:
@@ -53,4 +84,4 @@ After editing:
 - run `cargo metadata --locked --no-deps --format-version 1 --manifest-path src-tauri/Cargo.toml`;
 - run `bun run lint` and `bun run build` when the change scope and available time make a project check appropriate.
 
-Report both the repository context (`origin/main` and its merge-base) and the selected release baseline, detected change category, old → new version, four updated files, and validation results. Explicitly note when features visible in the `origin/main` comparison predate the selected release baseline and were therefore excluded. Leave edits uncommitted unless the user separately requests a commit.
+Report both the repository context (`origin/main` and its merge-base) and the selected release baseline, detected change category, old → new version, four updated files, and validation results. When the release flow was requested, also report the commit hash, pushed branch, and tag status. Explicitly note when features visible in the `origin/main` comparison predate the selected release baseline and were therefore excluded. Leave edits uncommitted unless the user separately requests a commit.
