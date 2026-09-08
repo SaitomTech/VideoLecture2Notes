@@ -1,7 +1,7 @@
 interface:
   display_name: "Version Bump from Diff"
   short_description: "差分から本アプリのバージョンを判断して更新"
-  default_prompt: "Use $version-bump-from-diff to assess the VideoLecture2Notes changes, bump the app version, commit and push to develop, then provide the GitHub GUI steps for merging main and creating the release tag."
+  default_prompt: "Use $version-bump-from-diff to assess the VideoLecture2Notes changes, bump the app version, commit and push to develop, then provide the steps to merge main, create and push the release tag from the CLI, and review and publish the Draft Release."
 
 policy:
   allow_implicit_invocation: true

@@ -1,6 +1,6 @@
 ---
 name: version-bump-from-diff
-description: Compare unreleased VideoLecture2Notes changes, choose and apply the SemVer bump, then for an explicit release request commit and push to develop before handing off main merge and tag creation through GitHub's web UI.
+description: Compare unreleased VideoLecture2Notes changes, choose and apply the SemVer bump, then for an explicit release request commit and push to develop before handing off main merge, CLI tag creation, and manual Draft Release publication.
 ---
 
 # Version Bump From Diff
@@ -67,19 +67,30 @@ After choosing the next version:
 
    `git push origin develop`
 
-8. After the push completes, stop local release work and give the user the GitHub GUI handoff below. Do not merge, tag, publish, or run a tag push.
+8. After the push completes, stop local release work and give the user the release handoff below. Do not merge, tag, publish, or run a tag push.
 
-## GitHub GUI handoff after the push
+## Release handoff after the push
 
-Tell the user to complete these steps in the GitHub web UI:
+Tell the user to complete these steps after the push:
 
 1. Open the repository's **Pull requests** tab and open the automatically created `develop` → `main` PR. Wait for required checks/review, then click **Merge pull request**.
-2. After the merge completes, open **Releases** → **Draft a new release**.
-3. In **Choose a tag**, enter `v<next-version>` and select **Create new tag: v<next-version> on publish**. Set **Target** to `main`. Never target `develop`.
-4. Click **Generate release notes** if appropriate. Do not upload a DMG manually; the repository workflow builds it.
-5. Click **Publish release** to create the tag and trigger `.github/workflows/release-macos.yml`. Then check the **Actions** tab for `Build macOS release assets` and the **Releases** page for the generated Apple Silicon DMG.
+2. After the merge completes, create and push the tag `v<next-version>` from the merged `main` commit. Tag creation is the actual trigger for `.github/workflows/release-macos.yml`; do not create or publish a Release at this point. Before creating it, confirm that the tag does not already exist locally or on `origin`; never force-push or move an existing release tag.
 
-The release workflow verifies that the tag is based on `main`, checks the tag/version match, builds the DMG, and publishes the release after a successful build. Do not create a second tag or manually upload another DMG if the workflow is still running.
+   ```bash
+   git fetch origin main --no-tags
+   git switch main
+   git pull --ff-only origin main
+   git tag -a v<next-version> -m "v<next-version>"
+   git push origin v<next-version>
+   ```
+
+   If `git switch` or `git pull --ff-only` cannot proceed because of local changes or diverged history, stop and resolve that state without discarding user work. Never target `develop`.
+3. Wait for the **Actions** tab's `Build macOS release assets` workflow to finish. Do not upload a DMG manually; the repository workflow builds it, creates/updates the draft release, and generates the initial release notes.
+4. Open the generated Draft Release, review and edit the release notes, confirm the Apple Silicon DMG is attached, then click **Publish release**. If the build fails, do not publish the draft; fix the cause and rerun the workflow.
+
+The release workflow verifies that the tag is based on `main`, checks the tag/version match, builds the DMG, and leaves the release as a draft after uploading the artifact. Do not use **Releases** → **Draft a new release** to start this tag-triggered workflow, do not create a second tag, and do not manually upload another DMG if the workflow is still running.
+
+The initial release notes are generated automatically through `tauri-action`'s GitHub Release Notes API (`generateReleaseNotes: true`). After the DMG upload, the draft intentionally remains unpublished so a human can review and edit the notes before publishing it. The tag push is the only local release action this handoff asks the user to perform after the `develop` push.
 
 ## Validate and report
 
@@ -89,4 +100,4 @@ After editing:
 - run `cargo metadata --locked --no-deps --format-version 1 --manifest-path src-tauri/Cargo.toml`;
 - run `bun run lint` and `bun run build` when the change scope and available time make a project check appropriate.
 
-Report both the repository context (`origin/main` and its merge-base) and the selected release baseline, detected change category, old → new version, four updated files, and validation results. When the version-bump request authorized the release preparation, also report the commit hash, pushed branch, and the remaining GitHub GUI handoff; explicitly state that no tag was created by Codex. Note when features visible in the `origin/main` comparison predate the selected release baseline and were therefore excluded. Leave edits uncommitted only for assessment/candidate requests; commit and push to `develop` for an explicit version-bump request.
+Report both the repository context (`origin/main` and its merge-base) and the selected release baseline, detected change category, old → new version, four updated files, and validation results. When the version-bump request authorized the release preparation, also report the commit hash, pushed branch, and the remaining PR-merge, CLI-tag, and Draft Release handoff; explicitly state that no tag was created by Codex. Note when features visible in the `origin/main` comparison predate the selected release baseline and were therefore excluded. Leave edits uncommitted only for assessment/candidate requests; commit and push to `develop` for an explicit version-bump request.
