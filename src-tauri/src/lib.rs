@@ -58,7 +58,11 @@ fn sha256_file(path: PathBuf) -> Result<String, String> {
         hasher.update(&buffer[..bytes_read]);
     }
 
-    Ok(format!("{:x}", hasher.finalize()))
+    Ok(hasher
+        .finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
