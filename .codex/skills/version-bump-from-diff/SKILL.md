@@ -74,10 +74,9 @@ After choosing the next version:
 Tell the user to complete these steps in the GitHub web UI:
 
 1. Open the repository's **Pull requests** tab and open the automatically created `develop` → `main` PR. Wait for required checks/review, then click **Merge pull request**.
-2. After the merge completes, open **Releases** → **Draft a new release**.
-3. In **Choose a tag**, enter `v<next-version>` and select **Create new tag: v<next-version> on publish**. Set **Target** to `main`. Never target `develop`.
-4. Click **Generate release notes** if appropriate. Do not upload a DMG manually; the repository workflow builds it.
-5. Click **Publish release** to create the tag and trigger `.github/workflows/release-macos.yml`. Then check the **Actions** tab for `Build macOS release assets` and the **Releases** page for the generated Apple Silicon DMG.
+2. After the merge completes, create the tag `v<next-version>` on `main`. Tag creation is the actual trigger for `.github/workflows/release-macos.yml`; publishing a Release by itself is not a separate trigger.
+3. For a GUI-only flow, open **Releases** → **Draft a new release**, enter `v<next-version>` in **Choose a tag**, select **Create new tag: v<next-version> on publish**, and set **Target** to `main`. Clicking **Publish release** creates the tag and therefore starts the workflow. Never target `develop`.
+4. Do not upload a DMG manually; the repository workflow builds it, creates/updates the draft release, and publishes it after a successful build. Check the **Actions** tab for `Build macOS release assets` and the **Releases** page for the generated Apple Silicon DMG.
 
 The release workflow verifies that the tag is based on `main`, checks the tag/version match, builds the DMG, and publishes the release after a successful build. Do not create a second tag or manually upload another DMG if the workflow is still running.
 
