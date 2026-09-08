@@ -69,14 +69,7 @@ jobs:
       - name: Check release version
         env:
           RELEASE_TAG: ${{ github.event.ref }}
-        run: |
-          expected_version="$(bun -e 'const config = JSON.parse(await Bun.file("src-tauri/tauri.conf.json").text()); console.log(config.version)')"
-          release_version="${RELEASE_TAG#v}"
-
-          if [ "$expected_version" != "$release_version" ]; then
-            echo "Release tag ($RELEASE_TAG) does not match src-tauri/tauri.conf.json ($expected_version)."
-            exit 1
-          fi
+        run: bun scripts/version.ts check "$RELEASE_TAG"
 
       - name: Install dependencies
         run: bun install --frozen-lockfile

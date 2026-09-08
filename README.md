@@ -83,6 +83,13 @@ bunx tauri build --bundles dmg
 
 リリースは、バージョンを更新して`main`のコミットにタグを作成すると開始します。GitHub画面のタグ作成でも、コマンドラインからのタグpushでも構いません。
 
+バージョンは`package.json`を基準に、関連するTauri/Cargoのマニフェストへ一括反映します。
+
+```bash
+bun run version:set 0.10.2
+bun run version:check
+```
+
 ```bash
 git tag vX.Y.Z
 git push origin vX.Y.Z
