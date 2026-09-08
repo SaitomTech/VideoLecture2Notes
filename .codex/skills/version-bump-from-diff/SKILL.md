@@ -1,6 +1,6 @@
 ---
 name: version-bump-from-diff
-description: Compare unreleased VideoLecture2Notes changes, choose and apply the SemVer bump, then for an explicit release request commit and push to develop before handing off main merge, CLI or GitHub Desktop tag creation, and manual Draft Release publication.
+description: Compare unreleased VideoLecture2Notes changes, choose and apply the SemVer bump, then for an explicit release request commit and push to develop before handing off main merge, CLI tag creation, and manual Draft Release publication.
 ---
 
 # Version Bump From Diff
@@ -82,21 +82,13 @@ Tell the user to complete these steps after the push:
    git fetch origin main --no-tags
    git switch main
    git pull --ff-only origin main
+   git tag --list v<next-version>
    git ls-remote --tags origin v<next-version>
    git tag -a v<next-version> -m "v<next-version>"
    git push origin v<next-version>
    ```
 
    `git ls-remote`にタグが表示された場合は、既存タグを上書きせず停止する。`git switch`または`git pull --ff-only`がローカル変更や履歴の分岐で止まった場合も、ユーザーの変更を破棄せず停止する。
-
-   GitHub Desktopで行う場合:
-
-   - PRのマージ後、対象リポジトリで`Fetch origin`を実行し、`main`ブランチへ切り替えて`Pull origin`を実行する。
-   - `History`で、マージ済みPRに対応する`main`の最新コミットを確認する。
-   - そのコミットを右クリックして`Create Tag...`を選び、タグ名に`v<next-version>`を入力して作成する。
-   - 作成したタグを選び、`Push origin`でタグをpushする。GitHub Desktopは作成したタグを関連コミットとともにpushできる。
-
-   GitHubのWeb画面だけで操作する場合、`Releases` → `Draft a new release` → `Choose a tag` → `Create new tag`でもタグを作成できるが、このリポジトリではRelease作成とActionsのDraft Release作成が競合しやすい。Web画面からタグだけを作る手段が表示されない場合はGitHub Desktopを使う。GitHub WebでReleaseを作成する場合も、タグの対象がマージ済み`main`であることを確認し、Releaseを公開しない。
 
    Never target `develop` when creating the release tag.
 3. Wait for the **Actions** tab's `Build macOS release assets` workflow to finish. Do not upload a DMG manually; the repository workflow builds it, creates/updates the draft release, and generates the initial release notes.
