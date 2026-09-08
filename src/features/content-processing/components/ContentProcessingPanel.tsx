@@ -50,7 +50,7 @@ export function ArticleModelDetails({
       return (
         <ModelDescription
           description={model.description}
-          annotation='文字起こしとOCRテキストはMac内で処理します。macOS 26以降、対応するApple Silicon MacでApple Intelligenceを有効にしてください。'
+          annotation="文字起こしとOCRテキストはMac内で処理します。macOS 26以降、対応するApple Silicon MacでApple Intelligenceを有効にしてください。"
         />
       )
     case 'local':
@@ -64,12 +64,12 @@ export function ArticleModelDetails({
       return (
         <ModelDescription
           description={model.description}
-          annotation='文字起こしとOCRテキストを外部送信します。動画・音声・画像は送信しません。'
+          annotation="文字起こしとOCRテキストを外部送信します。動画・音声・画像は送信しません。"
         >
           <OpenAiApiKeySettings
             verificationModel={OPENAI_LUNA_MODEL.apiModel}
             verificationLabel={OPENAI_LUNA_MODEL.label}
-            billingNote='API利用料は、入力したAPIキーに紐づくOpenAI APIの請求先に発生します。'
+            billingNote="API利用料は、入力したAPIキーに紐づくOpenAI APIの請求先に発生します。"
             disabled={disabled}
           />
         </ModelDescription>
@@ -118,19 +118,19 @@ export function ContentProcessingPanel({
         })
       : undefined
   return (
-    <section aria-labelledby='content-processing-heading'>
-      <div className='flex flex-wrap items-start justify-between gap-4'>
+    <section aria-labelledby="content-processing-heading">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h3 id='content-processing-heading' className='text-[15px] font-semibold text-[#18211f]'>
+          <h3 id="content-processing-heading" className="text-[15px] font-semibold text-[#18211f]">
             本文を生成
           </h3>
-          <p className='mt-1 text-xs text-[#71807b]'>
+          <p className="mt-1 text-xs text-[#71807b]">
             スライドと音声の文字起こしをもとに、記事本文を生成します。
           </p>
         </div>
         <button
           className={`inline-flex items-center justify-center gap-2 rounded-[9px] px-4 py-3 text-xs font-semibold shadow-[0_7px_16px_rgba(29,107,80,0.17)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${isRunning ? 'border border-[#d28d7a] bg-[#fff5f1] text-[#9d422d] shadow-none hover:bg-[#fbe8e2]' : 'bg-[#1d6b50] text-[#f3faf6] hover:bg-[#174d3c]'}`}
-          type='button'
+          type="button"
           onClick={() => {
             if (isRunning) {
               processing.cancel()
@@ -141,23 +141,23 @@ export function ContentProcessingPanel({
           disabled={disabled || (!isRunning && total === 0)}
           aria-label={isRunning ? '本文の生成を停止' : undefined}
         >
-          {isRunning ? <Square size={13} fill='currentColor' /> : <RefreshCw size={14} />}
+          {isRunning ? <Square size={13} fill="currentColor" /> : <RefreshCw size={14} />}
           {isRunning ? '停止' : isCompleted ? '再生成' : '生成を開始'}
         </button>
       </div>
 
-      <div className='mt-4 rounded-[12px] border border-[#d8e1dc] bg-[#f7faf7] p-4 md:p-5'>
-        <label className='block text-xs text-[#71807b]' htmlFor='article-generation-model'>
-          <span className='block font-semibold text-[#18211f]'>使用モデル</span>
+      <div className="mt-4 rounded-[12px] border border-[#d8e1dc] bg-[#f7faf7] p-4 md:p-5">
+        <label className="block text-xs text-[#71807b]" htmlFor="article-generation-model">
+          <span className="block font-semibold text-[#18211f]">使用モデル</span>
           <ModelSelect
-            id='article-generation-model'
+            id="article-generation-model"
             value={modelId}
             systemModels={[APPLE_FOUNDATION_MODELS]}
             localModels={TEXT_MODELS}
             apiModels={[OPENAI_LUNA_MODEL]}
             onChange={(nextModelId) => onModelChange(nextModelId as ArticleModelId)}
             disabled={disabled || isRunning}
-            aria-label='使用モデル'
+            aria-label="使用モデル"
           />
         </label>
         <ArticleModelDetails model={model} disabled={disabled || isRunning} />

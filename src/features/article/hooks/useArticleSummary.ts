@@ -15,7 +15,8 @@ export function useArticleSummary(
 ) {
   const articleSlides = project.slides.filter((slide) => slide.transcript)
   const hasAllArticleBodies =
-    articleSlides.length > 0 && articleSlides.every((slide) => slide.transcript?.articleBody?.trim())
+    articleSlides.length > 0 &&
+    articleSlides.every((slide) => slide.transcript?.articleBody?.trim())
   const isUpToDate = hasCurrentArticleSummary(project, modelId)
   const [status, setStatus] = useState<ArticleSummaryStatus>('idle')
   const [stage, setStage] = useState<ArticleSummaryStage>('preparing-model')

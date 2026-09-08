@@ -30,7 +30,9 @@ export function WorkflowBar({
         const stepLabel = (
           <>
             <span className="text-[10px]">{String(index + 1).padStart(2, '0')}</span>
-            <span className={index === 0 || isActive ? '' : 'max-[820px]:hidden'}>{step.label}</span>
+            <span className={index === 0 || isActive ? '' : 'max-[820px]:hidden'}>
+              {step.label}
+            </span>
           </>
         )
 

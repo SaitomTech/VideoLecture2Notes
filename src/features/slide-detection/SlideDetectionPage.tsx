@@ -110,10 +110,7 @@ export function SlideDetectionPage({
 
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
-      <AppHeader
-        onHome={onHome}
-        homeDisabled={isRunning || isSavingReview || hasUnsavedReview}
-      />
+      <AppHeader onHome={onHome} homeDisabled={isRunning || isSavingReview || hasUnsavedReview} />
       <WorkflowBar
         activeStep="detect-slides"
         maxReachedStep={maxReachedStep}
@@ -145,10 +142,7 @@ export function SlideDetectionPage({
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d8e1dc] px-5 py-3.5">
             <div className="min-w-0">
-              <p
-                className="truncate text-xs font-semibold text-[#18211f]"
-                title={source.path}
-              >
+              <p className="truncate text-xs font-semibold text-[#18211f]" title={source.path}>
                 {source.name}
               </p>
               <p className="mt-0.5 font-mono text-[10px] text-[#71807b]">

@@ -215,13 +215,7 @@ export async function extractAudio({ path, outputPath, signal }: ExtractAudioInp
 }
 
 /** Creates a frame-accurate, browser-friendly MP4 copy for the selected time range. */
-export async function trimVideo({
-  path,
-  outputPath,
-  startMs,
-  endMs,
-  signal,
-}: TrimVideoInput) {
+export async function trimVideo({ path, outputPath, startMs, endMs, signal }: TrimVideoInput) {
   const startSeconds = Math.max(0, startMs / 1000)
   const durationSeconds = Math.max(0.001, (endMs - startMs) / 1000)
   if (!Number.isFinite(startSeconds) || !Number.isFinite(durationSeconds) || endMs <= startMs) {

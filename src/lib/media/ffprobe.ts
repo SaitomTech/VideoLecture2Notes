@@ -27,7 +27,8 @@ function parseFrameRate(value: unknown) {
   if (typeof value !== 'string') return undefined
 
   const [numerator, denominator] = value.split('/').map(Number)
-  if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator === 0) return undefined
+  if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator === 0)
+    return undefined
 
   const fps = numerator / denominator
   return Number.isFinite(fps) && fps > 0 ? fps : undefined

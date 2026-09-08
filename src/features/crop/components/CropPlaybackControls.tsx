@@ -72,7 +72,14 @@ export function CropPlaybackControls({
       onTrimChange(nextRange)
       onSeek((handle === 'start' ? nextRange.startMs : nextRange.endMs) / 1000)
     },
-    [durationMs, onSeek, onTrimChange, safeTrimRange.endMs, safeTrimRange.startMs, timestampAtClientX],
+    [
+      durationMs,
+      onSeek,
+      onTrimChange,
+      safeTrimRange.endMs,
+      safeTrimRange.startMs,
+      timestampAtClientX,
+    ],
   )
 
   const startHandleDrag = (event: PointerEvent<HTMLButtonElement>, handle: TrimHandle) => {
@@ -92,8 +99,10 @@ export function CropPlaybackControls({
 
     if (event.key === 'ArrowLeft') nextMs = currentMs - stepMs
     if (event.key === 'ArrowRight') nextMs = currentMs + stepMs
-    if (event.key === 'Home') nextMs = handle === 'start' ? 0 : safeTrimRange.startMs + MINIMUM_TRIM_DURATION_MS
-    if (event.key === 'End') nextMs = handle === 'end' ? durationMs : safeTrimRange.endMs - MINIMUM_TRIM_DURATION_MS
+    if (event.key === 'Home')
+      nextMs = handle === 'start' ? 0 : safeTrimRange.startMs + MINIMUM_TRIM_DURATION_MS
+    if (event.key === 'End')
+      nextMs = handle === 'end' ? durationMs : safeTrimRange.endMs - MINIMUM_TRIM_DURATION_MS
     if (nextMs === null) return
 
     event.preventDefault()
@@ -109,7 +118,11 @@ export function CropPlaybackControls({
 
   return (
     <div className="mt-3 flex flex-wrap items-center gap-3 rounded-[10px] border border-[#d8e1dc] bg-[#f4f7f4] px-3.5 py-3">
-      <VideoPlayButton isPlaying={isPlaying} onToggle={onToggle} disabled={safeDuration === 0 || isApplying} />
+      <VideoPlayButton
+        isPlaying={isPlaying}
+        onToggle={onToggle}
+        disabled={safeDuration === 0 || isApplying}
+      />
 
       <span className="min-w-[82px] font-mono text-[10px] tabular-nums text-[#71807b]">
         {formatPlaybackTime(safeCurrentTime)} / {formatPlaybackTime(safeDuration)}

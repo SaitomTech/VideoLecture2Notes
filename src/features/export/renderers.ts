@@ -240,5 +240,12 @@ export function renderTxt(document: ExportDocument) {
       ].join('\n')
     : ''
 
-  return [document.title, `元動画: ${document.sourceName}`, ...(summary ? ['', summary] : []), '', sections, ''].join('\n')
+  return [
+    document.title,
+    `元動画: ${document.sourceName}`,
+    ...(summary ? ['', summary] : []),
+    '',
+    sections,
+    '',
+  ].join('\n')
 }

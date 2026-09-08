@@ -42,10 +42,7 @@ const SummaryResponseSchema = z.object({
   keywords: z.array(z.string().trim().min(1)).min(1).max(8),
 })
 
-type GenerateSummary = (
-  project: MediaProject,
-  signal?: AbortSignal,
-) => Promise<ArticleSummary>
+type GenerateSummary = (project: MediaProject, signal?: AbortSignal) => Promise<ArticleSummary>
 
 export type ArticleSummaryGenerator = {
   failureMessage: string
@@ -77,9 +74,7 @@ function summaryInputFor(project: MediaProject) {
 }
 
 function summaryFieldsFromResponse(text: string) {
-  const cleaned = text
-    .replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '')
-    .trim()
+  const cleaned = text.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '').trim()
 
   if (!cleaned) throw new Error('要約の応答が空でした。')
 

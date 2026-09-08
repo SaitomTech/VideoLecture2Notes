@@ -32,10 +32,7 @@ export async function createTrimmedVideo(
     startMs: normalizedRange.startMs,
     endMs: normalizedRange.endMs,
   })
-  const [metadata, sizeBytes] = await Promise.all([
-    probeVideo(outputPath),
-    getFileSize(outputPath),
-  ])
+  const [metadata, sizeBytes] = await Promise.all([probeVideo(outputPath), getFileSize(outputPath)])
 
   return {
     ...normalizedRange,

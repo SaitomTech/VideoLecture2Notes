@@ -4,10 +4,7 @@ import { OpenAiApiKeySettings } from '../../../components/OpenAiApiKeySettings'
 import { ModelDescription } from '../../../components/ModelDescription'
 import { ModelSelect } from '../../../components/ModelSelect'
 import { ProcessingStatusRow } from '../../../components/ProcessingStatusRow'
-import {
-  estimateOpenAiOcrCost,
-  representativeFrameDimensions,
-} from '../../../lib/openai/cost'
+import { estimateOpenAiOcrCost, representativeFrameDimensions } from '../../../lib/openai/cost'
 import {
   APPLE_VISION_OCR_MODEL,
   getOcrModel,
@@ -86,7 +83,13 @@ function progressRatio(ocr: OcrController) {
   return ocr.progress.total > 0 ? ocr.progress.completed / ocr.progress.total : 0
 }
 
-export function OcrPanel({ project, ocr, modelId, onModelChange, disabled = false }: OcrPanelProps) {
+export function OcrPanel({
+  project,
+  ocr,
+  modelId,
+  onModelChange,
+  disabled = false,
+}: OcrPanelProps) {
   const isRunning = ocr.status === 'running'
   const isCompleted = ocr.status === 'completed'
   const total = ocr.progress.total

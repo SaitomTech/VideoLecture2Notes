@@ -20,7 +20,9 @@ type ExportPageProps = {
 function getStatusMessage({ status, progress, files }: ExportController) {
   switch (status) {
     case 'running':
-      return progress.stage === 'copying-images' ? 'Slide画像をコピーしています…' : 'ファイルを書き出しています…'
+      return progress.stage === 'copying-images'
+        ? 'Slide画像をコピーしています…'
+        : 'ファイルを書き出しています…'
     case 'completed':
       return `${files.length}ファイルを書き出しました。`
     case 'error':
@@ -57,7 +59,9 @@ export function ExportPage({
 
   const handleToggleFormat = (format: ExportFormat) => {
     setSelectedFormats((current) =>
-      current.includes(format) ? current.filter((selected) => selected !== format) : [...current, format],
+      current.includes(format)
+        ? current.filter((selected) => selected !== format)
+        : [...current, format],
     )
   }
 
@@ -79,9 +83,13 @@ export function ExportPage({
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">06 / EXPORT</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
+              06 / EXPORT
+            </p>
             <h1 className="mt-1 text-[27px] font-bold tracking-[-0.06em]">記事を書き出す</h1>
-            <p className="mt-1 text-xs text-[#71807b]">HTML/Markdownは画像付き、TXTは本文のみでこのMacに保存します。</p>
+            <p className="mt-1 text-xs text-[#71807b]">
+              HTML/Markdownは画像付き、TXTは本文のみでこのMacに保存します。
+            </p>
           </div>
           <button
             className="inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-[#71807b] transition hover:bg-[#e2eee8] hover:text-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50"
@@ -111,8 +119,13 @@ export function ExportPage({
             <section className="px-5 py-6 md:px-7" aria-labelledby="export-destination-heading">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">01 / 保存先</p>
-                  <h2 id="export-destination-heading" className="mt-1 text-[19px] font-bold tracking-[-0.04em]">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
+                    01 / 保存先
+                  </p>
+                  <h2
+                    id="export-destination-heading"
+                    className="mt-1 text-[19px] font-bold tracking-[-0.04em]"
+                  >
                     保存先フォルダ
                   </h2>
                 </div>
@@ -134,8 +147,13 @@ export function ExportPage({
             <section className="px-5 py-6 md:px-7" aria-labelledby="export-formats-heading">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">02 / 形式</p>
-                  <h2 id="export-formats-heading" className="mt-1 text-[19px] font-bold tracking-[-0.04em]">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
+                    02 / 形式
+                  </p>
+                  <h2
+                    id="export-formats-heading"
+                    className="mt-1 text-[19px] font-bold tracking-[-0.04em]"
+                  >
                     出力形式
                   </h2>
                 </div>
@@ -156,7 +174,9 @@ export function ExportPage({
                     >
                       <span className="flex items-start justify-between gap-2">
                         <span>
-                          <span className="block font-mono text-xs font-semibold text-[#1d6b50]">{label}</span>
+                          <span className="block font-mono text-xs font-semibold text-[#1d6b50]">
+                            {label}
+                          </span>
                           <span className="mt-1 block text-[11px] leading-5 text-[#71807b]">
                             {description}
                           </span>
@@ -179,11 +199,19 @@ export function ExportPage({
               </p>
             </section>
 
-            <section className="bg-[#f4f7f4]/70 px-5 py-6 md:px-7" aria-labelledby="export-status-heading">
+            <section
+              className="bg-[#f4f7f4]/70 px-5 py-6 md:px-7"
+              aria-labelledby="export-status-heading"
+            >
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">03 / 実行</p>
-                  <h2 id="export-status-heading" className="mt-1 text-[19px] font-bold tracking-[-0.04em]">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
+                    03 / 実行
+                  </p>
+                  <h2
+                    id="export-status-heading"
+                    className="mt-1 text-[19px] font-bold tracking-[-0.04em]"
+                  >
                     Export状況
                   </h2>
                 </div>

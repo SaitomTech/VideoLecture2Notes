@@ -12,7 +12,10 @@ function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(Math.max(value, minimum), maximum)
 }
 
-export function pixelToNormalizedCrop(crop: CropRegion, metadata: MediaMetadata): NormalizedCropRegion {
+export function pixelToNormalizedCrop(
+  crop: CropRegion,
+  metadata: MediaMetadata,
+): NormalizedCropRegion {
   return {
     x: clamp(crop.x / metadata.width, 0, 1),
     y: clamp(crop.y / metadata.height, 0, 1),
@@ -21,7 +24,10 @@ export function pixelToNormalizedCrop(crop: CropRegion, metadata: MediaMetadata)
   }
 }
 
-export function normalizedToPixelCrop(crop: NormalizedCropRegion, metadata: MediaMetadata): CropRegion {
+export function normalizedToPixelCrop(
+  crop: NormalizedCropRegion,
+  metadata: MediaMetadata,
+): CropRegion {
   const x = Math.round(clamp(crop.x, 0, 1) * metadata.width)
   const y = Math.round(clamp(crop.y, 0, 1) * metadata.height)
   const right = Math.round(clamp(crop.x + crop.width, 0, 1) * metadata.width)

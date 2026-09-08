@@ -125,9 +125,18 @@ export function CropSelector({ region, onChange }: CropSelectorProps) {
     }
   }, [isInteracting])
 
-  useEffect(() => () => { interactionRef.current = null }, [])
+  useEffect(
+    () => () => {
+      interactionRef.current = null
+    },
+    [],
+  )
 
-  const startInteraction = (event: React.PointerEvent, mode: Interaction['mode'], handle?: CropHandle) => {
+  const startInteraction = (
+    event: React.PointerEvent,
+    mode: Interaction['mode'],
+    handle?: CropHandle,
+  ) => {
     if (event.button !== 0) return
     event.preventDefault()
     event.stopPropagation()
@@ -150,13 +159,37 @@ export function CropSelector({ region, onChange }: CropSelectorProps) {
       aria-label="動画のスライド領域"
     >
       <div className={SHADE_CLASS} style={{ inset: 0, height: percentage(region.y) }} />
-      <div className={SHADE_CLASS} style={{ top: percentage(region.y), bottom: percentage(1 - region.y - region.height), left: 0, width: percentage(region.x) }} />
-      <div className={SHADE_CLASS} style={{ top: percentage(region.y), bottom: percentage(1 - region.y - region.height), right: 0, width: percentage(1 - region.x - region.width) }} />
-      <div className={SHADE_CLASS} style={{ left: 0, right: 0, bottom: 0, height: percentage(1 - region.y - region.height) }} />
+      <div
+        className={SHADE_CLASS}
+        style={{
+          top: percentage(region.y),
+          bottom: percentage(1 - region.y - region.height),
+          left: 0,
+          width: percentage(region.x),
+        }}
+      />
+      <div
+        className={SHADE_CLASS}
+        style={{
+          top: percentage(region.y),
+          bottom: percentage(1 - region.y - region.height),
+          right: 0,
+          width: percentage(1 - region.x - region.width),
+        }}
+      />
+      <div
+        className={SHADE_CLASS}
+        style={{ left: 0, right: 0, bottom: 0, height: percentage(1 - region.y - region.height) }}
+      />
 
       <div
         className="pointer-events-auto absolute cursor-move border-2 border-[#dcefe4] shadow-[0_0_0_1px_rgba(20,73,54,0.8),0_0_22px_rgba(0,0,0,0.2)]"
-        style={{ left: percentage(region.x), top: percentage(region.y), width: percentage(region.width), height: percentage(region.height) }}
+        style={{
+          left: percentage(region.x),
+          top: percentage(region.y),
+          width: percentage(region.width),
+          height: percentage(region.height),
+        }}
         onPointerDown={(event) => startInteraction(event, 'move')}
         role="group"
         aria-label="選択中の領域。ドラッグして移動"

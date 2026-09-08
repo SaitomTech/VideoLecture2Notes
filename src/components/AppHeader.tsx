@@ -83,8 +83,7 @@ export function AppHeader({ onHome, homeDisabled = false }: AppHeaderProps) {
             type="button"
             onClick={() => void handleOpenUpdateRelease()}
           >
-            <ExternalLink size={13} />
-            v{updateResult.latestVersion}をダウンロード
+            <ExternalLink size={13} />v{updateResult.latestVersion}をダウンロード
           </button>
         )}
         <button

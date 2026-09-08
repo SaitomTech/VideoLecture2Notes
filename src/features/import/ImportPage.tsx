@@ -7,11 +7,7 @@ import { LocalVideoImportPanel } from './components/LocalVideoImportPanel'
 import { YoutubeImportPanel } from './components/YoutubeImportPanel'
 import { useVideoPicker } from './hooks/useVideoPicker'
 import { useYoutubeImporter } from './hooks/useYoutubeImporter'
-import type {
-  SelectedVideo,
-  YoutubeImportOptions,
-  YoutubeImportRequest,
-} from './types'
+import type { SelectedVideo, YoutubeImportOptions, YoutubeImportRequest } from './types'
 import type { YoutubeDownloadProgress } from '../../lib/youtube/types'
 
 type ImportMode = 'file' | 'youtube'
@@ -50,7 +46,12 @@ export function ImportPage({
   }, [])
 
   const handleContinue = async () => {
-    if (!picker.selectedVideo || picker.videoStatus !== 'ready' || picker.metadataStatus !== 'ready') return
+    if (
+      !picker.selectedVideo ||
+      picker.videoStatus !== 'ready' ||
+      picker.metadataStatus !== 'ready'
+    )
+      return
 
     setIsContinuing(true)
     setContinueError(null)

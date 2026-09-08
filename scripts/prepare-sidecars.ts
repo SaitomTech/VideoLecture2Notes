@@ -37,7 +37,17 @@ const LLAMA_RUNTIME_FILES = {
   'libggml-base.0.dylib': 'libggml-base.0.20.2.dylib',
 } as const
 
-const SIDECARS = [
+type Sidecar = {
+  name: string
+  archive: 'zip' | 'tar.gz'
+  archiveEntry?: string
+  runtimeDirectory?: string
+  runtimeFiles?: Readonly<Record<string, string>>
+  url: string
+  sha256: string
+}
+
+const SIDECARS: Sidecar[] = [
   {
     name: 'ffmpeg',
     archive: 'zip',
@@ -66,7 +76,7 @@ const SIDECARS = [
     url: 'https://github.com/ggml-org/llama.cpp/releases/download/b10516/llama-b10516-bin-macos-arm64.tar.gz',
     sha256: 'ee3324327d621026ae80c24031670e65fa62a0b23a3a027dbe2f65f240affd30',
   },
-] as const
+]
 
 const YT_DLP_SIDECAR = {
   name: YT_DLP_SIDECAR_NAME,
@@ -230,7 +240,7 @@ async function sha256(path: string) {
   return hash.digest('hex')
 }
 
-async function listArchiveEntries(sidecar: (typeof SIDECARS)[number], archivePath: string) {
+async function listArchiveEntries(sidecar: Sidecar, archivePath: string) {
   const output =
     sidecar.archive === 'zip'
       ? await run('unzip', ['-Z1', archivePath])
@@ -242,11 +252,7 @@ async function listArchiveEntries(sidecar: (typeof SIDECARS)[number], archivePat
     .filter(Boolean)
 }
 
-async function extractArchiveEntry(
-  sidecar: (typeof SIDECARS)[number],
-  archivePath: string,
-  entry: string,
-) {
+async function extractArchiveEntry(sidecar: Sidecar, archivePath: string, entry: string) {
   const [command, args] =
     sidecar.archive === 'zip'
       ? ['unzip', ['-p', archivePath, entry]]
@@ -268,12 +274,12 @@ async function extractArchiveEntry(
 }
 
 async function prepareRuntimeFiles(
-  sidecar: (typeof SIDECARS)[number],
+  sidecar: Sidecar,
   archivePath: string,
   destination: string,
   entries: string[],
 ) {
-  if (!sidecar.runtimeDirectory) return
+  if (!sidecar.runtimeDirectory || !sidecar.runtimeFiles) return
 
   const runtimeDirectory = join(SIDECAR_DIRECTORY, sidecar.runtimeDirectory)
   await rm(runtimeDirectory, { force: true, recursive: true })
@@ -365,13 +371,12 @@ async function downloadAndExtract(sidecar: (typeof SIDECARS)[number], temporaryD
   console.log(`[${sidecar.name}] 実行ファイルの展開完了`)
   if (sidecar.runtimeDirectory) console.log(`[${sidecar.name}] runtimeを展開中`)
   await prepareRuntimeFiles(sidecar, archivePath, destination, entries)
-  console.log(`✓ ${sidecar.name}-${TARGET_TRIPLE} (${Math.round((Date.now() - startedAt) / 1000)}秒)`)
+  console.log(
+    `✓ ${sidecar.name}-${TARGET_TRIPLE} (${Math.round((Date.now() - startedAt) / 1000)}秒)`,
+  )
 }
 
-async function downloadBinary(
-  sidecar: typeof YT_DLP_SIDECAR,
-  temporaryDirectory: string,
-) {
+async function downloadBinary(sidecar: typeof YT_DLP_SIDECAR, temporaryDirectory: string) {
   const temporaryDownloadPath = join(temporaryDirectory, sidecar.name)
   const startedAt = Date.now()
   console.log(`[${sidecar.name}] ${sidecar.version}のダウンロード開始: ${sidecar.url}`)
@@ -396,10 +401,12 @@ async function downloadBinary(
   await Bun.write(temporaryDestination, await readFile(temporaryDownloadPath))
   await chmod(temporaryDestination, 0o755)
   await rename(temporaryDestination, destination)
-  console.log(`✓ ${sidecar.name}-${TARGET_TRIPLE} (${Math.round((Date.now() - startedAt) / 1000)}秒)`)
+  console.log(
+    `✓ ${sidecar.name}-${TARGET_TRIPLE} (${Math.round((Date.now() - startedAt) / 1000)}秒)`,
+  )
 }
 
-async function sidecarReady(sidecar: (typeof SIDECARS)[number]) {
+async function sidecarReady(sidecar: Sidecar) {
   if (!(await pathExists(sidecarPath(sidecar.name)))) return false
   if (!sidecar.runtimeDirectory) return true
 

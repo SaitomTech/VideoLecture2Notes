@@ -3,7 +3,8 @@ const POPULATION_COUNT = [0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4]
 /** Calculates a 64-bit horizontal difference hash from a 9x8 grayscale frame. */
 export function computeDHash(pixels: Uint8Array, width = 9, height = 8) {
   const expectedLength = width * height
-  if (pixels.length < expectedLength) throw new Error(`dHashに必要なピクセル数が不足しています (${pixels.length}/${expectedLength})`)
+  if (pixels.length < expectedLength)
+    throw new Error(`dHashに必要なピクセル数が不足しています (${pixels.length}/${expectedLength})`)
 
   const hashBytes = new Uint8Array(8)
   let bitIndex = 0

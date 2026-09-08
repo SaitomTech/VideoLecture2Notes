@@ -194,9 +194,15 @@ export function CropPage({
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[720px] flex-1 flex-col pb-8 md:w-[calc(100%-11.6vw)]">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">02 / CROP &amp; TRIM</p>
-            <h1 className="mt-1 text-[27px] font-bold tracking-[-0.06em]">動画の範囲とスライド領域を指定</h1>
-            <p className="mt-1 text-xs text-[#71807b]">解析する時間範囲と、スライドだけが入る範囲を選択してください。</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
+              02 / CROP &amp; TRIM
+            </p>
+            <h1 className="mt-1 text-[27px] font-bold tracking-[-0.06em]">
+              動画の範囲とスライド領域を指定
+            </h1>
+            <p className="mt-1 text-xs text-[#71807b]">
+              解析する時間範囲と、スライドだけが入る範囲を選択してください。
+            </p>
           </div>
           <button
             className="inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-[#71807b] transition hover:bg-[#e2eee8] hover:text-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50"
@@ -212,8 +218,12 @@ export function CropPage({
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d8e1dc] px-4 py-3">
             <div className="min-w-0">
-              <p className="truncate text-xs font-semibold text-[#18211f]" title={source.path}>{source.name}</p>
-              <p className="mt-0.5 font-mono text-[10px] text-[#71807b]">{metadata.width} × {metadata.height} · {formatTime(metadata.durationMs)}</p>
+              <p className="truncate text-xs font-semibold text-[#18211f]" title={source.path}>
+                {source.name}
+              </p>
+              <p className="mt-0.5 font-mono text-[10px] text-[#71807b]">
+                {metadata.width} × {metadata.height} · {formatTime(metadata.durationMs)}
+              </p>
             </div>
             <button
               className="inline-flex items-center gap-1.5 rounded-md border border-[#b7cbc0] px-2.5 py-2 text-[10px] font-semibold text-[#1d6b50] transition hover:border-[#1d6b50] hover:bg-[#edf4ef] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50"
@@ -227,7 +237,10 @@ export function CropPage({
           </div>
 
           <div className="p-4 md:p-5">
-            <div className="relative overflow-hidden rounded-[10px]" style={{ aspectRatio: `${metadata.width} / ${metadata.height}` }}>
+            <div
+              className="relative overflow-hidden rounded-[10px]"
+              style={{ aspectRatio: `${metadata.width} / ${metadata.height}` }}
+            >
               <video
                 ref={videoRef}
                 className="absolute inset-0 h-full w-full bg-[#0b1712] object-contain"
@@ -237,7 +250,8 @@ export function CropPage({
                 aria-label="Crop対象の動画"
                 onLoadedMetadata={(event) => {
                   const loadedDuration = event.currentTarget.duration
-                  if (Number.isFinite(loadedDuration) && loadedDuration > 0) setDuration(loadedDuration)
+                  if (Number.isFinite(loadedDuration) && loadedDuration > 0)
+                    setDuration(loadedDuration)
                 }}
                 onTimeUpdate={handleTimeUpdate}
                 onPlay={() => setIsPlaying(true)}
@@ -273,9 +287,13 @@ export function CropPage({
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#e0e8e3] pt-4">
               <div className="flex items-center gap-2 font-mono text-[10px] text-[#71807b]">
                 <span className="text-[#9aa6a1]">範囲</span>
-                <span className="rounded bg-[#edf4ef] px-2 py-1 text-[#1d6b50]">{pixelRegion.x}, {pixelRegion.y}</span>
+                <span className="rounded bg-[#edf4ef] px-2 py-1 text-[#1d6b50]">
+                  {pixelRegion.x}, {pixelRegion.y}
+                </span>
                 <span>·</span>
-                <span>{pixelRegion.width} × {pixelRegion.height}px</span>
+                <span>
+                  {pixelRegion.width} × {pixelRegion.height}px
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -299,10 +317,17 @@ export function CropPage({
           <div className="flex flex-col gap-3 border-t border-[#d8e1dc] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-h-5 text-xs" aria-live="polite">
               {error && <p className="text-[#b6533a]">{error}</p>}
-              {!error && notice && <p className="inline-flex items-center gap-1.5 text-[#1d6b50]"><Check size={14} />{notice}</p>}
+              {!error && notice && (
+                <p className="inline-flex items-center gap-1.5 text-[#1d6b50]">
+                  <Check size={14} />
+                  {notice}
+                </p>
+              )}
               {!error && !notice && isDetecting && autoCropProgress && (
                 <p className="text-[#71807b]">
-                  {autoCropProgress.phase === 'extracting' ? '動画のフレームを準備中' : '矩形候補を解析中'}
+                  {autoCropProgress.phase === 'extracting'
+                    ? '動画のフレームを準備中'
+                    : '矩形候補を解析中'}
                   … {autoCropProgress.completed} / {autoCropProgress.total}
                 </p>
               )}
@@ -321,7 +346,9 @@ export function CropPage({
               disabled={isApplying || isDetecting}
             >
               <span>{isApplying ? '動画と範囲を保存中…' : '保存して検出へ'}</span>
-              <span className="text-[17px] font-normal leading-none" aria-hidden="true">→</span>
+              <span className="text-[17px] font-normal leading-none" aria-hidden="true">
+                →
+              </span>
             </button>
           </div>
         </div>

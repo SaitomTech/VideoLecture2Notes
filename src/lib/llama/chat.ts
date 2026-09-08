@@ -1,4 +1,6 @@
-type LlamaChatContent = { type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }
+type LlamaChatContent =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } }
 
 type LlamaChatMessage = {
   role: 'system' | 'user' | 'assistant'
@@ -98,7 +100,9 @@ export async function completeChat(
 
   if (!response.ok) {
     const detail = await response.text().catch(() => '')
-    throw new Error(`llama-serverの応答に失敗しました (HTTP ${response.status})${detail ? `: ${detail}` : ''}`)
+    throw new Error(
+      `llama-serverの応答に失敗しました (HTTP ${response.status})${detail ? `: ${detail}` : ''}`,
+    )
   }
 
   const result = (await response.json()) as LlamaChatResponse

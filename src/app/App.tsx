@@ -202,12 +202,11 @@ function App() {
     const hasSameRange =
       currentProject.trim?.startMs === startMs && currentProject.trim?.endMs === endMs
 
-    const nextTrim =
-      isFullRange
-        ? undefined
-        : hasSameRange
-          ? currentProject.trim
-          : await createTrimmedVideo(currentProject, normalizedRange)
+    const nextTrim = isFullRange
+      ? undefined
+      : hasSameRange
+        ? currentProject.trim
+        : await createTrimmedVideo(currentProject, normalizedRange)
     const trimChanged =
       currentProject.trim?.startMs !== nextTrim?.startMs ||
       currentProject.trim?.endMs !== nextTrim?.endMs ||
