@@ -80,6 +80,8 @@ Tell the user to complete these steps in the GitHub web UI:
 
 The release workflow verifies that the tag is based on `main`, checks the tag/version match, builds the DMG, and publishes the release after a successful build. Do not create a second tag or manually upload another DMG if the workflow is still running.
 
+The release notes are generated automatically through `tauri-action`'s GitHub Release Notes API (`generateReleaseNotes: true`) as part of the automated release handling. The workflow does not pause for a human to write or edit release notes after the DMG finishes; the final `gh release edit ... --draft=false` step publishes the draft after the DMG upload succeeds.
+
 ## Validate and report
 
 After editing:
