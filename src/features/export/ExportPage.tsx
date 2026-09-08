@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
 import { formatTimestamp } from '../../lib/time'
+import type { WorkflowStep } from '../../lib/workflow'
 import { pickExportDirectory } from '../../lib/tauri/dialog'
 import { getActiveMediaSource, type MediaProject } from '../../types/project'
 import { EXPORT_OPTIONS, type ExportFormat } from './export'
@@ -12,6 +13,8 @@ type ExportPageProps = {
   project: MediaProject
   onBack: () => void
   onHome: () => void
+  maxReachedStep: WorkflowStep
+  onStepClick: (step: WorkflowStep) => void
 }
 
 function getStatusMessage({ status, progress, files }: ExportController) {
@@ -27,7 +30,13 @@ function getStatusMessage({ status, progress, files }: ExportController) {
   }
 }
 
-export function ExportPage({ project, onBack, onHome }: ExportPageProps) {
+export function ExportPage({
+  project,
+  onBack,
+  onHome,
+  maxReachedStep,
+  onStepClick,
+}: ExportPageProps) {
   const source = getActiveMediaSource(project)
   const [destination, setDestination] = useState('')
   const [selectedFormats, setSelectedFormats] = useState<ExportFormat[]>(['html', 'markdown'])
@@ -60,7 +69,12 @@ export function ExportPage({ project, onBack, onHome }: ExportPageProps) {
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
       <AppHeader onHome={onHome} homeDisabled={isRunning} />
-      <WorkflowBar activeStep="export" />
+      <WorkflowBar
+        activeStep="export"
+        maxReachedStep={maxReachedStep}
+        onStepClick={onStepClick}
+        disabled={isRunning}
+      />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
         <div className="mb-6 flex items-center justify-between gap-4">

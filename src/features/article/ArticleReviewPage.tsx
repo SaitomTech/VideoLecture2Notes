@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
 import { getArticleModel, type ArticleModelId } from '../../lib/article/articleModel'
+import type { WorkflowStep } from '../../lib/workflow'
 import type { ArticleDraft, ArticleSummary, MediaProject } from '../../types/project'
 import { ArticleSummaryCard } from './components/ArticleSummaryCard'
 import { ArticleSectionEditor } from './components/ArticleSectionEditor'
@@ -15,6 +16,8 @@ type ArticleReviewPageProps = {
   onSaveSummary: (summary: ArticleSummary) => void | Promise<void>
   onExport: () => void
   onHome: () => void
+  maxReachedStep: WorkflowStep
+  onStepClick: (step: WorkflowStep) => void
 }
 
 type EditingTarget = { type: 'title' } | { type: 'slide'; slideId: string } | null
@@ -26,6 +29,8 @@ export function ArticleReviewPage({
   onSaveSummary,
   onExport,
   onHome,
+  maxReachedStep,
+  onStepClick,
 }: ArticleReviewPageProps) {
   const articleSlides = project.slides.filter((slide) => Boolean(slide.transcript))
   const initialTitle = project.article?.title?.trim() || project.source.name.replace(/\.[^.]+$/, '')
@@ -121,10 +126,20 @@ export function ArticleReviewPage({
     onBack()
   }
 
+  const handleWorkflowNavigation = (nextStep: WorkflowStep) => {
+    if (hasUnsavedChanges && !window.confirm('未保存の変更があります。保存せずに移動しますか？')) return
+    onStepClick(nextStep)
+  }
+
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
       <AppHeader onHome={onHome} homeDisabled={hasUnsavedChanges || isBusy} />
-      <WorkflowBar activeStep="article-review" />
+      <WorkflowBar
+        activeStep="article-review"
+        maxReachedStep={maxReachedStep}
+        onStepClick={handleWorkflowNavigation}
+        disabled={isBusy}
+      />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
         <div className="mb-6 flex items-center justify-between gap-4">

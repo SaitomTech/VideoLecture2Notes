@@ -2,6 +2,7 @@ import { ArrowLeft, Play, Square } from 'lucide-react'
 import { useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
+import type { WorkflowStep } from '../../lib/workflow'
 import { getArticleModel, type ArticleModelId } from '../../lib/article/articleModel'
 import { getOcrModel, type OcrModelId } from '../../lib/ocr/modelManager'
 import {
@@ -35,6 +36,8 @@ type GenerateNotesPageProps = {
   onSaveSlideResultEdits: (slideId: string, edits: SlideResultEdits) => void | Promise<void>
   onOpenArticleReview: () => void
   onHome: () => void
+  maxReachedStep: WorkflowStep
+  onStepClick: (step: WorkflowStep) => void
 }
 
 type BatchStage = 'idle' | 'ocr' | 'transcription' | 'content'
@@ -49,6 +52,8 @@ export function GenerateNotesPage({
   onSaveSlideResultEdits,
   onOpenArticleReview,
   onHome,
+  maxReachedStep,
+  onStepClick,
 }: GenerateNotesPageProps) {
   const source = getActiveMediaSource(project)
   const [language, setLanguage] = useState<TranscriptionLanguage>(
@@ -120,7 +125,12 @@ export function GenerateNotesPage({
   return (
     <main className='flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]'>
       <AppHeader onHome={onHome} homeDisabled={isProcessing} />
-      <WorkflowBar activeStep='generate-notes' />
+      <WorkflowBar
+        activeStep='generate-notes'
+        maxReachedStep={maxReachedStep}
+        onStepClick={onStepClick}
+        disabled={isProcessing}
+      />
 
       <section className='mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]'>
         <div className='mb-6 flex items-center justify-between gap-4'>

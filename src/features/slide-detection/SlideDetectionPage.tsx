@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
+import type { WorkflowStep } from '../../lib/workflow'
 import { getActiveMediaSource, type MediaProject, type SlideBoundary } from '../../types/project'
 import { useSlideDetection } from './hooks/useSlideDetection'
 import { buildSlideData } from './detection'
@@ -15,9 +16,19 @@ type SlideDetectionPageProps = {
   onCompleted: (output: SlideDetectionOutput) => void | Promise<void>
   onContinue: () => void
   onHome: () => void
+  maxReachedStep: WorkflowStep
+  onStepClick: (step: WorkflowStep) => void
 }
 
-export function SlideDetectionPage({ project, onBack, onCompleted, onContinue, onHome }: SlideDetectionPageProps) {
+export function SlideDetectionPage({
+  project,
+  onBack,
+  onCompleted,
+  onContinue,
+  onHome,
+  maxReachedStep,
+  onStepClick,
+}: SlideDetectionPageProps) {
   const source = getActiveMediaSource(project)
   const durationMs = source.metadata.durationMs
   const [reviewBoundaries, setReviewBoundaries] = useState<SlideBoundary[] | null>(
@@ -103,7 +114,12 @@ export function SlideDetectionPage({ project, onBack, onCompleted, onContinue, o
         onHome={onHome}
         homeDisabled={isRunning || isSavingReview || hasUnsavedReview}
       />
-      <WorkflowBar activeStep="detect-slides" />
+      <WorkflowBar
+        activeStep="detect-slides"
+        maxReachedStep={maxReachedStep}
+        onStepClick={onStepClick}
+        disabled={isRunning || isSavingReview || hasUnsavedReview}
+      />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
         <div className="mb-6 flex items-center justify-between gap-4">

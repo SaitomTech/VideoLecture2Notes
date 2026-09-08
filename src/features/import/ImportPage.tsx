@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
+import type { WorkflowStep } from '../../lib/workflow'
 import { ImportModeTabs } from './components/ImportModeTabs'
 import { LocalVideoImportPanel } from './components/LocalVideoImportPanel'
 import { YoutubeImportPanel } from './components/YoutubeImportPanel'
@@ -23,6 +24,8 @@ type ImportPageProps = {
     options: YoutubeImportOptions,
   ) => void | Promise<void>
   onHome: () => void
+  maxReachedStep: WorkflowStep
+  onStepClick: (step: WorkflowStep) => void
 }
 
 export function ImportPage({
@@ -30,6 +33,8 @@ export function ImportPage({
   onContinue,
   onContinueYoutube,
   onHome,
+  maxReachedStep,
+  onStepClick,
 }: ImportPageProps) {
   const picker = useVideoPicker(initialVideo)
   const youtube = useYoutubeImporter()
@@ -106,7 +111,12 @@ export function ImportPage({
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
       <AppHeader onHome={onHome} homeDisabled={isContinuing || isYoutubeImporting} />
-      <WorkflowBar activeStep="import" />
+      <WorkflowBar
+        activeStep="import"
+        maxReachedStep={maxReachedStep}
+        onStepClick={onStepClick}
+        disabled={isContinuing || isYoutubeImporting}
+      />
 
       <section className="mx-auto flex min-h-[540px] w-[calc(100%-48px)] max-w-[1040px] flex-1 items-start justify-center pt-10 md:w-[calc(100%-11.6vw)] md:pt-14">
         <div className="w-full max-w-[720px]">
