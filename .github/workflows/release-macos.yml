@@ -1,16 +1,19 @@
 name: Build macOS release assets
 
 on:
-  release:
-    types:
-      - published
+  create:
 
 permissions:
   contents: write
 
+concurrency:
+  group: macos-release-${{ github.event.ref }}
+  cancel-in-progress: false
+
 jobs:
   build-macos:
     name: Build macOS DMG
+    if: ${{ github.event.ref_type == 'tag' && startsWith(github.event.ref, 'v') }}
     runs-on: macos-latest
     timeout-minutes: 15
 
@@ -18,7 +21,8 @@ jobs:
       - name: Checkout the released tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ github.event.ref }}
+          fetch-depth: 0
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
@@ -33,6 +37,19 @@ jobs:
             echo "Runner architecture: $(uname -m)"
             exit 1
           }
+
+      - name: Ensure release tag is based on main
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          git fetch origin main --no-tags
+
+          if ! git merge-base --is-ancestor "$RELEASE_SHA" origin/main; then
+            echo "The release tag must point to a commit included in origin/main."
+            echo "Release commit: $RELEASE_SHA"
+            echo "origin/main: $(git rev-parse origin/main)"
+            exit 1
+          fi
 
       - name: Cache sidecars
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -51,7 +68,7 @@ jobs:
 
       - name: Check release version
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ github.event.ref }}
         run: |
           expected_version="$(bun -e 'const config = JSON.parse(await Bun.file("src-tauri/tauri.conf.json").text()); console.log(config.version)')"
           release_version="${RELEASE_TAG#v}"
@@ -70,7 +87,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tauriScript: bunx tauri
-          tagName: ${{ github.event.release.tag_name }}
-          releaseId: ${{ github.event.release.id }}
-          releaseDraft: false
+          tagName: ${{ github.event.ref }}
+          releaseName: VideoLecture2Notes ${{ github.event.ref }}
+          releaseBody: macOS Apple Silicon向けDMGです。
+          generateReleaseNotes: true
+          releaseDraft: true
           args: --bundles dmg
+
+      - name: Publish release after DMG upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.ref }}
+        run: gh release edit "$RELEASE_TAG" --draft=false
