@@ -1,20 +1,29 @@
 import { UserFacingError, withUserFacingError } from '../../lib/errors'
-import { extractAudio, extractAudioChunkForOpenAi } from '../../lib/media/ffmpeg'
+import {
+  extractAudio,
+  extractAudioChunkForOpenAi,
+} from '../../lib/media/ffmpeg'
 import { transcribeOpenAiAudio } from '../../lib/openai/openai'
-import { getAudioAssetPath, getTranscriptionAudioChunkPath } from '../../lib/storage/projectAssets'
-import { fileExists } from '../../lib/tauri/filesystem'
+import {
+  getAudioAssetPath,
+  getTranscriptionAudioChunkPath,
+} from '../../lib/storage/projectAssets'
+import { fileExists, getFileSize } from '../../lib/tauri/filesystem'
 import { runAppleSpeech } from '../../lib/speech/appleSpeech'
 import {
   getTranscriptionModel,
+  OPENAI_TRANSCRIBE_MODEL,
   type TranscriptionModel,
   type TranscriptionModelId,
 } from '../../lib/transcription/transcriptionModel'
 import { ensureWhisperModel } from '../../lib/whisper/modelManager'
 import { runWhisper } from '../../lib/whisper/whisper'
 import { normalizeTranscriptSegments } from '../../lib/pipeline/assignTranscriptToSlides'
+import { buildOpenAiTranscriptionContext } from '../../lib/pipeline/transcriptionContext'
 import {
   getActiveMediaSource,
   type MediaProject,
+  type TranscriptionKeywordChunk,
   type TranscriptSegment,
   type TranscriptionResult,
 } from '../../types/project'
@@ -54,15 +63,17 @@ type PreparedChunk = ChunkRange & {
 type OpenAiTranscriptionProvider = {
   provider: 'openai'
   effectiveLanguage: TranscriptionLanguage
-  prepare: () => Promise<void>
-  prepareChunk: (audioPath: string, outputPath: string, range: ChunkRange) => Promise<void>
+  prepareChunk: (audioPath: string, outputPath: string, range: ChunkRange) => Promise<number>
   transcribeChunk: (chunk: PreparedChunk) => Promise<{
     language?: string
     segments: TranscriptSegment[]
+    keywords: string[]
   }>
 }
 
-const MAX_TRANSCRIPTION_CHUNK_MS = 30 * 60 * 1000
+const MAX_OPENAI_AUDIO_BYTES = 25_000_000
+const MIN_OPENAI_CHUNK_MS = 1000
+const MAX_OPENAI_CONCURRENT_REQUESTS = 8
 
 function throwIfAborted(signal?: AbortSignal) {
   if (signal?.aborted) throw new DOMException('処理を中止しました。', 'AbortError')
@@ -71,7 +82,18 @@ function throwIfAborted(signal?: AbortSignal) {
 function inputFingerprint(project: MediaProject, modelId: TranscriptionModelId, language: string) {
   const source = getActiveMediaSource(project)
   const metadata = source.metadata
-  return [
+  const ocrContextFingerprint =
+    modelId === OPENAI_TRANSCRIBE_MODEL.id
+      ? JSON.stringify(
+          project.slides.map((slide) => [
+            slide.id,
+            slide.startMs,
+            slide.endMs,
+            slide.ocr?.rawText ?? '',
+          ]),
+        )
+      : ''
+  const baseFingerprint = [
     source.path,
     source.sizeBytes ?? 'unknown-size',
     metadata.durationMs,
@@ -80,17 +102,9 @@ function inputFingerprint(project: MediaProject, modelId: TranscriptionModelId, 
     modelId,
     language,
   ].join(':')
-}
-
-function splitRange(range: ChunkRange) {
-  const chunks: ChunkRange[] = []
-  for (let startMs = range.startMs; startMs < range.endMs; startMs += MAX_TRANSCRIPTION_CHUNK_MS) {
-    chunks.push({
-      startMs,
-      endMs: Math.min(range.endMs, startMs + MAX_TRANSCRIPTION_CHUNK_MS),
-    })
-  }
-  return chunks
+  return modelId === OPENAI_TRANSCRIBE_MODEL.id
+    ? `${baseFingerprint}:${ocrContextFingerprint}`
+    : baseFingerprint
 }
 
 async function prepareAudio(
@@ -162,9 +176,27 @@ async function runAppleTranscription({
   }
 }
 
-function createAudioRanges(project: MediaProject) {
+function createOpenAiAudioRanges(project: MediaProject) {
   const durationMs = Math.max(1, getActiveMediaSource(project).metadata.durationMs)
-  return splitRange({ startMs: 0, endMs: durationMs })
+  const slides = project.slides.toSorted((first, second) => first.startMs - second.startMs)
+  if (slides.length === 0) return [{ startMs: 0, endMs: durationMs }]
+
+  const ranges: ChunkRange[] = []
+  let cursorMs = 0
+  for (const slide of slides) {
+    const rangeStartMs = Math.max(cursorMs, Math.max(0, Math.min(durationMs, slide.startMs)))
+    const rangeEndMs = Math.max(rangeStartMs, Math.min(durationMs, slide.endMs))
+    if (rangeStartMs > cursorMs) {
+      ranges.push({ startMs: cursorMs, endMs: rangeStartMs })
+    }
+    if (rangeEndMs > rangeStartMs) {
+      ranges.push({ startMs: rangeStartMs, endMs: rangeEndMs })
+      cursorMs = rangeEndMs
+    }
+  }
+  if (cursorMs < durationMs) ranges.push({ startMs: cursorMs, endMs: durationMs })
+
+  return ranges.length > 0 ? ranges : [{ startMs: 0, endMs: durationMs }]
 }
 
 async function runLocalTranscription({
@@ -237,6 +269,7 @@ async function runLocalTranscription({
 }
 
 function createOpenAiProvider({
+  project,
   language,
   signal,
 }: Omit<RunTranscriptionInput, 'modelId' | 'onStage' | 'onProgress' | 'onChunkProgress'> & {
@@ -247,20 +280,26 @@ function createOpenAiProvider({
   return {
     provider: 'openai',
     effectiveLanguage,
-    prepare: async () => undefined,
     prepareChunk: async (audioPath, outputPath, range) => {
-      await extractAudioChunkForOpenAi({
+      const preparedPath = await extractAudioChunkForOpenAi({
         path: audioPath,
         outputPath,
         startMs: range.startMs,
         durationMs: range.endMs - range.startMs,
         signal,
       })
+      return getFileSize(preparedPath)
     },
     transcribeChunk: async (chunk) => {
+      const context = buildOpenAiTranscriptionContext(
+        project.slides,
+        { startMs: chunk.startMs, endMs: chunk.endMs },
+        effectiveLanguage,
+      )
       const result = await transcribeOpenAiAudio({
         audioPath: chunk.path,
-        language: effectiveLanguage === 'auto' ? undefined : effectiveLanguage,
+        languages: effectiveLanguage === 'auto' ? undefined : [effectiveLanguage],
+        ...context,
         signal,
       })
       const text = result.text.trim()
@@ -275,6 +314,7 @@ function createOpenAiProvider({
           .filter((segment) => segment.text && segment.endMs >= segment.startMs) ?? []
       return {
         language: result.language,
+        keywords: context.keywords ?? [],
         segments:
           segments.length > 0
             ? segments
@@ -293,6 +333,50 @@ function createOpenAiProvider({
   }
 }
 
+async function prepareOpenAiRange({
+  project,
+  provider,
+  audioPath,
+  range,
+  chunkIndex,
+  signal,
+}: {
+  project: MediaProject
+  provider: OpenAiTranscriptionProvider
+  audioPath: string
+  range: ChunkRange
+  chunkIndex: number
+  signal?: AbortSignal
+}): Promise<PreparedChunk[]> {
+  throwIfAborted(signal)
+  const path = await getTranscriptionAudioChunkPath(project.id, provider.provider, chunkIndex)
+  const sizeBytes = await provider.prepareChunk(audioPath, path, range)
+  if (sizeBytes <= MAX_OPENAI_AUDIO_BYTES) return [{ ...range, path }]
+
+  if (range.endMs - range.startMs <= MIN_OPENAI_CHUNK_MS) {
+    throw new UserFacingError('OpenAI送信用音声を25MB以下に分割できませんでした。')
+  }
+
+  const midpointMs = range.startMs + Math.floor((range.endMs - range.startMs) / 2)
+  const leftChunks = await prepareOpenAiRange({
+    project,
+    provider,
+    audioPath,
+    range: { startMs: range.startMs, endMs: midpointMs },
+    chunkIndex,
+    signal,
+  })
+  const rightChunks = await prepareOpenAiRange({
+    project,
+    provider,
+    audioPath,
+    range: { startMs: midpointMs, endMs: range.endMs },
+    chunkIndex: chunkIndex + leftChunks.length,
+    signal,
+  })
+  return [...leftChunks, ...rightChunks]
+}
+
 function reportChunkProgress(
   completed: number,
   total: number,
@@ -301,6 +385,42 @@ function reportChunkProgress(
 ) {
   onProgress?.(total > 0 ? completed / total : null)
   onChunkProgress?.({ completed, total })
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  task: (item: T, index: number) => Promise<R>,
+  signal?: AbortSignal,
+  onCompleted?: (completed: number) => void,
+) {
+  const results = new Array<R>(items.length)
+  let nextIndex = 0
+  let completed = 0
+  let failure: unknown
+
+  async function worker() {
+    while (failure === undefined) {
+      throwIfAborted(signal)
+      const index = nextIndex
+      nextIndex += 1
+      if (index >= items.length) return
+
+      try {
+        results[index] = await task(items[index], index)
+        completed += 1
+        onCompleted?.(completed)
+      } catch (error) {
+        failure ??= error
+        return
+      }
+    }
+  }
+
+  const workerCount = Math.min(Math.max(1, concurrency), items.length)
+  await Promise.all(Array.from({ length: workerCount }, () => worker()))
+  if (failure !== undefined) throw failure
+  return results
 }
 
 function offsetSegments(chunk: PreparedChunk, segments: TranscriptSegment[]) {
@@ -332,7 +452,6 @@ export async function runTranscription(input: RunTranscriptionInput): Promise<Tr
   onStage?.('preparing-model')
   onProgress?.(null)
   onChunkProgress?.(null)
-  await provider.prepare()
 
   throwIfAborted(signal)
   onStage?.('extracting-audio')
@@ -348,35 +467,50 @@ export async function runTranscription(input: RunTranscriptionInput): Promise<Tr
     return path
   })
 
-  const ranges = createAudioRanges(project)
+  const ranges = createOpenAiAudioRanges(project)
   const chunks: PreparedChunk[] = []
   onStage?.('preparing-chunks')
   reportChunkProgress(0, ranges.length, onProgress, onChunkProgress)
-  for (let chunkIndex = 0; chunkIndex < ranges.length; chunkIndex += 1) {
+  for (let rangeIndex = 0; rangeIndex < ranges.length; rangeIndex += 1) {
     throwIfAborted(signal)
-    const range = ranges[chunkIndex]
-    const path = await getTranscriptionAudioChunkPath(project.id, provider.provider, chunkIndex)
-    await provider.prepareChunk(audioPath, path, range)
-    chunks.push({ ...range, path })
-    reportChunkProgress(chunkIndex + 1, ranges.length, onProgress, onChunkProgress)
+    const preparedChunks = await prepareOpenAiRange({
+      project,
+      provider,
+      audioPath,
+      range: ranges[rangeIndex],
+      chunkIndex: chunks.length,
+      signal,
+    })
+    chunks.push(...preparedChunks)
+    reportChunkProgress(rangeIndex + 1, ranges.length, onProgress, onChunkProgress)
   }
 
   onStage?.('transcribing')
   reportChunkProgress(0, chunks.length, onProgress, onChunkProgress)
   const segments: TranscriptSegment[] = []
+  const keywordChunks: TranscriptionKeywordChunk[] = []
   let detectedLanguage: string | undefined
   const transcriptionError =
-    model.provider === 'openai'
-      ? 'OpenAI APIで音声を文字起こしできませんでした。APIキーと利用上限を確認してください。'
-      : '音声を文字起こしできませんでした。アプリを再起動して、再試行してください。'
+    'OpenAI APIで音声を文字起こしできませんでした。APIキーと利用上限を確認してください。'
   await withUserFacingError(transcriptionError, async () => {
+    const results = await mapWithConcurrency(
+      chunks,
+      MAX_OPENAI_CONCURRENT_REQUESTS,
+      (chunk) => provider.transcribeChunk(chunk),
+      signal,
+      (completed) => reportChunkProgress(completed, chunks.length, onProgress, onChunkProgress),
+    )
+
     for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex += 1) {
-      throwIfAborted(signal)
       const chunk = chunks[chunkIndex]
-      const result = await provider.transcribeChunk(chunk)
+      const result = results[chunkIndex]
       detectedLanguage ??= result.language
       segments.push(...offsetSegments(chunk, result.segments))
-      reportChunkProgress(chunkIndex + 1, chunks.length, onProgress, onChunkProgress)
+      keywordChunks.push({
+        startMs: chunk.startMs,
+        endMs: chunk.endMs,
+        keywords: result.keywords,
+      })
     }
   })
 
@@ -390,5 +524,9 @@ export async function runTranscription(input: RunTranscriptionInput): Promise<Tr
     ),
     transcribedAt: new Date().toISOString(),
     inputFingerprint: inputFingerprint(project, model.id, provider.effectiveLanguage),
+    keywordContext: {
+      chunks: keywordChunks,
+      generatedAt: new Date().toISOString(),
+    },
   }
 }

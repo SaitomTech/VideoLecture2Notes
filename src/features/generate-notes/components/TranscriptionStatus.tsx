@@ -9,12 +9,12 @@ type TranscriptionStatusProps = {
   chunkProgress: TranscriptionChunkProgress | null
   error: string | null
   disabled?: boolean
-  onRetry: () => void | Promise<void>
+  onRetry: () => void | Promise<unknown>
 }
 
 function getStageLabel(stage: TranscriptionStage) {
   if (stage === 'preparing-chunks') {
-    return '文字起こし用の音声を30分単位で準備中…'
+    return '文字起こし用の音声チャンクを準備中…'
   }
 
   const labels: Record<Exclude<TranscriptionStage, 'preparing-chunks'>, string> = {
@@ -37,7 +37,7 @@ function getProgressLabel({
   }
   if (chunkProgress && chunkProgress.total > 0) {
     if (stageProgress !== null) return `${Math.round(stageProgress * 100)}%`
-    return `${chunkProgress.completed} / ${chunkProgress.total} 30分単位`
+    return `${chunkProgress.completed} / ${chunkProgress.total} 区間`
   }
   if (stageProgress !== null) return `${Math.round(stageProgress * 100)}%`
   if (status === 'running') return '処理中'

@@ -19,7 +19,8 @@ const OPENAI_TRANSCRIPTIONS_URL: &str = "https://api.openai.com/v1/audio/transcr
 const OPENAI_TRANSCRIPTION_MODEL: &str = "gpt-transcribe";
 const MAX_PROMPT_BYTES: usize = 2 * 1024 * 1024;
 const MAX_OCR_IMAGE_DATA_BYTES: usize = 20 * 1024 * 1024;
-const MAX_TRANSCRIPTION_AUDIO_BYTES: u64 = 24 * 1024 * 1024;
+const MAX_TRANSCRIPTION_AUDIO_BYTES: u64 = 25_000_000;
+const MAX_TRANSCRIPTION_RETRIES: usize = 3;
 
 static HTTP_CLIENT: OnceLock<Client> = OnceLock::new();
 static ACTIVE_REQUESTS: OnceLock<Mutex<HashMap<String, AbortHandle>>> = OnceLock::new();
@@ -66,7 +67,9 @@ pub struct OpenAiArticleResponse {
 #[serde(rename_all = "camelCase")]
 pub struct OpenAiTranscriptionRequest {
     audio_path: String,
-    language: Option<String>,
+    languages: Option<Vec<String>>,
+    prompt: Option<String>,
+    keywords: Option<Vec<String>>,
     client_request_id: String,
 }
 
@@ -352,6 +355,16 @@ fn response_request_id(headers: &HeaderMap) -> Option<String> {
         .map(str::to_string)
 }
 
+fn retry_delay(response: &reqwest::Response, retry_index: usize) -> Duration {
+    response
+        .headers()
+        .get("retry-after")
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.trim().parse::<u64>().ok())
+        .map(Duration::from_secs)
+        .unwrap_or_else(|| Duration::from_secs(2_u64.saturating_pow((retry_index + 1) as u32)))
+}
+
 #[tauri::command]
 pub async fn get_openai_api_key_status() -> Result<OpenAiCredentialStatus, String> {
     match load_api_key().await? {
@@ -619,57 +632,91 @@ pub async fn transcribe_openai_audio(
     request: OpenAiTranscriptionRequest,
 ) -> Result<OpenAiTranscriptionResponse, String> {
     validate_client_request_id(&request.client_request_id)?;
-    if request
-        .language
-        .as_deref()
-        .is_some_and(|language| !matches!(language, "ja" | "en"))
-    {
+    if request.languages.as_ref().is_some_and(|languages| {
+        languages.is_empty()
+            || languages
+                .iter()
+                .any(|language| !matches!(language.as_str(), "ja" | "en"))
+    }) {
         return Err("OpenAI文字起こしの言語設定が不正です".to_string());
     }
 
     let audio_path = validate_app_local_audio_path(&app, &request.audio_path)?;
     let api_key = stored_api_key().await?;
-    let audio_part = multipart::Part::file(&audio_path)
-        .await
-        .map_err(|error| format!("OpenAI送信用音声を開けません: {error}"))?
-        .file_name("lecture-chunk.m4a")
-        .mime_str("audio/mp4")
-        .map_err(|error| format!("OpenAI送信用音声の形式を設定できません: {error}"))?;
-    let mut form = multipart::Form::new()
-        .text("model", OPENAI_TRANSCRIPTION_MODEL)
-        .text("response_format", "verbose_json")
-        .text("timestamp_granularities[]", "segment")
-        .part("file", audio_part);
-    if let Some(language) = request.language.as_deref() {
-        form = form.text("language", language.to_string());
-    }
 
-    let (abort_handle, abort_registration) = AbortHandle::new_pair();
-    active_requests()
-        .lock()
-        .map_err(|_| "OpenAI APIリクエストを開始できません".to_string())?
-        .insert(request.client_request_id.clone(), abort_handle);
+    let client = http_client()?;
+    let mut retry_index = 0;
+    let response = loop {
+        let audio_part = multipart::Part::file(&audio_path)
+            .await
+            .map_err(|error| format!("OpenAI送信用音声を開けません: {error}"))?
+            .file_name("lecture-chunk.m4a")
+            .mime_str("audio/mp4")
+            .map_err(|error| format!("OpenAI送信用音声の形式を設定できません: {error}"))?;
+        let mut form = multipart::Form::new()
+            .text("model", OPENAI_TRANSCRIPTION_MODEL)
+            .text("response_format", "json")
+            .part("file", audio_part);
+        if let Some(languages) = request.languages.as_ref() {
+            for language in languages {
+                form = form.text("languages[]", language.to_string());
+            }
+        }
+        if let Some(prompt) = request
+            .prompt
+            .as_deref()
+            .filter(|prompt| !prompt.trim().is_empty())
+        {
+            form = form.text("prompt", prompt.to_string());
+        }
+        if let Some(keywords) = request.keywords.as_ref() {
+            for keyword in keywords {
+                let keyword = keyword.trim();
+                if !keyword.is_empty() {
+                    form = form.text("keywords[]", keyword.to_string());
+                }
+            }
+        }
 
-    let response = Abortable::new(
-        http_client()?
-            .post(OPENAI_TRANSCRIPTIONS_URL)
-            .bearer_auth(api_key)
-            .header("X-Client-Request-Id", &request.client_request_id)
-            .timeout(Duration::from_secs(600))
-            .multipart(form)
-            .send(),
-        abort_registration,
-    )
-    .await;
+        let (abort_handle, abort_registration) = AbortHandle::new_pair();
+        active_requests()
+            .lock()
+            .map_err(|_| "OpenAI APIリクエストを開始できません".to_string())?
+            .insert(request.client_request_id.clone(), abort_handle);
 
-    active_requests()
-        .lock()
-        .map_err(|_| "OpenAI APIリクエストの終了処理に失敗しました".to_string())?
-        .remove(&request.client_request_id);
+        let response = Abortable::new(
+            client
+                .post(OPENAI_TRANSCRIPTIONS_URL)
+                .bearer_auth(&api_key)
+                .header("X-Client-Request-Id", &request.client_request_id)
+                .timeout(Duration::from_secs(600))
+                .multipart(form)
+                .send(),
+            abort_registration,
+        )
+        .await;
 
-    let response = response
-        .map_err(|_| "OpenAI APIリクエストを停止しました".to_string())?
-        .map_err(|error| format!("OpenAI APIへ接続できません: {error}"))?;
+        active_requests()
+            .lock()
+            .map_err(|_| "OpenAI APIリクエストの終了処理に失敗しました".to_string())?
+            .remove(&request.client_request_id);
+
+        let response = response
+            .map_err(|_| "OpenAI APIリクエストを停止しました".to_string())?
+            .map_err(|error| format!("OpenAI APIへ接続できません: {error}"))?;
+        if matches!(
+            response.status(),
+            StatusCode::TOO_MANY_REQUESTS | StatusCode::SERVICE_UNAVAILABLE
+        ) && retry_index < MAX_TRANSCRIPTION_RETRIES
+        {
+            let delay = retry_delay(&response, retry_index);
+            retry_index += 1;
+            tokio::time::sleep(delay).await;
+            continue;
+        }
+        break response;
+    };
+
     if !response.status().is_success() {
         return Err(api_error(response).await);
     }

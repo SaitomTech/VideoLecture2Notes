@@ -49,11 +49,15 @@ export function testOpenAiConnection(model = 'gpt-5.6-luna') {
 
 export async function transcribeOpenAiAudio({
   audioPath,
-  language,
+  languages,
+  prompt,
+  keywords,
   signal,
 }: {
   audioPath: string
-  language?: 'ja' | 'en'
+  languages?: Array<'ja' | 'en'>
+  prompt?: string
+  keywords?: string[]
   signal?: AbortSignal
 }) {
   if (signal?.aborted) throw new DOMException('処理を中止しました。', 'AbortError')
@@ -66,7 +70,7 @@ export async function transcribeOpenAiAudio({
 
   try {
     return await invoke<OpenAiTranscriptionResponse>('transcribe_openai_audio', {
-      request: { audioPath, language, clientRequestId },
+      request: { audioPath, languages, prompt, keywords, clientRequestId },
     })
   } catch (error) {
     if (signal?.aborted) throw new DOMException('処理を中止しました。', 'AbortError')

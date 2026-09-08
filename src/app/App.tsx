@@ -19,8 +19,6 @@ import {
   updateProjectSlideDetection,
   updateProjectSlideOcr,
   updateProjectSlideResultEdits,
-  updateProjectTranscriptAlignment,
-  updateProjectTranscriptPlacement,
   updateProjectTranscription,
 } from '../lib/project/project'
 import {
@@ -48,7 +46,6 @@ import type {
   ProjectStep,
   SlideOcrResult,
   SlideResultEdits,
-  TranscriptAlignment,
   TranscriptionResult,
   VideoTrimRange,
 } from '../types/project'
@@ -227,18 +224,6 @@ function App() {
     )
   }
 
-  const handleTranscriptAlignmentCompleted = async (alignment: TranscriptAlignment) => {
-    await updateCurrentProject((currentProject) =>
-      updateProjectTranscriptAlignment(currentProject, alignment),
-    )
-  }
-
-  const handleTranscriptPlacementChange = async (unitId: string, slideId: string) => {
-    await updateCurrentProject((currentProject) =>
-      updateProjectTranscriptPlacement(currentProject, unitId, slideId),
-    )
-  }
-
   const handleSaveSlideResultEdits = async (slideId: string, edits: SlideResultEdits) => {
     await updateCurrentProject((currentProject) =>
       updateProjectSlideResultEdits(currentProject, slideId, edits),
@@ -303,8 +288,7 @@ function App() {
         onCompleted={handleTranscriptionCompleted}
         onOcrSlideCompleted={handleOcrSlideCompleted}
         onContentSlideCompleted={handleContentSlideCompleted}
-        onTranscriptAlignmentCompleted={handleTranscriptAlignmentCompleted}
-        onTranscriptPlacementChange={handleTranscriptPlacementChange}
+        getCurrentProject={() => projectRef.current}
         onSaveSlideResultEdits={handleSaveSlideResultEdits}
         onOpenArticleReview={() => void handleProjectStep('article-review')}
         onHome={handleGoHome}

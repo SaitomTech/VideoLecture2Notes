@@ -6,7 +6,7 @@ export const OPENAI_TRANSCRIBE_MODEL = {
   apiModel: 'gpt-transcribe',
   label: 'GPT-Transcribe',
   description:
-    'OpenAIの音声認識モデルです。音声をスライド単位（1単位は最大30分）に分け、送信用に圧縮してOpenAIへ送信します。',
+    'OpenAIの音声認識モデルです。音声をスライド境界で分け、25MBを超える区間だけ追加分割します。現在と前後スライドのOCR用語をコンテキストとして添え、最大8件ずつ並列処理します。',
   accuracy: '高',
   speed: '通信環境による',
 } as const
@@ -64,7 +64,7 @@ const DEFAULT_LOCAL_TRANSCRIPTION_MODEL =
   TRANSCRIPTION_LOCAL_MODELS[0]
 
 export const DEFAULT_TRANSCRIPTION_MODEL_ID: TranscriptionModelId =
-  APPLE_SPEECH_TRANSCRIBER_MODEL.id
+  OPENAI_TRANSCRIBE_MODEL.id
 
 export const TRANSCRIPTION_MODELS: readonly TranscriptionModel[] = [
   APPLE_SPEECH_TRANSCRIBER_MODEL,
@@ -73,7 +73,7 @@ export const TRANSCRIPTION_MODELS: readonly TranscriptionModel[] = [
 ]
 
 export function getTranscriptionModel(id: string | undefined): TranscriptionModel {
-  if (id === undefined) return APPLE_SPEECH_TRANSCRIBER_MODEL
+  if (id === undefined) return OPENAI_TRANSCRIBE_MODEL
   if (id === OPENAI_TRANSCRIBE_MODEL.id) return OPENAI_TRANSCRIBE_MODEL
   if (id === APPLE_SPEECH_TRANSCRIBER_MODEL.id) return APPLE_SPEECH_TRANSCRIBER_MODEL
   return (

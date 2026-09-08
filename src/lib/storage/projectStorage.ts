@@ -146,7 +146,6 @@ export async function loadProjectForResume(projectId: string): Promise<ProjectOp
         slides: [],
         slideDetection: undefined,
         transcription: undefined,
-        transcriptAlignment: undefined,
         article: project.article ? { title: project.article.title } : undefined,
       }
       return { kind: 'ready', project: repairedProject, step: 'crop' }

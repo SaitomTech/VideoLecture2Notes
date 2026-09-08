@@ -32,7 +32,7 @@ export type ArticleModelId =
   | OpenAiArticleModel['id']
   | typeof APPLE_FOUNDATION_MODELS.id
 
-export const DEFAULT_ARTICLE_MODEL_ID: ArticleModelId = APPLE_FOUNDATION_MODELS.id
+export const DEFAULT_ARTICLE_MODEL_ID: ArticleModelId = OPENAI_LUNA_MODEL.id
 
 export const ARTICLE_MODELS: readonly ArticleModel[] = [
   APPLE_FOUNDATION_MODELS,
@@ -41,7 +41,7 @@ export const ARTICLE_MODELS: readonly ArticleModel[] = [
 ]
 
 export function getArticleModel(id: string | undefined): ArticleModel {
-  if (id === undefined) return APPLE_FOUNDATION_MODELS
+  if (id === undefined) return OPENAI_LUNA_MODEL
   if (id === OPENAI_LUNA_MODEL.id) return OPENAI_LUNA_MODEL
   if (id === APPLE_FOUNDATION_MODELS.id) return APPLE_FOUNDATION_MODELS
   const model = getTextModel(id)

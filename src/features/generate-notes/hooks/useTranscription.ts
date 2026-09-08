@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getErrorDetail, withUserFacingError } from '../../../lib/errors'
 import type { TranscriptionModelId } from '../../../lib/transcription/transcriptionModel'
 import type { MediaProject, TranscriptionResult } from '../../../types/project'
@@ -15,7 +15,12 @@ export function useTranscription(
   project: MediaProject,
   modelId: TranscriptionModelId,
   onCompleted: (result: TranscriptionResult) => void | Promise<void>,
+  getCurrentProject?: () => MediaProject | null,
 ) {
+  const projectRef = useRef(project)
+  useEffect(() => {
+    projectRef.current = project
+  }, [project])
   const hasCurrentTranscription = project.transcription?.model === modelId
   const [status, setStatus] = useState<TranscriptionStatus>(
     hasCurrentTranscription ? 'completed' : 'idle',
@@ -29,8 +34,8 @@ export function useTranscription(
   const [operationModelId, setOperationModelId] = useState<TranscriptionModelId>(modelId)
   const activeController = useRef<AbortController | null>(null)
 
-  async function transcribe(language: TranscriptionLanguage) {
-    if (activeController.current) return
+  async function transcribe(language: TranscriptionLanguage): Promise<boolean> {
+    if (activeController.current) return false
 
     const controller = new AbortController()
     activeController.current = controller
@@ -43,7 +48,7 @@ export function useTranscription(
 
     try {
       const result = await runTranscription({
-        project,
+        project: getCurrentProject?.() ?? projectRef.current,
         language,
         modelId,
         signal: controller.signal,
@@ -67,6 +72,7 @@ export function useTranscription(
       }
       setStageProgress(1)
       setStatus('completed')
+      return true
     } catch (transcriptionError) {
       if (controller.signal.aborted) {
         setStatus('cancelled')
@@ -81,6 +87,7 @@ export function useTranscription(
           ),
         )
       }
+      return false
     } finally {
       if (activeController.current === controller) activeController.current = null
     }
