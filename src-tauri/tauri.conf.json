@@ -36,6 +36,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "externalBin": [
       "binaries/ffmpeg",
@@ -61,6 +62,14 @@
     ],
     "android": {
       "debugApplicationIdSuffix": ".debug"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDc2QzAzMjZEQ0M2MDhGNUYKUldSZmoyRE1iVExBZG5zS1lQcjlWUkZaQ2oxOE9zUVdzMFlLRUh3N0kydFByWEwrQnlWdy9oY0QK",
+      "endpoints": [
+        "https://github.com/SaitomTech/VideoLecture2Notes/releases/latest/download/latest.json"
+      ]
     }
   }
 }

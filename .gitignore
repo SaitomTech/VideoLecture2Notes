@@ -19,6 +19,7 @@ dist-ssr
 *.pem
 *.p12
 *.key
+*.key.pub
 *.mobileprovision
 *.provisionprofile
 *.cer
