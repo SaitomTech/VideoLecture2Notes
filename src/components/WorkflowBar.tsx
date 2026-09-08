@@ -19,7 +19,7 @@ export function WorkflowBar({
 
   return (
     <nav
-      className="mx-auto flex h-[84px] w-full max-w-[1040px] items-center justify-center gap-3 overflow-hidden px-6 md:gap-4"
+      className="mx-auto flex h-[84px] w-full max-w-[1040px] items-center justify-start gap-0 overflow-x-auto px-4 sm:justify-center sm:gap-3 md:gap-4 md:px-4 min-[821px]:justify-start min-[1101px]:justify-center min-[1101px]:overflow-visible min-[1101px]:px-6"
       aria-label="処理ステップ"
     >
       {WORKFLOW_STEPS.map((step, index) => {
