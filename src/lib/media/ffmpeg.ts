@@ -55,6 +55,12 @@ type TrimVideoInput = {
   signal?: AbortSignal
 }
 
+type BrowserCompatibleVideoInput = {
+  path: string
+  outputPath: string
+  signal?: AbortSignal
+}
+
 function outputText(value: string | Uint8Array) {
   return typeof value === 'string' ? value : new TextDecoder().decode(value)
 }
@@ -209,6 +215,54 @@ export async function extractAudio({ path, outputPath, signal }: ExtractAudioInp
   if (output.code !== 0) {
     const detail = output.stderr.trim()
     throw new Error(detail || `音声の抽出に失敗しました (code ${output.code})`)
+  }
+
+  return outputPath
+}
+
+/** Converts a downloaded source into a WebView-compatible H.264/AAC MP4. */
+export async function transcodeVideoForBrowser({
+  path,
+  outputPath,
+  signal,
+}: BrowserCompatibleVideoInput) {
+  const output = await executeSidecar(
+    'binaries/ffmpeg',
+    [
+      '-hide_banner',
+      '-v',
+      'error',
+      '-i',
+      path,
+      '-map',
+      '0:v:0',
+      '-map',
+      '0:a:0?',
+      '-c:v',
+      'libx264',
+      '-preset',
+      'veryfast',
+      '-crf',
+      '18',
+      '-pix_fmt',
+      'yuv420p',
+      '-c:a',
+      'aac',
+      '-b:a',
+      '160k',
+      '-sn',
+      '-dn',
+      '-movflags',
+      '+faststart',
+      '-y',
+      outputPath,
+    ],
+    { signal },
+  )
+
+  if (output.code !== 0) {
+    const detail = output.stderr.trim()
+    throw new Error(detail || `動画を再生可能な形式へ変換できませんでした (code ${output.code})`)
   }
 
   return outputPath

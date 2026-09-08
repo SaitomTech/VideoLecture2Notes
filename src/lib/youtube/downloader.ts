@@ -1,6 +1,7 @@
 import { join } from '@tauri-apps/api/path'
 import { getFileSize } from '../tauri/filesystem'
 import { executeSidecar, executeSidecarStreaming } from '../tauri/sidecar'
+import { transcodeVideoForBrowser } from '../media/ffmpeg'
 import { probeVideo } from '../media/ffprobe'
 import {
   listProjectSourceAssets,
@@ -48,8 +49,11 @@ function safeSourceName(title: string, extension: VideoExtension, videoId: strin
 function formatForQuality(quality: YoutubeDownloadInput['quality']) {
   const height = quality === 'best' ? '' : `[height<=${quality.replace('p', '')}]`
   return {
-    video: `bestvideo${height}[ext=mp4]/bestvideo${height}`,
-    audio: 'bestaudio[ext=m4a]/bestaudio',
+    // WebView playback is reliable for YouTube's AVC/H.264 MP4 video, but not
+    // for VP9 packed in an MP4. Prefer AVC, but keep a transcode fallback for
+    // videos where YouTube does not expose an AVC stream.
+    video: `bestvideo${height}[ext=mp4][vcodec^=avc1]/bestvideo${height}`,
+    audio: 'bestaudio[ext=m4a][acodec^=mp4a]/bestaudio[ext=m4a]/bestaudio',
   }
 }
 
@@ -213,16 +217,32 @@ export async function downloadYoutubeVideo({
       removeProjectSourceAsset(projectId, videoName),
       removeProjectSourceAsset(projectId, audioPath.split(/[\\/]/).pop() ?? audioPath),
     ])
-    onProgress?.({ phase: 'finalizing', percent: 100 })
+    const mergedMetadata = await probeVideo(outputPath)
+    const requiresTranscode =
+      outputExtension !== 'mp4' ||
+      mergedMetadata.videoCodec !== 'h264' ||
+      mergedMetadata.audioCodec !== 'aac'
+    let finalPath = outputPath
+    let metadata = mergedMetadata
 
-    const [metadata, sizeBytes] = await Promise.all([
-      probeVideo(outputPath),
-      getFileSize(outputPath),
-    ])
+    if (requiresTranscode) {
+      finalPath = await join(sourceDirectory, 'source.compatible.mp4')
+      await transcodeVideoForBrowser({ path: outputPath, outputPath: finalPath })
+      metadata = await probeVideo(finalPath)
+      if (metadata.videoCodec !== 'h264' || metadata.audioCodec !== 'aac') {
+        throw new Error(
+          `変換後の動画形式を確認できませんでした（video=${metadata.videoCodec ?? 'unknown'}, audio=${metadata.audioCodec ?? 'unknown'}）。`,
+        )
+      }
+      await removeProjectSourceAsset(projectId, outputPath.split(/[\\/]/).pop() ?? outputPath)
+    }
+
+    const sizeBytes = await getFileSize(finalPath)
+    onProgress?.({ phase: 'finalizing', percent: 100 })
     return {
-      name: safeSourceName(info.title, outputExtension, info.videoId),
-      path: outputPath,
-      extension: outputExtension,
+      name: safeSourceName(info.title, 'mp4', info.videoId),
+      path: finalPath,
+      extension: 'mp4',
       sizeBytes,
       metadata,
       origin: {
