@@ -72,4 +72,4 @@ OpenAIを選択した処理では、選択した音声・画像・文字起こ�
 
 ## ライセンス
 
-このプロジェクトのコードはMIT Licenseです。外部ライブラリ、sidecar、AIモデル、アイコンなどにはそれぞれのライセンスが適用されます。配布物には[Third-party notices](./THIRD_PARTY_NOTICES.md)と`LICENSE`を同梱しています。DMG内ではアプリの`Contents/Resources`に入ります。
+このプロジェクトのコードはMIT Licenseです。外部ライブラリ、sidecar、AIモデル、アイコンなどにはそれぞれのライセンスが適用されます。配布物には[Third-party notices](./THIRD_PARTY_NOTICES.md)と`LICENSE`を同梱しています。DMG内ではアプリの`Contents/Resources`に入り、アプリ上部の「ライセンス」からも表示できます。
