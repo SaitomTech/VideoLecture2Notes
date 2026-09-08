@@ -9,7 +9,7 @@ type TranscriptionStatusProps = {
   chunkProgress: TranscriptionChunkProgress | null
   error: string | null
   disabled?: boolean
-  onRetry: () => void | Promise<void>
+  onRetry: () => void | Promise<unknown>
 }
 
 function getStageLabel(stage: TranscriptionStage) {

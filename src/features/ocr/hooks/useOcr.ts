@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getErrorDetail, getUserErrorMessage } from '../../../lib/errors'
 import { DEFAULT_OCR_MODEL, type OcrModelId } from '../../../lib/ocr/modelManager'
 import type { MediaProject } from '../../../types/project'
@@ -16,7 +16,12 @@ export function useOcr(
   project: MediaProject,
   onSlideCompleted: OcrSlideCompleted,
   modelId: OcrModelId = DEFAULT_OCR_MODEL.id,
+  getCurrentProject?: () => MediaProject | null,
 ) {
+  const projectRef = useRef(project)
+  useEffect(() => {
+    projectRef.current = project
+  }, [project])
   const initialCompleted = project.slides.filter(
     (slide) => slide.ocr?.inputFingerprint === ocrInputFingerprint(slide, modelId),
   ).length
@@ -33,8 +38,8 @@ export function useOcr(
   const [errorDetail, setErrorDetail] = useState<string | null>(null)
   const activeController = useRef<AbortController | null>(null)
 
-  async function recognize(force = false) {
-    if (activeController.current) return
+  async function recognize(force = false): Promise<boolean> {
+    if (activeController.current) return false
 
     const controller = new AbortController()
     activeController.current = controller
@@ -43,7 +48,7 @@ export function useOcr(
     setErrorDetail(null)
     try {
       await runOcr({
-        project,
+        project: getCurrentProject?.() ?? projectRef.current,
         signal: controller.signal,
         onStage: setStage,
         onProgress: setProgress,
@@ -53,6 +58,7 @@ export function useOcr(
       })
       setProgress((current) => ({ ...current, completed: current.total, stageProgress: 1 }))
       setStatus('completed')
+      return true
     } catch (ocrError) {
       if (controller.signal.aborted) {
         setStatus('cancelled')
@@ -70,6 +76,7 @@ export function useOcr(
         )
         setErrorDetail(detail)
       }
+      return false
     } finally {
       if (activeController.current === controller) activeController.current = null
     }

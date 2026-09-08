@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getUserErrorMessage } from '../../../lib/errors'
 import type { ArticleModelId } from '../../../lib/article/articleModel'
 import type { MediaProject } from '../../../types/project'
@@ -17,7 +17,12 @@ export function useContentProcessing(
   project: MediaProject,
   onSlideCompleted: ContentProcessingSlideCompleted,
   modelId: ArticleModelId,
+  getCurrentProject?: () => MediaProject | null,
 ) {
+  const projectRef = useRef(project)
+  useEffect(() => {
+    projectRef.current = project
+  }, [project])
   const targetSlides = project.slides.filter((slide) => slide.transcript?.raw.trim())
   const completedFromProject = targetSlides.filter((slide) =>
     hasCurrentContent(slide, modelId),
@@ -44,8 +49,8 @@ export function useContentProcessing(
     setStage('preparing-model')
   }
 
-  async function process(force = false) {
-    if (activeController.current) return
+  async function process(force = false): Promise<boolean> {
+    if (activeController.current) return false
 
     const controller = new AbortController()
     activeController.current = controller
@@ -54,7 +59,7 @@ export function useContentProcessing(
     setSkippedSlides([])
     try {
       await runContentProcessing({
-        project,
+        project: getCurrentProject?.() ?? projectRef.current,
         modelId,
         signal: controller.signal,
         onStage: setStage,
@@ -67,6 +72,7 @@ export function useContentProcessing(
       })
       setProgress((current) => ({ ...current, completed: current.total, stageProgress: 1 }))
       setStatus('completed')
+      return true
     } catch (processingError) {
       if (controller.signal.aborted) {
         setStatus('cancelled')
@@ -81,6 +87,7 @@ export function useContentProcessing(
           ),
         )
       }
+      return false
     } finally {
       if (activeController.current === controller) activeController.current = null
     }

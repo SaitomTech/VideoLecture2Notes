@@ -1,4 +1,4 @@
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Play, Square } from 'lucide-react'
 import { useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
@@ -31,10 +31,13 @@ type GenerateNotesPageProps = {
   onCompleted: (result: TranscriptionResult) => void | Promise<void>
   onOcrSlideCompleted: OcrSlideCompleted
   onContentSlideCompleted: ContentProcessingSlideCompleted
+  getCurrentProject: () => MediaProject | null
   onSaveSlideResultEdits: (slideId: string, edits: SlideResultEdits) => void | Promise<void>
   onOpenArticleReview: () => void
   onHome: () => void
 }
+
+type BatchStage = 'idle' | 'ocr' | 'transcription' | 'content'
 
 export function GenerateNotesPage({
   project,
@@ -42,6 +45,7 @@ export function GenerateNotesPage({
   onCompleted,
   onOcrSlideCompleted,
   onContentSlideCompleted,
+  getCurrentProject,
   onSaveSlideResultEdits,
   onOpenArticleReview,
   onHome,
@@ -66,13 +70,49 @@ export function GenerateNotesPage({
     () => getArticleModel(storedTextModelId).id,
   )
   const textModel = getArticleModel(textModelId)
-  const transcription = useTranscription(project, transcriptionModelId, onCompleted)
-  const ocr = useOcr(project, onOcrSlideCompleted, ocrModelId)
-  const processing = useContentProcessing(project, onContentSlideCompleted, textModelId)
+  const transcription = useTranscription(
+    project,
+    transcriptionModelId,
+    onCompleted,
+    getCurrentProject,
+  )
+  const ocr = useOcr(project, onOcrSlideCompleted, ocrModelId, getCurrentProject)
+  const processing = useContentProcessing(
+    project,
+    onContentSlideCompleted,
+    textModelId,
+    getCurrentProject,
+  )
+  const [batchStage, setBatchStage] = useState<BatchStage>('idle')
   const handleTranscribe = () => transcription.transcribe(language)
+  const isBatchRunning = batchStage !== 'idle'
   const isOcrRunning = ocr.status === 'running'
   const isContentProcessing = processing.status === 'running'
-  const isProcessing = transcription.status === 'running' || isOcrRunning || isContentProcessing
+  const isProcessing =
+    isBatchRunning || transcription.status === 'running' || isOcrRunning || isContentProcessing
+
+  const handleRunAll = async () => {
+    if (isProcessing) return
+
+    setBatchStage('ocr')
+    try {
+      if (!(await ocr.recognize())) return
+
+      setBatchStage('transcription')
+      if (!(await transcription.transcribe(language))) return
+
+      setBatchStage('content')
+      await processing.process()
+    } finally {
+      setBatchStage('idle')
+    }
+  }
+
+  const handleCancelBatch = () => {
+    if (batchStage === 'ocr') ocr.cancel()
+    if (batchStage === 'transcription') transcription.cancel()
+    if (batchStage === 'content') processing.cancel()
+  }
   const handleTextModelChange = (nextModelId: ArticleModelId) => {
     processing.reset()
     setTextModelId(nextModelId)
@@ -122,17 +162,39 @@ export function GenerateNotesPage({
 
           <div className='p-5 md:p-7'>
             <section aria-labelledby='analysis-settings-heading'>
-              <div>
-                <h2
-                  id='analysis-settings-heading'
-                  className='text-[21px] font-bold tracking-[-0.05em]'
+              <div className='flex flex-wrap items-start justify-between gap-4'>
+                <div>
+                  <h2
+                    id='analysis-settings-heading'
+                    className='text-[21px] font-bold tracking-[-0.05em]'
+                  >
+                    1. 解析の設定・実行
+                  </h2>
+                  <p className='mt-1 text-xs text-[#71807b]'>
+                    3つの処理に必要な設定を確認して、順番に実行します。解析結果は下の「2.
+                    解析結果の確認」で確認できます。
+                  </p>
+                </div>
+                <button
+                  className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-[9px] px-4 py-3 text-xs font-semibold shadow-[0_7px_16px_rgba(49,95,117,0.2)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#315f75]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${isBatchRunning ? 'border border-[#d28d7a] bg-[#fff5f1] text-[#9d422d] shadow-none hover:bg-[#fbe8e2]' : 'bg-[#315f75] text-[#f4fbff] hover:bg-[#264b5d]'}`}
+                  type='button'
+                  onClick={() => {
+                    if (isBatchRunning) {
+                      handleCancelBatch()
+                      return
+                    }
+                    void handleRunAll()
+                  }}
+                  disabled={!isBatchRunning && (isProcessing || project.slides.length === 0)}
+                  aria-label={isBatchRunning ? '一括実行を停止' : undefined}
                 >
-                  1. 解析の設定・実行
-                </h2>
-                <p className='mt-1 text-xs text-[#71807b]'>
-                  3つの処理に必要な設定を確認して、順番に実行します。解析結果は下の「2.
-                  解析結果の確認」で確認できます。
-                </p>
+                  {isBatchRunning ? (
+                    <Square size={13} fill='currentColor' />
+                  ) : (
+                    <Play size={13} fill='currentColor' />
+                  )}
+                  {isBatchRunning ? '停止' : '一括実行'}
+                </button>
               </div>
 
               <div className='mt-6 space-y-10'>
@@ -143,16 +205,14 @@ export function GenerateNotesPage({
                     modelId={ocrModelId}
                     onModelChange={setOcrModelId}
                     disabled={
-                      transcription.status === 'running' ||
-                      isContentProcessing
+                      isBatchRunning || transcription.status === 'running' || isContentProcessing
                     }
                   />
                   <div className='mt-6'>
                     <OcrStatus
                       ocr={ocr}
                       disabled={
-                        transcription.status === 'running' ||
-                        isContentProcessing
+                        isBatchRunning || transcription.status === 'running' || isContentProcessing
                       }
                     />
                   </div>
@@ -164,7 +224,7 @@ export function GenerateNotesPage({
                     modelId={transcriptionModelId}
                     durationMs={source.metadata.durationMs}
                     status={transcription.status}
-                    disabled={isOcrRunning || isContentProcessing}
+                    disabled={isBatchRunning || isOcrRunning || isContentProcessing}
                     onLanguageChange={setLanguage}
                     onModelChange={setTranscriptionModelId}
                     onTranscribe={handleTranscribe}
@@ -177,7 +237,7 @@ export function GenerateNotesPage({
                       stageProgress={transcription.stageProgress}
                       chunkProgress={transcription.chunkProgress}
                       error={transcription.error}
-                      disabled={isOcrRunning || isContentProcessing}
+                      disabled={isBatchRunning || isOcrRunning || isContentProcessing}
                       onRetry={handleTranscribe}
                     />
                     <TranscriptionKeywordsPanel context={project.transcription?.keywordContext} />
@@ -191,14 +251,14 @@ export function GenerateNotesPage({
                     model={textModel}
                     modelId={textModelId}
                     onModelChange={handleTextModelChange}
-                    disabled={
-                      transcription.status === 'running' || isOcrRunning
-                    }
+                    disabled={isBatchRunning || transcription.status === 'running' || isOcrRunning}
                   />
                   <div className='mt-6'>
                     <ContentProcessingStatus
                       processing={processing}
-                      disabled={transcription.status === 'running' || isOcrRunning}
+                      disabled={
+                        isBatchRunning || transcription.status === 'running' || isOcrRunning
+                      }
                     />
                   </div>
                 </div>

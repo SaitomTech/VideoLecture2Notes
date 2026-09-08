@@ -23,7 +23,7 @@ type TranscriptionSettingsProps = {
   disabled?: boolean
   onLanguageChange: (language: TranscriptionLanguage) => void
   onModelChange: (modelId: TranscriptionModelId) => void
-  onTranscribe: () => void | Promise<void>
+  onTranscribe: () => void | Promise<unknown>
   onCancel: () => void
 }
 

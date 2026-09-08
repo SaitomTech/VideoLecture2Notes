@@ -8,7 +8,7 @@ type ProcessingStatusRowProps = {
   progressAriaLabel: string
   error?: string | null
   errorDetail?: string | null
-  onRetry?: () => void | Promise<void>
+  onRetry?: () => void | Promise<unknown>
   retryDisabled?: boolean
 }
 
