@@ -1,4 +1,4 @@
-import { Check, Download, Link, LoaderCircle, Search } from 'lucide-react'
+import { Download, Link, LoaderCircle, Search } from 'lucide-react'
 import { formatDuration } from '../utils'
 import type { YoutubeDownloadProgress, YoutubeVideoInfo } from '../../../lib/youtube/types'
 import type { YoutubeImportQuality } from '../../../types/project'
@@ -14,12 +14,11 @@ type YoutubeImportPanelProps = {
   isImportComplete: boolean
   isContinuing: boolean
   progress: YoutubeDownloadProgress | null
-  externalError: string | null
+  importError: string | null
   onUrlChange: (value: string) => void
   onResolve: () => void | Promise<void>
   onQualityChange: (quality: YoutubeImportQuality) => void
   onImport: () => void | Promise<void>
-  onContinue: () => void | Promise<void>
   onCancel: () => void
 }
 
@@ -48,49 +47,26 @@ export function YoutubeImportPanel({
   isImportComplete,
   isContinuing,
   progress,
-  externalError,
+  importError,
   onUrlChange,
   onResolve,
   onQualityChange,
   onImport,
-  onContinue,
   onCancel,
 }: YoutubeImportPanelProps) {
-  const canImport = Boolean(info && !isImporting)
+  const isBusy = isImporting || isContinuing
+  const canImport = Boolean(info && !isBusy)
+  const displayedError = error || importError
 
   return (
-    <section
-      className="rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] p-5 shadow-[0_18px_52px_rgba(22,54,42,0.05)] sm:p-6"
-      aria-labelledby="youtube-import-title"
-    >
-      <div className="flex items-start gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] bg-[#e2eee8] text-[#1d6b50]">
-          <Link size={19} strokeWidth={1.7} aria-hidden="true" />
-        </span>
-        <div>
-          <h2
-            id="youtube-import-title"
-            className="text-[17px] font-semibold tracking-[-0.04em] text-[#18211f]"
-          >
-            YouTube URLから読み込む
-          </h2>
-          <p className="mt-1 text-xs leading-5 text-[#71807b]">
-            公開済みの単一動画をMacに保存して、通常の動画として解析します。
-          </p>
-        </div>
-      </div>
-
+    <div>
       <form
-        className="mt-5"
         onSubmit={(event) => {
           event.preventDefault()
           void onResolve()
         }}
       >
-        <label className="text-xs font-semibold text-[#53615b]" htmlFor="youtube-url">
-          YouTube URL
-        </label>
-        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <input
             id="youtube-url"
             className="h-11 min-w-0 flex-1 rounded-[9px] border border-[#b7cbc0] bg-white px-3 text-sm text-[#18211f] outline-none transition placeholder:text-[#9aa6a1] focus:border-[#1d6b50] focus:ring-2 focus:ring-[#1d6b50]/15 disabled:cursor-not-allowed disabled:bg-[#eef3ef]"
@@ -100,20 +76,21 @@ export function YoutubeImportPanel({
             placeholder="https://www.youtube.com/watch?v=…"
             autoComplete="url"
             spellCheck={false}
-            disabled={isImporting}
+            disabled={isBusy}
+            aria-label="YouTube URL"
             aria-describedby="youtube-url-help"
           />
           <button
             className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-[9px] border border-[#b7cbc0] bg-[#eef3ef] px-4 text-xs font-semibold text-[#1d6b50] transition hover:border-[#1d6b50] hover:bg-[#e2eee8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/25 disabled:cursor-not-allowed disabled:opacity-50"
             type="submit"
-            disabled={isImporting || status === 'resolving' || !url.trim()}
+            disabled={isBusy || status === 'resolving' || !url.trim()}
           >
             {status === 'resolving' ? (
               <LoaderCircle className="animate-spin" size={15} />
             ) : (
               <Search size={15} />
             )}
-            {status === 'resolving' ? '解析中…' : '動画を確認'}
+            {status === 'resolving' ? '取得中…' : '動画情報を取得'}
           </button>
         </div>
         <p id="youtube-url-help" className="mt-2 text-[10px] leading-5 text-[#9aa6a1]">
@@ -122,7 +99,7 @@ export function YoutubeImportPanel({
       </form>
 
       {info && (
-        <div className="mt-5 rounded-[12px] border border-[#d8e1dc] bg-[#f4f7f4] p-4">
+        <div className="mt-5">
           <div className="flex gap-3">
             {info.thumbnailUrl ? (
               <img
@@ -149,7 +126,7 @@ export function YoutubeImportPanel({
             </div>
           </div>
 
-          <div className="mt-4 border-t border-[#d8e1dc] pt-4">
+          <div className="mt-4">
             <label className="block text-xs font-semibold text-[#53615b]" htmlFor="youtube-quality">
               取得画質
               <select
@@ -157,7 +134,7 @@ export function YoutubeImportPanel({
                 className="mt-1.5 block h-10 w-full rounded-[8px] border border-[#b7cbc0] bg-white px-2.5 text-xs font-normal text-[#18211f] outline-none focus:border-[#1d6b50] focus:ring-2 focus:ring-[#1d6b50]/15 sm:w-[180px]"
                 value={quality}
                 onChange={(event) => onQualityChange(event.target.value as YoutubeImportQuality)}
-                disabled={isImporting}
+                disabled={isBusy}
               >
                 <option value="720p">720p（推奨）</option>
                 <option value="1080p">1080p</option>
@@ -167,7 +144,7 @@ export function YoutubeImportPanel({
           </div>
 
           {isImporting ? (
-            <div className="mt-4 border-t border-[#d8e1dc] pt-4" aria-live="polite">
+            <div className="mt-4" aria-live="polite">
               <div className="flex items-center justify-between gap-3 text-xs font-semibold text-[#1d6b50]">
                 <span className="inline-flex items-center gap-2">
                   <LoaderCircle className="animate-spin" size={14} />
@@ -181,7 +158,7 @@ export function YoutubeImportPanel({
               </div>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#d8e1dc]">
                 {isPostProcessing(progress) ? (
-                  <div className="h-full w-1/3 rounded-full bg-[#1d6b50] animate-pulse" />
+                  <div className="h-full w-1/3 animate-pulse rounded-full bg-[#1d6b50]" />
                 ) : (
                   <div
                     className="h-full rounded-full bg-[#1d6b50] transition-[width] duration-300"
@@ -198,22 +175,9 @@ export function YoutubeImportPanel({
               </button>
             </div>
           ) : isImportComplete ? (
-            <div className="mt-4 border-t border-[#d8e1dc] pt-4">
-              <p className="text-xs font-semibold text-[#1d6b50]">動画の保存が完了しました。</p>
-              <div className="mt-3 flex justify-end">
-                <button
-                  className="inline-flex items-center gap-[18px] rounded-[9px] bg-[#1d6b50] px-5 py-3.5 text-xs font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] transition hover:-translate-y-0.5 hover:bg-[#174d3c] hover:shadow-[0_9px_20px_rgba(29,107,80,0.24)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-35 disabled:shadow-none"
-                  type="button"
-                  onClick={() => void onContinue()}
-                  disabled={isContinuing}
-                >
-                  <span>{isContinuing ? '準備中…' : 'スライド領域を設定'}</span>
-                  <span className="text-[17px] font-normal leading-none" aria-hidden="true">
-                    →
-                  </span>
-                </button>
-              </div>
-            </div>
+            <p className="mt-4 text-xs font-semibold text-[#1d6b50]">
+              ダウンロードが完了しました。
+            </p>
           ) : (
             <button
               className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-[9px] bg-[#1d6b50] px-4 py-3 text-xs font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] transition hover:-translate-y-0.5 hover:bg-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-35 disabled:shadow-none"
@@ -222,22 +186,13 @@ export function YoutubeImportPanel({
               disabled={!canImport}
             >
               <Download size={15} />
-              動画を取得してスライド領域を設定
+              この動画をダウンロード
             </button>
           )}
         </div>
       )}
 
-      {(error || externalError) && (
-        <p className="mt-3 text-xs leading-5 text-[#b6533a]">{error || externalError}</p>
-      )}
-
-      {info && !isImporting && !isImportComplete && !error && !externalError && (
-        <p className="mt-3 inline-flex items-center gap-1.5 text-[10px] text-[#1d6b50]">
-          <Check size={13} />
-          取得後は動画をプロジェクト内に保存します。
-        </p>
-      )}
-    </section>
+      {displayedError && <p className="mt-3 text-xs leading-5 text-[#b6533a]">{displayedError}</p>}
+    </div>
   )
 }

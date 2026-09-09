@@ -25,9 +25,8 @@ export function useYoutubeImporter() {
 
     try {
       const parsed = parseYoutubeUrl(url)
-      setUrl(parsed.canonicalUrl)
       setStatus('resolving')
-      const nextInfo = await getYoutubeVideoInfo(parsed.canonicalUrl)
+      const nextInfo = await getYoutubeVideoInfo(parsed.originalUrl)
       setInfo(nextInfo)
       setStatus('ready')
     } catch (resolveError) {

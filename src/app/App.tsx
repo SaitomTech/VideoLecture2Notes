@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArticleReviewPage } from '../features/article/ArticleReviewPage'
 import { CropPage } from '../features/crop/CropPage'
 import { ExportPage } from '../features/export/ExportPage'
@@ -88,6 +88,10 @@ function App() {
   const [project, setProject] = useState<MediaProject | null>(null)
   const projectRef = useRef<MediaProject | null>(null)
 
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [step])
+
   const markStepReached = (nextStep: WorkflowStep) => {
     setMaxReachedStep((currentStep) =>
       getWorkflowStepIndex(nextStep) > getWorkflowStepIndex(currentStep) ? nextStep : currentStep,
@@ -142,6 +146,7 @@ function App() {
       if (!video.metadata) throw new Error('取得した動画のメタデータがありません')
 
       await persistProject(createMediaProject(video, video.metadata, projectId))
+      return video
     } catch (error) {
       await removeProjectSourceAssetDirectory(projectId).catch(() => undefined)
       throw error

@@ -1,6 +1,7 @@
 const YOUTUBE_VIDEO_ID_PATTERN = /^[A-Za-z0-9_-]{11}$/
 
 export type ParsedYoutubeUrl = {
+  originalUrl: string
   videoId: string
   canonicalUrl: string
 }
@@ -19,9 +20,10 @@ function invalidUrl() {
 }
 
 export function parseYoutubeUrl(value: string): ParsedYoutubeUrl {
+  const originalUrl = normalizeInput(value)
   let url: URL
   try {
-    url = new URL(normalizeInput(value))
+    url = new URL(originalUrl)
   } catch {
     throw invalidUrl()
   }
@@ -47,6 +49,7 @@ export function parseYoutubeUrl(value: string): ParsedYoutubeUrl {
   if (!videoId || !YOUTUBE_VIDEO_ID_PATTERN.test(videoId)) throw invalidUrl()
 
   return {
+    originalUrl,
     videoId,
     canonicalUrl: `https://www.youtube.com/watch?v=${videoId}`,
   }

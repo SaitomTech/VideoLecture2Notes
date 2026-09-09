@@ -1,6 +1,6 @@
 import type { VideoExtension } from './media'
 
-export const PROJECT_VERSION = 7
+export const PROJECT_VERSION = 8
 
 export type ProjectStep = 'crop' | 'detect-slides' | 'generate-notes' | 'article-review' | 'export'
 
@@ -29,6 +29,7 @@ export type MediaSourceOrigin =
     }
   | {
       kind: 'youtube'
+      originalUrl: string
       videoId: string
       canonicalUrl: string
       pageTitle?: string

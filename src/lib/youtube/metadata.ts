@@ -76,6 +76,7 @@ export async function getYoutubeVideoInfo(value: string): Promise<YoutubeVideoIn
         : ''
 
   return {
+    originalUrl: parsedUrl.originalUrl,
     videoId: parsedUrl.videoId,
     canonicalUrl: parsedUrl.canonicalUrl,
     title,

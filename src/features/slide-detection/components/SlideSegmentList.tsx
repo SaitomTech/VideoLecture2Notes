@@ -22,10 +22,23 @@ export function SlideSegmentList({
   onRemoveBoundary,
 }: SlideSegmentListProps) {
   const slideRefs = useRef<Array<HTMLDivElement | null>>([])
+  const listContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!followPlayback || activeSlideIndex < 0) return
-    slideRefs.current[activeSlideIndex]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    const container = listContainerRef.current
+    const slide = slideRefs.current[activeSlideIndex]
+    if (!container || !slide) return
+
+    const containerRect = container.getBoundingClientRect()
+    const slideRect = slide.getBoundingClientRect()
+    const topDelta = slideRect.top - containerRect.top
+    const bottomDelta = slideRect.bottom - containerRect.bottom
+    const scrollDelta = topDelta < 0 ? topDelta : bottomDelta > 0 ? bottomDelta : 0
+
+    if (scrollDelta !== 0) {
+      container.scrollTo({ top: container.scrollTop + scrollDelta, behavior: 'smooth' })
+    }
   }, [activeSlideIndex, followPlayback])
 
   return (
@@ -36,7 +49,10 @@ export function SlideSegmentList({
         </p>
       )}
 
-      <div className="max-h-[600px] overflow-y-auto overscroll-contain pr-1 lg:max-h-[min(720px,calc(100svh-260px))]">
+      <div
+        ref={listContainerRef}
+        className="max-h-[600px] overflow-y-auto overscroll-contain pr-1 lg:max-h-[min(720px,calc(100svh-260px))]"
+      >
         <div className="space-y-3">
           {slides.map((slide, index) => {
             const boundary = index > 0 ? boundaries[index - 1] : undefined

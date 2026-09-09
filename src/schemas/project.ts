@@ -17,6 +17,7 @@ const MediaSourceOriginSchema = z.discriminatedUnion('kind', [
   }),
   z.object({
     kind: z.literal('youtube'),
+    originalUrl: z.url(),
     videoId: z.string().regex(/^[A-Za-z0-9_-]{11}$/),
     canonicalUrl: z.url(),
     pageTitle: z.string().min(1).optional(),

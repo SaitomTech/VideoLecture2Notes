@@ -1,6 +1,7 @@
 import type { YoutubeImportQuality } from '../../types/project'
 
 export type YoutubeVideoInfo = {
+  originalUrl: string
   videoId: string
   canonicalUrl: string
   title: string

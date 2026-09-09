@@ -198,7 +198,7 @@ export function CropPage({
         disabled={isApplying || isDetecting}
       />
 
-      <section className="mx-auto flex w-[calc(100%-48px)] max-w-[720px] flex-1 flex-col pb-8 md:w-[calc(100%-11.6vw)]">
+      <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-8 md:w-[calc(100%-11.6vw)]">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
@@ -243,7 +243,7 @@ export function CropPage({
             </button>
           </div>
 
-          <div className="p-4 md:p-5">
+          <div className="mx-auto w-full max-w-[720px] p-4 md:p-5">
             <div
               className="relative overflow-hidden rounded-[10px]"
               style={{ aspectRatio: `${metadata.width} / ${metadata.height}` }}

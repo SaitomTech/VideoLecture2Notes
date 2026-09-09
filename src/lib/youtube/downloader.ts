@@ -255,6 +255,7 @@ export async function downloadYoutubeVideo({
       metadata,
       origin: {
         kind: 'youtube',
+        originalUrl: info.originalUrl,
         videoId: info.videoId,
         canonicalUrl: info.canonicalUrl,
         pageTitle: info.title,
