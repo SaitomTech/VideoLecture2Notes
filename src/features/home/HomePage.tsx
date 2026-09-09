@@ -29,9 +29,12 @@ type HomePageProps = {
   onDeleteProject: (projectId: string) => Promise<void>
 }
 
+type InvalidProjectEntry = Extract<ProjectListEntry, { kind: 'invalid' }>
+
 type DeleteRequest =
   | { kind: 'single'; projects: [ProjectSummary] }
   | { kind: 'bulk'; projects: ProjectSummary[] }
+  | { kind: 'invalid'; entry: InvalidProjectEntry }
 
 const RECENT_PROJECT_LIMIT = 12
 
@@ -218,7 +221,7 @@ function DeleteProjectDialog({
   onCancel: () => void
   onConfirm: () => void
 }) {
-  const deleteTargets = request.projects
+  const deleteTargets = request.kind === 'invalid' ? [] : request.projects
 
   return (
     <dialog
@@ -245,7 +248,9 @@ function DeleteProjectDialog({
               >
                 {request.kind === 'bulk'
                   ? `${deleteTargets.length}件のプロジェクトを完全に削除しますか？`
-                  : 'プロジェクトを完全に削除しますか？'}
+                  : request.kind === 'invalid'
+                    ? '読み込めないプロジェクトを削除しますか？'
+                    : 'プロジェクトを完全に削除しますか？'}
               </h2>
               <p className="mt-1 text-xs font-semibold text-[#a4573e]">
                 この操作は元に戻せません。
@@ -266,7 +271,9 @@ function DeleteProjectDialog({
           <p className="truncate text-sm font-semibold text-[#18211f]">
             {request.kind === 'bulk'
               ? `${deleteTargets.length}件のプロジェクト`
-              : deleteTargets[0]?.title}
+              : request.kind === 'invalid'
+                ? '読み込めないプロジェクト'
+                : deleteTargets[0]?.title}
           </p>
           <p className="mt-1 truncate font-mono text-[10px] text-[#71807b]">
             {request.kind === 'bulk'
@@ -275,13 +282,17 @@ function DeleteProjectDialog({
                   .map((project) => project.title)
                   .join('、') +
                 (deleteTargets.length > 3 ? ` ほか${deleteTargets.length - 3}件` : '')
-              : deleteTargets[0]?.sourceName}
+              : request.kind === 'invalid'
+                ? `ID: ${request.entry.id} · ${request.entry.error}`
+                : deleteTargets[0]?.sourceName}
           </p>
         </div>
         <p id="delete-project-description" className="mt-4 text-xs leading-6 text-[#53615b]">
           {request.kind === 'bulk'
             ? '選択したプロジェクトのJSON、取得した動画コピー、Slide画像、音声キャッシュ、解析結果を削除します。'
-            : '保存済みのJSON、取得した動画コピー、Slide画像、音声キャッシュ、解析結果を削除します。'}
+            : request.kind === 'invalid'
+              ? '読み込めないプロジェクトの保存データと関連ファイルを削除します。'
+              : '保存済みのJSON、取得した動画コピー、Slide画像、音声キャッシュ、解析結果を削除します。'}
           元のローカル動画とモデルは削除されません。
         </p>
         <div className="mt-6 flex justify-end gap-2">
@@ -313,7 +324,6 @@ function DeleteProjectDialog({
 }
 
 type ProjectEntry = Extract<ProjectListEntry, { kind: 'project' }>
-type InvalidProjectEntry = Extract<ProjectListEntry, { kind: 'invalid' }>
 
 function ProjectSearchTools({
   searchQuery,
@@ -415,6 +425,7 @@ function ProjectListPanel({
   onOpen,
   onRelink,
   onDelete,
+  onDeleteInvalid,
 }: {
   projectEntries: ProjectEntry[]
   invalidEntries: InvalidProjectEntry[]
@@ -434,6 +445,7 @@ function ProjectListPanel({
   onOpen: (projectId: string) => void
   onRelink: (projectId: string) => void
   onDelete: (summary: ProjectSummary) => void
+  onDeleteInvalid: (entry: InvalidProjectEntry) => void
 }) {
   return (
     <div className="mt-10 overflow-hidden rounded-[14px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.05)]">
@@ -491,14 +503,28 @@ function ProjectListPanel({
       ))}
       {invalidEntries.map((entry) => (
         <div
-          className="flex items-start gap-3 border-b border-[#d8e1dc] px-4 py-4 text-xs text-[#a4573e] last:border-b-0 sm:px-5"
+          className="flex items-start justify-between gap-3 border-b border-[#d8e1dc] px-4 py-4 text-xs text-[#a4573e] last:border-b-0 sm:px-5"
           key={entry.id}
         >
-          <AlertTriangle className="mt-0.5 shrink-0" size={15} />
-          <div>
-            <p className="font-semibold">読み込めないプロジェクトがあります</p>
-            <p className="mt-1 text-[#71807b]">{entry.error}</p>
+          <div className="flex min-w-0 items-start gap-3">
+            <AlertTriangle className="mt-0.5 shrink-0" size={15} />
+            <div className="min-w-0">
+              <p className="font-semibold">読み込めないプロジェクトがあります</p>
+              <p className="mt-1 truncate text-[#71807b]" title={entry.error}>
+                {entry.error}
+              </p>
+            </div>
           </div>
+          <button
+            className="inline-flex shrink-0 items-center justify-center rounded-[8px] px-2.5 py-2 text-xs text-[#9aa6a1] transition hover:bg-[#f8ebe7] hover:text-[#a4573e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b6533a]/25 disabled:cursor-not-allowed disabled:opacity-50"
+            type="button"
+            onClick={() => onDeleteInvalid(entry)}
+            disabled={busyAction === entry.id || busyAction === 'delete'}
+            aria-label="読み込めないプロジェクトを削除"
+            title="プロジェクトを削除"
+          >
+            <Trash2 size={14} />
+          </button>
         </div>
       ))}
       {hasHiddenProjects && !normalizedSearchQuery && (
@@ -542,6 +568,7 @@ function HomeContent({
   onOpen,
   onRelink,
   onDelete,
+  onDeleteInvalid,
 }: {
   isLoading: boolean
   projectEntries: ProjectEntry[]
@@ -568,6 +595,7 @@ function HomeContent({
   onOpen: (projectId: string) => void
   onRelink: (projectId: string) => void
   onDelete: (summary: ProjectSummary) => void
+  onDeleteInvalid: (entry: InvalidProjectEntry) => void
 }) {
   if (isLoading) {
     return (
@@ -660,6 +688,7 @@ function HomeContent({
         onOpen={onOpen}
         onRelink={onRelink}
         onDelete={onDelete}
+        onDeleteInvalid={onDeleteInvalid}
       />
     </>
   )
@@ -740,6 +769,11 @@ export function HomePage({
     setPendingDelete({ kind: 'single', projects: [summary] })
   }
 
+  const handleDeleteInvalid = (entry: InvalidProjectEntry) => {
+    setError(null)
+    setPendingDelete({ kind: 'invalid', entry })
+  }
+
   const handleSearchChange = (value: string) => {
     setSearchQuery(value)
     setShowAllProjects(false)
@@ -776,18 +810,23 @@ export function HomePage({
   const handleConfirmDelete = async () => {
     if (!pendingDelete) return
 
-    const projects = pendingDelete.projects
+    const projectIds =
+      pendingDelete.kind === 'invalid'
+        ? [pendingDelete.entry.id]
+        : pendingDelete.projects.map((project) => project.id)
     setBusyAction('delete')
     setError(null)
     try {
       const results = await Promise.allSettled(
-        projects.map((project) => onDeleteProject(project.id)),
+        projectIds.map((projectId) => onDeleteProject(projectId)),
       )
       const failures = results.filter((result) => result.status === 'rejected')
-      const deletedProjects = projects.filter((_, index) => results[index]?.status === 'fulfilled')
+      const deletedProjectIds = projectIds.filter(
+        (_, index) => results[index]?.status === 'fulfilled',
+      )
       setSelectedProjectIds((current) => {
         const next = new Set(current)
-        for (const project of deletedProjects) next.delete(project.id)
+        for (const projectId of deletedProjectIds) next.delete(projectId)
         return next
       })
       setPendingDelete(null)
@@ -880,6 +919,7 @@ export function HomePage({
           onOpen={(projectId) => void handleOpen(projectId)}
           onRelink={(projectId) => void handleRelink(projectId)}
           onDelete={handleDelete}
+          onDeleteInvalid={handleDeleteInvalid}
         />
       </section>
       {pendingDelete && (
