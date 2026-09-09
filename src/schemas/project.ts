@@ -8,7 +8,9 @@ const MediaMetadataSchema = z.object({
   height: z.number().int().positive(),
   fps: z.number().finite().positive().optional(),
   videoCodec: z.string().min(1).optional(),
+  videoPixelFormat: z.string().min(1).optional(),
   audioCodec: z.string().min(1).optional(),
+  formatName: z.string().min(1).optional(),
 })
 
 const MediaSourceOriginSchema = z.discriminatedUnion('kind', [

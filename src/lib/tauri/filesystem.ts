@@ -67,8 +67,16 @@ export async function renameAppLocalPath(oldPath: string, newPath: string) {
   })
 }
 
+export async function renameAbsolutePath(oldPath: string, newPath: string) {
+  await rename(oldPath, newPath)
+}
+
 export async function removeAppLocalPath(path: string) {
   await remove(path, { baseDir: BaseDirectory.AppLocalData, recursive: true })
+}
+
+export async function removeAbsolutePath(path: string) {
+  await remove(path, { recursive: true })
 }
 
 export async function fileExists(path: string) {

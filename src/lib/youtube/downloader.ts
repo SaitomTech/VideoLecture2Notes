@@ -1,36 +1,54 @@
 import { join } from '@tauri-apps/api/path'
-import { getFileSize } from '../tauri/filesystem'
-import { executeSidecar, executeSidecarStreaming } from '../tauri/sidecar'
-import { transcodeVideoForBrowser } from '../media/ffmpeg'
+import { getFileSize, removeAbsolutePath, renameAbsolutePath } from '../tauri/filesystem'
+import { executeSidecarStreaming, getBundledFfmpegPath } from '../tauri/sidecar'
+import { convertVideoForWebView, getWebViewFormatAdjustment } from '../media/ffmpeg'
 import { probeVideo } from '../media/ffprobe'
-import {
-  listProjectSourceAssets,
-  prepareProjectSourceAssetDirectory,
-  removeProjectSourceAsset,
-  removeProjectSourceAssetDirectory,
-} from '../storage/projectAssets'
+import { prepareProjectSourceAssetDirectory } from '../storage/projectAssets'
 import type { SelectedVideo } from '../../features/import/types'
 import { getExtension, isSupportedVideo } from '../../features/import/utils'
-import type { VideoExtension } from '../../types/media'
+import type { VideoExtension, VideoFormatAdjustment } from '../../types/media'
 import type { YoutubeDownloadInput, YoutubeDownloadProgress } from './types'
 
 export const YT_DLP_VERSION = '2026.08.19'
 
+const PROGRESS_PREFIX = 'VLN_PROGRESS:'
+const RESULT_PREFIX = 'VLN_RESULT:'
+
 function parseProgress(chunk: string): YoutubeDownloadProgress | null {
-  const line = chunk.split(/\r?\n/).find((candidate) => candidate.includes('[download]'))
+  const line = chunk
+    .split(/\r?\n/)
+    .map((value) => value.trim())
+    .find((value) => value.startsWith(PROGRESS_PREFIX))
   if (!line) return null
 
-  const percentMatch = line.match(/\[download\]\s+([\d.]+)%/)
-  const percent = percentMatch ? Number(percentMatch[1]) : undefined
-  const speedMatch = line.match(/\bat\s+(.+?)(?:\s+ETA\s+|$)/)
-  const etaMatch = line.match(/\bETA\s+(.+)$/)
-
+  const [percentValue, speed, eta] = line.slice(PROGRESS_PREFIX.length).split('|')
+  const percent = Number(percentValue)
   return {
-    phase: 'downloading',
-    ...(percent !== undefined && Number.isFinite(percent) ? { percent } : {}),
-    ...(speedMatch?.[1] ? { speed: speedMatch[1].trim() } : {}),
-    ...(etaMatch?.[1] ? { eta: etaMatch[1].trim() } : {}),
+    stage: 'downloading',
+    ...(Number.isFinite(percent) ? { percent } : {}),
+    ...(speed && speed !== 'NA' ? { speed } : {}),
+    ...(eta && eta !== 'NA' ? { eta } : {}),
   }
+}
+
+function printedOutputPath(stdout: string, sourceDirectory: string) {
+  const line = stdout
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .reverse()
+    .find((line) => line.startsWith(RESULT_PREFIX))
+  if (!line) return undefined
+
+  let outputPath: unknown
+  try {
+    outputPath = JSON.parse(line.slice(RESULT_PREFIX.length))
+  } catch {
+    return undefined
+  }
+
+  return typeof outputPath === 'string' && outputPath.startsWith(`${sourceDirectory}/source.`)
+    ? outputPath
+    : undefined
 }
 
 function safeSourceName(title: string, extension: VideoExtension, videoId: string) {
@@ -48,90 +66,20 @@ function safeSourceName(title: string, extension: VideoExtension, videoId: strin
 
 function formatForQuality(quality: YoutubeDownloadInput['quality']) {
   const height = quality === 'best' ? '' : `[height<=${quality.replace('p', '')}]`
-  return {
-    // WebView playback is reliable for YouTube's AVC/H.264 MP4 video, but not
-    // for VP9 packed in an MP4. Prefer AVC, but keep a transcode fallback for
-    // videos where YouTube does not expose an AVC stream.
-    video: `bestvideo${height}[ext=mp4][vcodec^=avc1]/bestvideo${height}`,
-    audio: 'bestaudio[ext=m4a][acodec^=mp4a]/bestaudio[ext=m4a]/bestaudio',
-  }
+
+  return [
+    `bv[ext=mp4][vcodec^=avc1]${height}+ba[ext=m4a][acodec^=mp4a]`,
+    `bv[ext=mp4][vcodec^=avc1]${height}+ba[ext=m4a]`,
+    `b[ext=mp4][vcodec^=avc1][acodec^=mp4a]${height}`,
+    `bv[ext=mp4][vcodec^=avc1]${height}+ba`,
+    `b[ext=mp4][vcodec^=avc1]${height}`,
+    `bv${height}+ba`,
+    `b${height}`,
+  ].join('/')
 }
 
-function printedOutputPath(stdout: string, sourceDirectory: string, prefix: string) {
-  return stdout
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .reverse()
-    .find((line) => line.startsWith(`${sourceDirectory}/${prefix}`))
-}
-
-async function findDownloadedAsset(
-  projectId: string,
-  stdout: string,
-  sourceDirectory: string,
-  prefix: string,
-) {
-  const printedPath = printedOutputPath(stdout, sourceDirectory, prefix)
-  if (printedPath) return printedPath
-
-  const paths = await listProjectSourceAssets(projectId)
-  return (
-    paths.find((path) => {
-      const name = path.split(/[\\/]/).pop() ?? path
-      return name.startsWith(prefix)
-    }) ?? null
-  )
-}
-
-async function downloadFormat({
-  info,
-  format,
-  outputTemplate,
-  stream,
-  signal,
-  onProgress,
-}: {
-  info: YoutubeDownloadInput['info']
-  format: string
-  outputTemplate: string
-  stream: 'video' | 'audio'
-  signal?: AbortSignal
-  onProgress?: (progress: YoutubeDownloadProgress) => void
-}) {
-  const handleOutput = (chunk: string) => {
-    const progress = parseProgress(chunk)
-    if (progress) onProgress?.({ ...progress, stream })
-  }
-  const output = await executeSidecarStreaming(
-    'binaries/yt-dlp',
-    [
-      '--no-playlist',
-      '--no-cache-dir',
-      '--no-cookies',
-      '--newline',
-      '--progress',
-      '--no-warnings',
-      '--format',
-      format,
-      '--output',
-      outputTemplate,
-      '--print',
-      'after_move:filepath',
-      info.canonicalUrl,
-    ],
-    {
-      signal,
-      onStdout: handleOutput,
-      onStderr: handleOutput,
-    },
-  )
-
-  if (output.code !== 0) {
-    const detail = output.stderr.trim()
-    throw new Error(detail || 'YouTube動画の取得に失敗しました。')
-  }
-
-  return output.stdout
+function hasFormatAdjustment(adjustment: VideoFormatAdjustment) {
+  return adjustment.container || adjustment.video || adjustment.audio
 }
 
 export async function downloadYoutubeVideo({
@@ -141,136 +89,122 @@ export async function downloadYoutubeVideo({
   signal,
   onProgress,
 }: YoutubeDownloadInput): Promise<SelectedVideo> {
-  const sourceDirectory = await prepareProjectSourceAssetDirectory(projectId)
-  const formats = formatForQuality(quality)
+  const [sourceDirectory, ffmpegPath] = await Promise.all([
+    prepareProjectSourceAssetDirectory(projectId),
+    getBundledFfmpegPath(),
+  ])
+  const outputTemplate = await join(sourceDirectory, 'source.%(ext)s')
 
-  try {
-    const videoTemplate = await join(sourceDirectory, 'source.video.%(ext)s')
-    const audioTemplate = await join(sourceDirectory, 'source.audio.%(ext)s')
-    const videoStdout = await downloadFormat({
-      info,
-      format: formats.video,
-      outputTemplate: videoTemplate,
-      stream: 'video',
+  const output = await executeSidecarStreaming(
+    'binaries/yt-dlp',
+    [
+      '--ignore-config',
+      '--no-playlist',
+      '--no-cookies',
+      '--no-cache-dir',
+      '--no-simulate',
+      '--newline',
+      '--progress',
+      '--progress-template',
+      `download:${PROGRESS_PREFIX}%(progress._percent)s|%(progress._speed_str)s|%(progress._eta_str)s`,
+      '--no-warnings',
+      '--format',
+      formatForQuality(quality),
+      '--output',
+      outputTemplate,
+      '--print',
+      `after_move:${RESULT_PREFIX}%(filepath)j`,
+      '--ffmpeg-location',
+      ffmpegPath,
+      info.canonicalUrl,
+    ],
+    {
       signal,
-      onProgress,
-    })
-    const videoPath = await findDownloadedAsset(
-      projectId,
-      videoStdout,
-      sourceDirectory,
-      'source.video.',
-    )
-    if (!videoPath) throw new Error('取得した映像ファイルを確認できませんでした。')
-
-    const audioStdout = await downloadFormat({
-      info,
-      format: formats.audio,
-      outputTemplate: audioTemplate,
-      stream: 'audio',
-      signal,
-      onProgress,
-    })
-    const audioPath = await findDownloadedAsset(
-      projectId,
-      audioStdout,
-      sourceDirectory,
-      'source.audio.',
-    )
-    if (!audioPath) throw new Error('取得した音声ファイルを確認できませんでした。')
-
-    const videoName = videoPath.split(/[\\/]/).pop() ?? videoPath
-    const videoExtension = getExtension(videoName) as VideoExtension
-    if (!isSupportedVideo(videoName)) throw new Error('取得した映像形式には対応していません。')
-
-    const outputExtension = videoExtension === 'webm' ? 'mkv' : 'mp4'
-    const outputPath = await join(sourceDirectory, `source.${outputExtension}`)
-    onProgress?.({ phase: 'merging' })
-    const mergeOutput = await executeSidecar(
-      'binaries/ffmpeg',
-      [
-        '-hide_banner',
-        '-v',
-        'error',
-        '-i',
-        videoPath,
-        '-i',
-        audioPath,
-        '-map',
-        '0:v:0',
-        '-map',
-        '1:a:0',
-        '-c:v',
-        'copy',
-        '-c:a',
-        'aac',
-        '-b:a',
-        '128k',
-        '-shortest',
-        ...(outputExtension === 'mp4' ? ['-movflags', '+faststart'] : []),
-        '-y',
-        outputPath,
-      ],
-      { signal },
-    )
-    if (mergeOutput.code !== 0) {
-      const detail = mergeOutput.stderr.trim()
-      throw new Error(detail || '映像と音声の結合に失敗しました。')
-    }
-
-    onProgress?.({ phase: 'checking' })
-    await Promise.all([
-      removeProjectSourceAsset(projectId, videoName),
-      removeProjectSourceAsset(projectId, audioPath.split(/[\\/]/).pop() ?? audioPath),
-    ])
-    const mergedMetadata = await probeVideo(outputPath)
-    const requiresTranscode =
-      outputExtension !== 'mp4' ||
-      mergedMetadata.videoCodec !== 'h264' ||
-      mergedMetadata.audioCodec !== 'aac'
-    let finalPath = outputPath
-    let metadata = mergedMetadata
-
-    if (requiresTranscode) {
-      onProgress?.({ phase: 'transcoding' })
-      finalPath = await join(sourceDirectory, 'source.compatible.mp4')
-      await transcodeVideoForBrowser({ path: outputPath, outputPath: finalPath, signal })
-      onProgress?.({ phase: 'checking' })
-      metadata = await probeVideo(finalPath)
-      if (metadata.videoCodec !== 'h264' || metadata.audioCodec !== 'aac') {
-        throw new Error(
-          `変換後の動画形式を確認できませんでした（video=${metadata.videoCodec ?? 'unknown'}, audio=${metadata.audioCodec ?? 'unknown'}）。`,
-        )
-      }
-      await removeProjectSourceAsset(projectId, outputPath.split(/[\\/]/).pop() ?? outputPath)
-    }
-
-    onProgress?.({ phase: 'finalizing' })
-    const sizeBytes = await getFileSize(finalPath)
-    return {
-      name: safeSourceName(info.title, 'mp4', info.videoId),
-      path: finalPath,
-      extension: 'mp4',
-      sizeBytes,
-      metadata,
-      origin: {
-        kind: 'youtube',
-        originalUrl: info.originalUrl,
-        videoId: info.videoId,
-        canonicalUrl: info.canonicalUrl,
-        pageTitle: info.title,
-        channelTitle: info.channelTitle,
-        thumbnailUrl: info.thumbnailUrl,
-        importedAt: new Date().toISOString(),
-        downloader: {
-          name: 'yt-dlp',
-          version: YT_DLP_VERSION,
-        },
-        quality,
+      onStdout: (chunk) => {
+        const progress = parseProgress(chunk)
+        if (progress) onProgress?.(progress)
       },
+      onStderr: (chunk) => {
+        const progress = parseProgress(chunk)
+        if (progress) onProgress?.(progress)
+      },
+    },
+  )
+
+  if (output.code !== 0) {
+    const detail = output.stderr.trim()
+    throw new Error(detail || 'YouTube動画の取得に失敗しました。')
+  }
+
+  const outputPath = printedOutputPath(output.stdout, sourceDirectory)
+  if (!outputPath) throw new Error('取得した動画ファイルを確認できませんでした。')
+
+  const downloadedFileSize = await getFileSize(outputPath)
+  if (downloadedFileSize <= 0) throw new Error('取得した動画ファイルが空です。')
+
+  onProgress?.({ stage: 'checking' })
+  const downloadedMetadata = await probeVideo(outputPath)
+  if (downloadedMetadata.durationMs <= 0 || !downloadedMetadata.audioCodec) {
+    throw new Error('取得した動画に必要な映像・音声トラックがありません。')
+  }
+
+  const adjustment = getWebViewFormatAdjustment(outputPath, downloadedMetadata)
+  let finalPath = outputPath
+  let metadata = downloadedMetadata
+
+  if (hasFormatAdjustment(adjustment)) {
+    const compatiblePath = await join(sourceDirectory, 'source.compatible.mp4')
+    onProgress?.({
+      stage: 'converting',
+      adjustment,
+    })
+    await convertVideoForWebView({
+      path: outputPath,
+      outputPath: compatiblePath,
+      adjustment,
+      signal,
+    })
+
+    onProgress?.({ stage: 'checking' })
+    const compatibleMetadata = await probeVideo(compatiblePath)
+    const remainingAdjustment = getWebViewFormatAdjustment(compatiblePath, compatibleMetadata)
+    if (hasFormatAdjustment(remainingAdjustment)) {
+      throw new Error('動画をWebView対応形式に調整した結果を確認できませんでした。')
     }
-  } catch (error) {
-    await removeProjectSourceAssetDirectory(projectId).catch(() => undefined)
-    throw error
+
+    finalPath = await join(sourceDirectory, 'source.mp4')
+    await renameAbsolutePath(compatiblePath, finalPath)
+    if (outputPath !== finalPath) await removeAbsolutePath(outputPath)
+    metadata = { ...compatibleMetadata, path: finalPath }
+  }
+
+  const fileName = finalPath.split(/[\\/]/).pop() ?? finalPath
+  if (!isSupportedVideo(fileName)) throw new Error('取得した映像形式には対応していません。')
+
+  const extension = getExtension(fileName) as VideoExtension
+  const fileSize = await getFileSize(finalPath)
+  onProgress?.({ stage: 'saving' })
+
+  return {
+    name: safeSourceName(info.title, extension, info.videoId),
+    path: finalPath,
+    extension,
+    sizeBytes: fileSize,
+    metadata,
+    origin: {
+      kind: 'youtube',
+      originalUrl: info.originalUrl,
+      videoId: info.videoId,
+      canonicalUrl: info.canonicalUrl,
+      pageTitle: info.title,
+      channelTitle: info.channelTitle,
+      thumbnailUrl: info.thumbnailUrl,
+      importedAt: new Date().toISOString(),
+      downloader: {
+        name: 'yt-dlp',
+        version: YT_DLP_VERSION,
+      },
+      quality,
+    },
   }
 }

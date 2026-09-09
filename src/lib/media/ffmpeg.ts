@@ -1,5 +1,6 @@
 import { executeSidecar, executeSidecarRaw } from '../tauri/sidecar'
-import type { CropRegion } from '../../types/project'
+import type { CropRegion, MediaMetadata } from '../../types/project'
+import type { VideoFormatAdjustment } from '../../types/media'
 import { computeAverageLuma, computeDHash } from './dhash'
 
 /** Runs the bundled ffmpeg with an argument array; callers never build a shell command string. */
@@ -55,14 +56,78 @@ type TrimVideoInput = {
   signal?: AbortSignal
 }
 
-type BrowserCompatibleVideoInput = {
+type ConvertVideoForWebViewInput = {
   path: string
   outputPath: string
+  adjustment: VideoFormatAdjustment
   signal?: AbortSignal
 }
 
 function outputText(value: string | Uint8Array) {
   return typeof value === 'string' ? value : new TextDecoder().decode(value)
+}
+
+function fileExtension(path: string) {
+  return path.split(/[\\/]/).pop()?.split('.').pop()?.toLowerCase()
+}
+
+function hasMp4Container(formatName?: string) {
+  return formatName?.split(',').some((format) => format.trim() === 'mp4') ?? false
+}
+
+export function getWebViewFormatAdjustment(
+  path: string,
+  metadata: Pick<MediaMetadata, 'formatName' | 'videoCodec' | 'videoPixelFormat' | 'audioCodec'>,
+): VideoFormatAdjustment {
+  return {
+    container: fileExtension(path) !== 'mp4' || !hasMp4Container(metadata.formatName),
+    video: metadata.videoCodec !== 'h264' || metadata.videoPixelFormat !== 'yuv420p',
+    audio: metadata.audioCodec !== 'aac',
+  }
+}
+
+/** Converts only the tracks that are outside the WebView import format. */
+export async function convertVideoForWebView({
+  path,
+  outputPath,
+  adjustment,
+  signal,
+}: ConvertVideoForWebViewInput) {
+  const videoArguments = adjustment.video
+    ? ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p']
+    : ['-c:v', 'copy']
+  const audioArguments = adjustment.audio ? ['-c:a', 'aac', '-b:a', '160k'] : ['-c:a', 'copy']
+
+  const output = await executeSidecar(
+    'binaries/ffmpeg',
+    [
+      '-hide_banner',
+      '-v',
+      'error',
+      '-i',
+      path,
+      '-map',
+      '0:v:0',
+      '-map',
+      '0:a:0',
+      ...videoArguments,
+      ...audioArguments,
+      '-sn',
+      '-dn',
+      '-movflags',
+      '+faststart',
+      '-y',
+      outputPath,
+    ],
+    { signal },
+  )
+
+  if (output.code !== 0) {
+    const detail = output.stderr.trim()
+    throw new Error(detail || `動画をWebView対応形式へ変換できませんでした (code ${output.code})`)
+  }
+
+  return outputPath
 }
 
 /** Samples 9x8 grayscale frames so slide detection does not need to materialize a cropped video. */
@@ -215,54 +280,6 @@ export async function extractAudio({ path, outputPath, signal }: ExtractAudioInp
   if (output.code !== 0) {
     const detail = output.stderr.trim()
     throw new Error(detail || `音声の抽出に失敗しました (code ${output.code})`)
-  }
-
-  return outputPath
-}
-
-/** Converts a downloaded source into a WebView-compatible H.264/AAC MP4. */
-export async function transcodeVideoForBrowser({
-  path,
-  outputPath,
-  signal,
-}: BrowserCompatibleVideoInput) {
-  const output = await executeSidecar(
-    'binaries/ffmpeg',
-    [
-      '-hide_banner',
-      '-v',
-      'error',
-      '-i',
-      path,
-      '-map',
-      '0:v:0',
-      '-map',
-      '0:a:0?',
-      '-c:v',
-      'libx264',
-      '-preset',
-      'veryfast',
-      '-crf',
-      '18',
-      '-pix_fmt',
-      'yuv420p',
-      '-c:a',
-      'aac',
-      '-b:a',
-      '160k',
-      '-sn',
-      '-dn',
-      '-movflags',
-      '+faststart',
-      '-y',
-      outputPath,
-    ],
-    { signal },
-  )
-
-  if (output.code !== 0) {
-    const detail = output.stderr.trim()
-    throw new Error(detail || `動画を再生可能な形式へ変換できませんでした (code ${output.code})`)
   }
 
   return outputPath

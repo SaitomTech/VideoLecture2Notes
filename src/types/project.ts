@@ -18,7 +18,9 @@ export type MediaMetadata = {
   height: number
   fps?: number
   videoCodec?: string
+  videoPixelFormat?: string
   audioCodec?: string
+  formatName?: string
 }
 
 export type YoutubeImportQuality = '720p' | '1080p' | 'best'

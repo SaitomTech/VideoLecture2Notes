@@ -5,7 +5,6 @@ import { parseYoutubeUrl } from './url'
 type YoutubeInfoJson = {
   title?: unknown
   channel?: unknown
-  uploader?: unknown
   thumbnail?: unknown
   duration?: unknown
   is_live?: unknown
@@ -18,12 +17,8 @@ function parseNumber(value: unknown) {
 }
 
 function parseInfoJson(stdout: string): YoutubeInfoJson {
-  const start = stdout.indexOf('{')
-  const end = stdout.lastIndexOf('}')
-  if (start < 0 || end <= start) throw new Error('YouTubeの動画情報を解析できませんでした。')
-
   try {
-    return JSON.parse(stdout.slice(start, end + 1)) as YoutubeInfoJson
+    return JSON.parse(stdout.trim()) as YoutubeInfoJson
   } catch {
     throw new Error('YouTubeの動画情報を解析できませんでした。')
   }
@@ -45,6 +40,7 @@ function safeThumbnailUrl(value: unknown) {
 export async function getYoutubeVideoInfo(value: string): Promise<YoutubeVideoInfo> {
   const parsedUrl = parseYoutubeUrl(value)
   const output = await executeSidecar('binaries/yt-dlp', [
+    '--ignore-config',
     '--dump-single-json',
     '--no-download',
     '--no-playlist',
@@ -68,12 +64,7 @@ export async function getYoutubeVideoInfo(value: string): Promise<YoutubeVideoIn
     throw new Error('公開済みの動画情報を取得できませんでした。ライブ配信中の動画は対象外です。')
   }
 
-  const channelTitle =
-    typeof info.channel === 'string'
-      ? info.channel.trim()
-      : typeof info.uploader === 'string'
-        ? info.uploader.trim()
-        : ''
+  const channelTitle = typeof info.channel === 'string' ? info.channel.trim() : ''
 
   return {
     originalUrl: parsedUrl.originalUrl,

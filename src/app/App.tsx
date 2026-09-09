@@ -35,6 +35,7 @@ import {
   removeTrimmedVideoAsset,
 } from '../lib/storage/projectAssets'
 import { downloadYoutubeVideo } from '../lib/youtube/downloader'
+import { getErrorDetail } from '../lib/errors'
 import type { SelectedVideo } from '../features/import/types'
 import type { YoutubeImportOptions, YoutubeImportRequest } from '../features/import/types'
 import type { YoutubeDownloadInput } from '../lib/youtube/types'
@@ -136,16 +137,29 @@ function App() {
     const projectId = crypto.randomUUID()
 
     try {
-      const video = await downloadYoutubeVideo({
-        projectId,
-        info: request.info,
-        quality: request.quality,
-        signal: options.signal,
-        onProgress: options.onProgress,
-      } satisfies YoutubeDownloadInput)
+      let video: SelectedVideo
+      try {
+        video = await downloadYoutubeVideo({
+          projectId,
+          info: request.info,
+          quality: request.quality,
+          signal: options.signal,
+          onProgress: options.onProgress,
+        } satisfies YoutubeDownloadInput)
+      } catch (error) {
+        throw new Error(
+          `動画の取得に失敗しました: ${getErrorDetail(error, '原因を特定できませんでした。')}`,
+        )
+      }
       if (!video.metadata) throw new Error('取得した動画のメタデータがありません')
 
-      await persistProject(createMediaProject(video, video.metadata, projectId))
+      try {
+        await persistProject(createMediaProject(video, video.metadata, projectId))
+      } catch (error) {
+        throw new Error(
+          `プロジェクトの保存に失敗しました: ${getErrorDetail(error, '原因を特定できませんでした。')}`,
+        )
+      }
       return video
     } catch (error) {
       await removeProjectSourceAssetDirectory(projectId).catch(() => undefined)

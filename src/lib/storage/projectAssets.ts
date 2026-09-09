@@ -1,9 +1,5 @@
 import { appLocalDataDir, join } from '@tauri-apps/api/path'
-import {
-  ensureAppLocalDirectory,
-  readAppLocalDirectory,
-  removeAppLocalPath,
-} from '../tauri/filesystem'
+import { ensureAppLocalDirectory, removeAppLocalPath } from '../tauri/filesystem'
 
 function projectAssetDirectory(projectId: string, assetDirectory: string) {
   return `projects/${projectId}/${assetDirectory}`
@@ -55,28 +51,6 @@ export async function removeCropDetectionDirectory(projectId: string) {
 
 export async function removeProjectSourceAssetDirectory(projectId: string) {
   await removeAppLocalPath(projectAssetDirectory(projectId, 'source'))
-}
-
-export async function removeProjectSourceAsset(projectId: string, fileName: string) {
-  if (fileName !== fileName.split(/[\\/]/).pop()) throw new Error('不正なsource asset名です。')
-  await removeAppLocalPath(`${projectAssetDirectory(projectId, 'source')}/${fileName}`)
-}
-
-export async function listProjectSourceAssets(projectId: string) {
-  const relativeDirectory = projectAssetDirectory(projectId, 'source')
-  await ensureAppLocalDirectory(relativeDirectory)
-  const appDataDirectory = await appLocalDataDir()
-  const [directory, entries] = await Promise.all([
-    join(appDataDirectory, relativeDirectory),
-    readAppLocalDirectory(relativeDirectory),
-  ])
-  const paths: Array<ReturnType<typeof join>> = []
-
-  for (const entry of entries) {
-    if (entry.isFile) paths.push(join(directory, entry.name))
-  }
-
-  return Promise.all(paths)
 }
 
 export async function getSlideAssetPath(projectId: string, slideIndex: number) {

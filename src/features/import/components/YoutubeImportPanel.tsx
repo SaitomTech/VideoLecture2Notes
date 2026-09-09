@@ -1,6 +1,7 @@
 import { Download, Link, LoaderCircle, Search } from 'lucide-react'
 import { formatDuration } from '../utils'
 import type { YoutubeDownloadProgress, YoutubeVideoInfo } from '../../../lib/youtube/types'
+import type { VideoFormatAdjustment } from '../../../types/media'
 import type { YoutubeImportQuality } from '../../../types/project'
 import type { YoutubeResolveStatus } from '../types'
 
@@ -24,17 +25,26 @@ type YoutubeImportPanelProps = {
 
 function progressLabel(progress: YoutubeDownloadProgress | null) {
   if (!progress) return '動画を取得しています…'
-  if (progress.phase === 'merging') return '映像と音声を結合しています…'
-  if (progress.phase === 'transcoding') return '再生用に動画を変換しています…'
-  if (progress.phase === 'checking') return '動画を確認しています…'
-  if (progress.phase === 'finalizing') return '動画を保存しています…'
+
+  if (progress.stage === 'checking') return '動画の形式を確認しています…'
+  if (progress.stage === 'saving') return 'プロジェクトを保存しています…'
+  if (progress.stage === 'converting') {
+    const changes = formatAdjustmentChanges(progress.adjustment)
+    return `アプリで再生できる形式に合わせています（${changes.join('、')}）…`
+  }
+
   if (progress.percent === undefined) return '動画を取得しています…'
-  const streamLabel = progress.stream === 'audio' ? '音声' : '映像'
-  return `${streamLabel}を取得しています… ${Math.round(progress.percent)}%`
+  return `動画を取得しています… ${Math.round(progress.percent)}%`
 }
 
-function isPostProcessing(progress: YoutubeDownloadProgress | null) {
-  return Boolean(progress && progress.phase !== 'downloading')
+function formatAdjustmentChanges(adjustment?: VideoFormatAdjustment) {
+  if (!adjustment) return ['動画を調整']
+
+  return [
+    adjustment.video ? '映像をH.264に変換' : null,
+    adjustment.audio ? '音声をAACに変換' : null,
+    adjustment.container ? 'MP4にまとめる（再圧縮なし）' : null,
+  ].filter((change): change is string => change !== null)
 }
 
 export function YoutubeImportPanel({
@@ -157,7 +167,7 @@ export function YoutubeImportPanel({
                 )}
               </div>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#d8e1dc]">
-                {isPostProcessing(progress) ? (
+                {progress?.percent === undefined ? (
                   <div className="h-full w-1/3 animate-pulse rounded-full bg-[#1d6b50]" />
                 ) : (
                   <div
@@ -175,9 +185,7 @@ export function YoutubeImportPanel({
               </button>
             </div>
           ) : isImportComplete ? (
-            <p className="mt-4 text-xs font-semibold text-[#1d6b50]">
-              ダウンロードが完了しました。
-            </p>
+            <p className="mt-4 text-xs font-semibold text-[#1d6b50]">動画の保存が完了しました。</p>
           ) : (
             <button
               className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-[9px] bg-[#1d6b50] px-4 py-3 text-xs font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] transition hover:-translate-y-0.5 hover:bg-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-35 disabled:shadow-none"

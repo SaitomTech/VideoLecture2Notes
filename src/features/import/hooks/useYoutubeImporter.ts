@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { getErrorDetail } from '../../../lib/errors'
 import { getYoutubeVideoInfo } from '../../../lib/youtube/metadata'
 import { parseYoutubeUrl } from '../../../lib/youtube/url'
 import type { YoutubeVideoInfo } from '../../../lib/youtube/types'
@@ -33,9 +34,7 @@ export function useYoutubeImporter() {
       console.error(resolveError)
       setStatus('error')
       setError(
-        resolveError instanceof Error
-          ? resolveError.message
-          : 'YouTube動画の情報を取得できませんでした。',
+        `動画情報の取得に失敗しました: ${getErrorDetail(resolveError, '原因を特定できませんでした。')}`,
       )
     }
   }

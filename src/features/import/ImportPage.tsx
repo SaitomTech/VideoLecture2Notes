@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
+import { getErrorDetail } from '../../lib/errors'
 import type { WorkflowStep } from '../../lib/workflow'
 import { LocalVideoImportPanel } from './components/LocalVideoImportPanel'
 import { SelectedVideoSummary } from './components/SelectedVideoSummary'
@@ -117,9 +118,7 @@ export function ImportPage({
       if (!controller.signal.aborted) {
         console.error(error)
         setYoutubeImportError(
-          error instanceof Error
-            ? error.message
-            : 'YouTube動画をプロジェクトに追加できませんでした。',
+          getErrorDetail(error, 'YouTube動画をプロジェクトに追加できませんでした。'),
         )
       }
     } finally {
@@ -133,7 +132,7 @@ export function ImportPage({
   }
 
   const handleContinueYoutubeImport = async () => {
-    if (!youtubeVideo || youtubeVideoStatus !== 'ready' || isContinuing) return
+    if (!youtubeVideo || isContinuing) return
 
     setIsContinuing(true)
     setContinueError(null)
@@ -161,7 +160,7 @@ export function ImportPage({
 
   const handleYoutubeVideoError = (message?: string) => {
     setYoutubeVideoStatus('error')
-    setYoutubePreviewError(message ?? '取得した動画を再生できませんでした。')
+    setYoutubePreviewError(message ?? '動画は保存されましたが、プレビューを再生できませんでした。')
   }
 
   const previewVideo = activeSource === 'file' ? picker.selectedVideo : youtubeVideo
@@ -176,7 +175,7 @@ export function ImportPage({
           picker.videoStatus === 'ready' &&
           picker.metadataStatus === 'ready',
         )
-      : Boolean(youtubeVideo && youtubeVideoStatus === 'ready')
+      : Boolean(youtubeVideo)
 
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
