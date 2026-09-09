@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ChevronDown } from 'lucide-react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
 import { getErrorDetail } from '../../lib/errors'
@@ -7,6 +6,7 @@ import type { WorkflowStep } from '../../lib/workflow'
 import { LocalVideoImportPanel } from './components/LocalVideoImportPanel'
 import { SelectedVideoSummary } from './components/SelectedVideoSummary'
 import { YoutubeImportPanel } from './components/YoutubeImportPanel'
+import { YoutubeDownloadModal } from './components/YoutubeDownloadModal'
 import { VideoPreview } from './components/VideoPreview'
 import { useVideoPicker } from './hooks/useVideoPicker'
 import { useYoutubeImporter } from './hooks/useYoutubeImporter'
@@ -43,11 +43,12 @@ export function ImportPage({
   onStepClick,
 }: ImportPageProps) {
   const [activeSource, setActiveSource] = useState<ImportSource>('file')
-  const [isYoutubeOpen, setIsYoutubeOpen] = useState(false)
+  const [isYoutubeModalOpen, setIsYoutubeModalOpen] = useState(false)
   const [isContinuing, setIsContinuing] = useState(false)
   const [continueError, setContinueError] = useState<string | null>(null)
   const [youtubeImportError, setYoutubeImportError] = useState<string | null>(null)
   const [youtubePreviewError, setYoutubePreviewError] = useState<string | null>(null)
+  const [isYoutubeImportComplete, setIsYoutubeImportComplete] = useState(false)
   const [isYoutubeImporting, setIsYoutubeImporting] = useState(false)
   const [youtubeVideo, setYoutubeVideo] = useState<SelectedVideo | null>(null)
   const [youtubeVideoStatus, setYoutubeVideoStatus] = useState<'checking' | 'ready' | 'error'>(
@@ -93,7 +94,7 @@ export function ImportPage({
     const controller = new AbortController()
     youtubeAbortRef.current = controller
     setIsYoutubeImporting(true)
-    setYoutubeVideo(null)
+    setIsYoutubeImportComplete(false)
     setYoutubeImportError(null)
     setYoutubePreviewError(null)
     setYoutubeProgress(null)
@@ -111,9 +112,10 @@ export function ImportPage({
         },
       )
       setYoutubeVideo(importedVideo)
+      setIsYoutubeImportComplete(true)
       setYoutubeVideoStatus('checking')
       setActiveSource('youtube')
-      setIsYoutubeOpen(false)
+      setIsYoutubeModalOpen(false)
     } catch (error) {
       if (!controller.signal.aborted) {
         console.error(error)
@@ -129,6 +131,19 @@ export function ImportPage({
 
   const handleYoutubeCancel = () => {
     youtubeAbortRef.current?.abort()
+  }
+
+  const handleYoutubeModalClose = () => {
+    if (!isYoutubeImporting && !isContinuing) setIsYoutubeModalOpen(false)
+  }
+
+  const handleYoutubeModalOpen = () => {
+    if (isBusy) return
+    setIsYoutubeImportComplete(false)
+    setYoutubeImportError(null)
+    setYoutubePreviewError(null)
+    youtube.changeUrl('')
+    setIsYoutubeModalOpen(true)
   }
 
   const handleContinueYoutubeImport = async () => {
@@ -147,7 +162,7 @@ export function ImportPage({
   }
 
   const handleYoutubeUrlChange = (value: string) => {
-    setYoutubeVideo(null)
+    setIsYoutubeImportComplete(false)
     setYoutubeImportError(null)
     setYoutubePreviewError(null)
     setContinueError(null)
@@ -176,6 +191,10 @@ export function ImportPage({
           picker.metadataStatus === 'ready',
         )
       : Boolean(youtubeVideo)
+  const hasSelectedVideo = Boolean(
+    (activeSource === 'youtube' && youtubeVideo) ||
+    (activeSource === 'file' && picker.selectedVideo),
+  )
 
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
@@ -196,116 +215,103 @@ export function ImportPage({
               </p>
               <h1 className="mt-1 text-[27px] font-bold tracking-[-0.06em]">動画を読み込む</h1>
               <p className="mt-1 text-xs text-[#71807b]">
-                動画ファイルを選択するか、YouTubeから動画データをダウンロードします。
+                動画ファイルからノートを作成します。手元にない場合はYouTubeから取得できます。
               </p>
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
-            <div className="p-5 sm:p-7">
+          {hasSelectedVideo ? (
+            <div className="overflow-visible rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
               {activeSource === 'youtube' && youtubeVideo ? (
                 <SelectedVideoSummary
                   video={youtubeVideo}
                   disabled={isBusy}
                   isSelecting={picker.isSelecting}
                   onChoose={picker.chooseVideo}
+                  onYoutubeDownload={handleYoutubeModalOpen}
                 />
               ) : (
-                <LocalVideoImportPanel picker={picker} disabled={isBusy} />
+                <SelectedVideoSummary
+                  video={picker.selectedVideo!}
+                  disabled={isBusy}
+                  isSelecting={picker.isSelecting}
+                  onChoose={picker.chooseVideo}
+                  onYoutubeDownload={handleYoutubeModalOpen}
+                />
               )}
 
-              <section className="mt-7 rounded-[14px] bg-[#eef5f0] p-4 sm:p-5">
-                <button
-                  className="flex w-full items-center justify-between gap-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/25 focus-visible:ring-offset-2"
-                  type="button"
-                  aria-expanded={isYoutubeOpen}
-                  onClick={() => setIsYoutubeOpen((open) => !open)}
-                  disabled={isBusy}
-                >
-                  <span className="text-xs font-semibold tracking-[-0.01em] text-[#53615b]">
-                    YouTubeからダウンロード
-                  </span>
-                  <ChevronDown
-                    size={18}
-                    className={`text-[#1d6b50] transition-transform duration-200 ${isYoutubeOpen ? 'rotate-180' : ''}`}
-                    aria-hidden="true"
-                  />
-                </button>
-                {isYoutubeOpen && (
-                  <div className="mt-4">
-                    <YoutubeImportPanel
-                      url={youtube.url}
-                      info={youtube.info}
-                      status={youtube.status}
-                      error={youtube.error}
-                      quality={youtube.quality}
-                      isImporting={isYoutubeImporting}
-                      isImportComplete={Boolean(youtubeVideo)}
-                      isContinuing={isContinuing}
-                      progress={youtubeProgress}
-                      importError={youtubeImportError}
-                      onUrlChange={handleYoutubeUrlChange}
-                      onResolve={youtube.resolve}
-                      onQualityChange={youtube.setQuality}
-                      onImport={handleYoutubeImport}
-                      onCancel={handleYoutubeCancel}
+              <div>
+                {previewVideo && (
+                  <div className="mx-auto w-full max-w-[720px] p-4 md:p-5">
+                    <VideoPreview
+                      video={previewVideo}
+                      videoStatus={previewVideoStatus}
+                      onVideoReady={
+                        activeSource === 'file' ? picker.handleVideoReady : handleYoutubeVideoReady
+                      }
+                      onVideoError={
+                        activeSource === 'file' ? picker.handleVideoError : handleYoutubeVideoError
+                      }
                     />
+                    {previewError && <p className="mt-3 text-xs text-[#b6533a]">{previewError}</p>}
                   </div>
                 )}
-              </section>
-            </div>
+              </div>
 
-            <div className="mx-auto w-full max-w-[720px] px-5 pb-5 sm:px-7 sm:pb-7">
-              {previewVideo ? (
-                <div>
-                  <VideoPreview
-                    video={previewVideo}
-                    videoStatus={previewVideoStatus}
-                    onVideoReady={
-                      activeSource === 'file' ? picker.handleVideoReady : handleYoutubeVideoReady
+              {(canContinue || continueError) && (
+                <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-[#d8e1dc] px-5 py-5 sm:px-7 sm:py-6">
+                  <div>
+                    {continueError && <p className="text-xs text-[#b6533a]">{continueError}</p>}
+                  </div>
+                  <button
+                    className="inline-flex items-center gap-[18px] rounded-[9px] bg-[#1d6b50] px-5 py-3.5 text-xs font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] transition hover:-translate-y-0.5 hover:bg-[#174d3c] hover:shadow-[0_9px_20px_rgba(29,107,80,0.24)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-35 disabled:shadow-none"
+                    type="button"
+                    onClick={() =>
+                      void (activeSource === 'file'
+                        ? handleContinue()
+                        : handleContinueYoutubeImport())
                     }
-                    onVideoError={
-                      activeSource === 'file' ? picker.handleVideoError : handleYoutubeVideoError
-                    }
-                  />
-                  {previewError && <p className="mt-3 text-xs text-[#b6533a]">{previewError}</p>}
-                </div>
-              ) : (
-                <div className="grid min-h-[180px] place-items-center rounded-[12px] border border-dashed border-[#b7cbc0] bg-[#f7faf7] px-6 text-center">
-                  <p className="max-w-[360px] text-xs leading-5 text-[#9aa6a1]">
-                    {activeSource === 'file'
-                      ? '動画ファイルを読み込むと、ここにプレビューが表示されます。'
-                      : 'YouTube動画の読み込みが完了すると、ここにプレビューが表示されます。'}
-                  </p>
-                </div>
+                    disabled={!canContinue || isBusy}
+                  >
+                    <span>{isContinuing ? '準備中…' : 'スライド領域を設定'}</span>
+                    <span className="text-[17px] font-normal leading-none" aria-hidden="true">
+                      →
+                    </span>
+                  </button>
+                </footer>
               )}
             </div>
-
-            <footer className="px-5 pb-5 sm:px-7 sm:pb-7">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  {continueError && <p className="mt-1 text-xs text-[#b6533a]">{continueError}</p>}
-                </div>
-                <button
-                  className="inline-flex items-center gap-[18px] rounded-[9px] bg-[#1d6b50] px-5 py-3.5 text-xs font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] transition hover:-translate-y-0.5 hover:bg-[#174d3c] hover:shadow-[0_9px_20px_rgba(29,107,80,0.24)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-35 disabled:shadow-none"
-                  type="button"
-                  onClick={() =>
-                    void (activeSource === 'file'
-                      ? handleContinue()
-                      : handleContinueYoutubeImport())
-                  }
-                  disabled={!canContinue || isBusy}
-                >
-                  <span>{isContinuing ? '準備中…' : 'スライド領域を設定'}</span>
-                  <span className="text-[17px] font-normal leading-none" aria-hidden="true">
-                    →
-                  </span>
-                </button>
-              </div>
-            </footer>
-          </div>
+          ) : (
+            <LocalVideoImportPanel
+              picker={picker}
+              disabled={isBusy}
+              onYoutubeDownload={handleYoutubeModalOpen}
+            />
+          )}
         </div>
       </section>
+
+      {isYoutubeModalOpen && (
+        <YoutubeDownloadModal closeDisabled={isBusy} onClose={handleYoutubeModalClose}>
+          <YoutubeImportPanel
+            url={youtube.url}
+            info={youtube.info}
+            status={youtube.status}
+            error={youtube.error}
+            quality={youtube.quality}
+            isImporting={isYoutubeImporting}
+            isImportComplete={isYoutubeImportComplete}
+            isContinuing={isContinuing}
+            progress={youtubeProgress}
+            importError={youtubeImportError}
+            onUrlChange={handleYoutubeUrlChange}
+            onResolve={youtube.resolve}
+            onQualityChange={youtube.setQuality}
+            onImport={handleYoutubeImport}
+            onCancel={handleYoutubeCancel}
+          />
+        </YoutubeDownloadModal>
+      )}
     </main>
   )
 }

@@ -5,9 +5,14 @@ import { SelectedVideoSummary } from './SelectedVideoSummary'
 type LocalVideoImportPanelProps = {
   picker: ReturnType<typeof useVideoPicker>
   disabled: boolean
+  onYoutubeDownload: () => void
 }
 
-export function LocalVideoImportPanel({ picker, disabled }: LocalVideoImportPanelProps) {
+export function LocalVideoImportPanel({
+  picker,
+  disabled,
+  onYoutubeDownload,
+}: LocalVideoImportPanelProps) {
   const loadError = picker.selectedVideo
     ? picker.metadataError
     : picker.error || picker.metadataError
@@ -20,12 +25,14 @@ export function LocalVideoImportPanel({ picker, disabled }: LocalVideoImportPane
           disabled={disabled}
           isSelecting={picker.isSelecting}
           onChoose={picker.chooseVideo}
+          onYoutubeDownload={onYoutubeDownload}
         />
       ) : (
         <VideoDropZone
           isDragging={picker.isDragging}
           disabled={disabled}
           onChoose={picker.chooseVideo}
+          onYoutubeDownload={onYoutubeDownload}
         />
       )}
 

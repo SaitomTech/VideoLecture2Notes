@@ -1,40 +1,50 @@
-import { Video } from 'lucide-react'
+import { Download, Video } from 'lucide-react'
 
 type VideoDropZoneProps = {
   isDragging: boolean
   disabled?: boolean
   onChoose: () => void | Promise<void>
+  onYoutubeDownload: () => void
 }
 
-export function VideoDropZone({ isDragging, disabled = false, onChoose }: VideoDropZoneProps) {
+export function VideoDropZone({
+  isDragging,
+  disabled = false,
+  onChoose,
+  onYoutubeDownload,
+}: VideoDropZoneProps) {
   return (
     <div
-      className={`group relative flex min-h-[300px] flex-col items-center justify-center rounded-[18px] border border-dashed border-[#a6bcb0] bg-[#fbfcfa]/64 p-8 text-center transition-[border-color,background-color,transform,box-shadow] duration-200 ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:-translate-y-0.5 hover:border-[#1d6b50] hover:bg-[#e2eee8]/72 hover:shadow-[0_22px_70px_rgba(22,54,42,0.09)] focus-visible:-translate-y-0.5 focus-visible:border-[#1d6b50] focus-visible:bg-[#e2eee8]/72 focus-visible:shadow-[0_22px_70px_rgba(22,54,42,0.09)] focus-visible:outline-none'} ${isDragging && !disabled ? 'border-[#1d6b50] bg-[#e2eee8]/72 shadow-[0_22px_70px_rgba(22,54,42,0.09)]' : ''}`}
-      onClick={() => {
-        if (!disabled) void onChoose()
-      }}
-      onKeyDown={(event) => {
-        if (!disabled && (event.key === 'Enter' || event.key === ' ')) void onChoose()
-      }}
-      role="button"
-      tabIndex={disabled ? -1 : 0}
-      aria-disabled={disabled}
-      aria-label="動画ファイルを選択"
+      className={`group relative flex min-h-[390px] flex-col items-center justify-center rounded-[18px] border border-dashed border-[#a6bcb0] bg-[#fbfcfa] p-8 text-center transition-[border-color,background-color,box-shadow] duration-200 sm:min-h-[430px] sm:p-12 ${disabled ? 'opacity-50' : 'hover:border-[#1d6b50] hover:bg-[#f7fbf8] hover:shadow-[0_22px_70px_rgba(22,54,42,0.07)]'} ${isDragging && !disabled ? 'border-[#1d6b50] bg-[#e2eee8]/72 shadow-[0_22px_70px_rgba(22,54,42,0.09)]' : ''}`}
     >
-      <div
-        className="relative mb-6 grid h-[62px] w-[54px] place-items-center rounded-[7px] border border-[#adc7b9] bg-[#fbfcfa] text-[#1d6b50] shadow-[5px_5px_0_rgba(177,203,189,0.46)] transition-transform group-hover:-rotate-1 group-hover:-translate-y-0.5 after:absolute after:-right-px after:-top-px after:h-[13px] after:w-[13px] after:rounded-bl-[6px] after:border-b after:border-l after:border-[#adc7b9] after:bg-[#e9f3ed] after:content-['']"
-        aria-hidden="true"
+      <Video className="mb-6 text-[#78958b]" size={54} strokeWidth={1.25} aria-hidden="true" />
+      <div className="text-[20px] font-semibold tracking-[-0.04em] text-[#18211f]">
+        動画をここにドロップ
+      </div>
+      <div className="mt-2 text-xs leading-[1.45] text-[#71807b]">または</div>
+      <button
+        className="mt-5 inline-flex h-12 items-center justify-center rounded-[9px] bg-[#1d6b50] px-6 text-sm font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] transition hover:-translate-y-0.5 hover:bg-[#174d3c] hover:shadow-[0_9px_20px_rgba(29,107,80,0.24)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none"
+        type="button"
+        onClick={() => {
+          if (!disabled) void onChoose()
+        }}
+        disabled={disabled}
       >
-        <Video size={25} strokeWidth={1.7} />
-      </div>
-      <div className="text-[18px] font-semibold tracking-[-0.04em] text-[#18211f]">
-        動画ファイルを選択
-      </div>
-      <div className="mt-2 text-xs leading-[1.45] text-[#71807b]">
-        ここにドロップ、またはクリックして選択
-      </div>
-      <div className="mt-[27px] font-mono text-[9px] tracking-[0.06em] text-[#9baaa3]">
+        {disabled ? '選択できません' : 'Finderで選択'}
+      </button>
+      <div className="mt-5 font-mono text-[9px] tracking-[0.06em] text-[#9baaa3]">
         MP4&nbsp; · &nbsp;MOV&nbsp; · &nbsp;M4V&nbsp; · &nbsp;MKV&nbsp; · &nbsp;WEBM
+      </div>
+      <div className="mt-8 border-t border-[#d8e1dc] pt-5">
+        <button
+          className="inline-flex items-center gap-1.5 rounded-[6px] px-2 py-1 text-[11px] font-semibold text-[#71807b] underline decoration-[#b7cbc0] underline-offset-4 transition hover:bg-[#eef5f0] hover:text-[#1d6b50] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/25 disabled:cursor-not-allowed disabled:opacity-45"
+          type="button"
+          onClick={onYoutubeDownload}
+          disabled={disabled}
+        >
+          <Download size={14} strokeWidth={1.8} aria-hidden="true" />
+          YouTubeからダウンロード…
+        </button>
       </div>
     </div>
   )

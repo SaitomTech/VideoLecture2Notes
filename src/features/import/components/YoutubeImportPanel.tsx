@@ -100,7 +100,7 @@ export function YoutubeImportPanel({
             ) : (
               <Search size={15} />
             )}
-            {status === 'resolving' ? '取得中…' : '動画情報を取得'}
+            {status === 'resolving' ? '取得中…' : '動画を確認'}
           </button>
         </div>
         <p id="youtube-url-help" className="mt-2 text-[10px] leading-5 text-[#9aa6a1]">
