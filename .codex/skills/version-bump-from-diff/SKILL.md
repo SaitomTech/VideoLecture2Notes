@@ -7,16 +7,22 @@ description: Compare unreleased VideoLecture2Notes changes, choose and apply the
 
 Use this project skill when the user asks to raise the VideoLecture2Notes version based on repository changes, or asks for the complete version-to-release sequence. A request such as `バージョン上げて` authorizes this skill to proceed through the version commit and `develop` push; it does not authorize merging a PR, creating a tag, or publishing a GitHub release.
 
+## Branch policy
+
+- `develop` is the normal development branch. Start routine development and version-update work from `develop`, and push development commits to `origin/develop`.
+- `main` is reserved for the merged release history and for creating the release tag. Do not develop directly on `main`.
+- If a release tag is created and pushed from `main`, switch back to `develop` after the push succeeds. If the switch is blocked by local changes or branch divergence, preserve the work and report the exact blocker instead of discarding anything.
+
 ## Scope and safety
 
 - Inspect committed changes since the selected release baseline and all staged, unstaged, and relevant untracked work.
 - Read `agent.md` before changing files and preserve unrelated user changes.
 - Treat version-only edits as bookkeeping, not evidence for another bump.
-- Do not reset, checkout, stash, delete, commit, tag, publish, or push unless the user explicitly asks.
+- Do not reset, stash, delete, commit, tag, publish, or push unless the user explicitly asks. Branch switches required by the branch policy are allowed only when the working tree is clean and must never discard user changes.
 
 ## Assess the change
 
-1. Check `git status --short`, the current branch, and whether `origin/main` resolves. If the ref is missing, fetch `origin main` when an `origin` remote exists; if it remains unavailable, explain that repository-context check instead of guessing a remote baseline.
+1. Check `git status --short`, the current branch, and whether `origin/main` resolves. Routine assessment is performed from `develop`; if the working tree is clean and the current branch is different, switch to `develop` before reviewing changes. If the working tree is not clean, preserve the changes and stop for direction rather than switching branches. If the `origin/main` ref is missing, fetch `origin main` when an `origin` remote exists; if it remains unavailable, explain that repository-context check instead of guessing a remote baseline.
 2. Establish the release baseline before reviewing product impact:
 
    - Read the top-level `package.json` version and verify that the three Tauri application version fields match it.
@@ -86,11 +92,13 @@ Tell the user to complete these steps after the push:
    git ls-remote --tags origin v<next-version>
    git tag -a v<next-version> -m "v<next-version>"
    git push origin v<next-version>
+   git switch develop
    ```
 
    `git ls-remote`にタグが表示された場合は、既存タグを上書きせず停止する。`git switch`または`git pull --ff-only`がローカル変更や履歴の分岐で止まった場合も、ユーザーの変更を破棄せず停止する。
 
    Never target `develop` when creating the release tag.
+   After the tag push succeeds, return the local checkout to `develop` for normal development. Do not force a branch switch over local changes; preserve them and report the blocker if `git switch develop` cannot complete.
 3. Wait for the **Actions** tab's `Build macOS release assets` workflow to finish. Do not upload a DMG manually; the repository workflow builds it, creates/updates the draft release, and generates the initial release notes.
 4. Open the generated Draft Release, review and edit the release notes, confirm the Apple Silicon DMG is attached, then click **Publish release**. If the build fails, do not publish the draft; fix the cause and rerun the workflow.
 
