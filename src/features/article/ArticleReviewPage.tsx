@@ -291,10 +291,10 @@ export function ArticleReviewPage({
             className={`text-xs ${hasUnsavedChanges || hasEmptyTitle ? 'text-[#9a7a35]' : 'text-[#71807b]'}`}
           >
             {hasUnsavedChanges
-              ? '未保存の変更があります。保存してからExportできます。'
+              ? '未保存の変更があります。保存してから書き出せます。'
               : hasEmptyTitle
-                ? '記事タイトルを入力するとExportできます。'
-                : '記事を確認したら、Exportへ進みます。'}
+                ? '記事タイトルを入力すると書き出せます。'
+                : '記事を確認したら、書き出しへ進みます。'}
           </p>
           <button
             className="inline-flex items-center gap-2 rounded-[9px] bg-[#1d6b50] px-4 py-3 text-xs font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] transition hover:bg-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
@@ -303,7 +303,7 @@ export function ArticleReviewPage({
             disabled={hasUnsavedChanges || isBusy || hasEmptyTitle}
             title={hasUnsavedChanges ? '編集中の変更を保存してください' : undefined}
           >
-            Exportへ
+            書き出しへ
             <ArrowRight size={14} />
           </button>
         </div>

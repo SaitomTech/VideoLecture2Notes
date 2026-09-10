@@ -12,7 +12,7 @@ export const WORKFLOW_STEPS: Array<{ id: WorkflowStep; label: string }> = [
   { id: 'detect-slides', label: 'Detect slides' },
   { id: 'generate-notes', label: 'Generate notes' },
   { id: 'article-review', label: 'Article preview' },
-  { id: 'export', label: 'Export' },
+  { id: 'export', label: 'Result' },
 ]
 
 export function getWorkflowStepIndex(step: WorkflowStep) {

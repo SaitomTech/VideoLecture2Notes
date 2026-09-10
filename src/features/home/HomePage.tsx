@@ -90,7 +90,7 @@ function progressCopy(summary: ProjectSummary) {
     }
     return `OCR ${summary.ocrCompleted} / ${summary.slideCount} · 文字起こしから続行`
   }
-  if (summary.resumeStep === 'export') return '記事をExportできます。'
+  if (summary.resumeStep === 'export') return '記事を書き出せます。'
   return '記事本文を確認・編集できます。'
 }
 
