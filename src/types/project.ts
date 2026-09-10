@@ -1,6 +1,6 @@
 import type { VideoExtension } from './media'
 
-export const PROJECT_VERSION = 8
+export const PROJECT_VERSION = 9
 
 export type ProjectStep = 'crop' | 'detect-slides' | 'generate-notes' | 'article-review' | 'export'
 
@@ -70,6 +70,30 @@ export type CropRegion = {
   y: number
   width: number
   height: number
+}
+
+export type NormalizedPoint = {
+  x: number
+  y: number
+}
+
+export type PerspectiveCorners = {
+  topLeft: NormalizedPoint
+  topRight: NormalizedPoint
+  bottomRight: NormalizedPoint
+  bottomLeft: NormalizedPoint
+}
+
+export type CropAspectRatio = {
+  mode: '16:9' | '4:3' | 'estimated' | 'custom'
+  value: number
+}
+
+/** Four source points mapped to a front-facing rectangle at export time. */
+export type PerspectiveCrop = {
+  corners: PerspectiveCorners
+  aspectRatio: CropAspectRatio
+  transformVersion: 1
 }
 
 export type SlideBoundary = {
@@ -261,6 +285,7 @@ export type MediaProject = {
   source: MediaSource
   trim?: VideoTrim
   crop: CropRegion
+  perspectiveCrop?: PerspectiveCrop
   settings: ProjectSettings
   slides: SlideData[]
   slideDetection?: SlideDetectionResult

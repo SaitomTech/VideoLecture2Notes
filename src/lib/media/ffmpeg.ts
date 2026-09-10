@@ -1,5 +1,5 @@
 import { executeSidecar, executeSidecarRaw } from '../tauri/sidecar'
-import type { CropRegion, MediaMetadata } from '../../types/project'
+import type { CropRegion, MediaMetadata, PerspectiveCrop } from '../../types/project'
 import type { VideoFormatAdjustment } from '../../types/media'
 import { computeAverageLuma, computeDHash } from './dhash'
 
@@ -17,14 +17,19 @@ export type FrameHash = {
 type SampleVideoFramesInput = {
   path: string
   crop: CropRegion
+  perspectiveCrop?: PerspectiveCrop
+  metadata: Pick<MediaMetadata, 'width' | 'height'>
   sampleIntervalMs: number
 }
 
 type RepresentativeFrameInput = {
   path: string
   crop: CropRegion
+  perspectiveCrop?: PerspectiveCrop
+  metadata: Pick<MediaMetadata, 'width' | 'height'>
   timestampMs: number
   outputPath: string
+  signal?: AbortSignal
 }
 
 type CropDetectionFrameInput = {
@@ -56,10 +61,9 @@ type TrimVideoInput = {
   signal?: AbortSignal
 }
 
-type ConvertVideoForWebViewInput = {
+type BrowserCompatibleVideoInput = {
   path: string
   outputPath: string
-  adjustment: VideoFormatAdjustment
   signal?: AbortSignal
 }
 
@@ -68,7 +72,7 @@ function outputText(value: string | Uint8Array) {
 }
 
 function fileExtension(path: string) {
-  return path.split(/[\\/]/).pop()?.split('.').pop()?.toLowerCase()
+  return path.split(/[\\/\\\\]/).pop()?.split('.').pop()?.toLowerCase()
 }
 
 function hasMp4Container(formatName?: string) {
@@ -84,6 +88,13 @@ export function getWebViewFormatAdjustment(
     video: metadata.videoCodec !== 'h264' || metadata.videoPixelFormat !== 'yuv420p',
     audio: metadata.audioCodec !== 'aac',
   }
+}
+
+type ConvertVideoForWebViewInput = {
+  path: string
+  outputPath: string
+  adjustment: VideoFormatAdjustment
+  signal?: AbortSignal
 }
 
 /** Converts only the tracks that are outside the WebView import format. */
@@ -130,10 +141,61 @@ export async function convertVideoForWebView({
   return outputPath
 }
 
+function filterNumber(value: number) {
+  return Number.isFinite(value) ? value.toFixed(4) : '0'
+}
+
+function perspectiveOutputSize(perspectiveCrop: PerspectiveCrop, outputWidth = 1280) {
+  const aspectRatio = Math.max(0.1, perspectiveCrop.aspectRatio.value)
+  const width = Math.max(2, Math.round(outputWidth / 2) * 2)
+  const height = Math.max(2, Math.round(width / aspectRatio / 2) * 2)
+  return { width, height }
+}
+
+/** Builds the one crop transform shared by detection, preview exports, and OCR images. */
+export function buildCropVideoFilter({
+  crop,
+  perspectiveCrop,
+  metadata,
+  outputWidth,
+  outputHeight,
+  scaleFlags = 'lanczos',
+}: {
+  crop: CropRegion
+  perspectiveCrop?: PerspectiveCrop
+  metadata: Pick<MediaMetadata, 'width' | 'height'>
+  outputWidth?: number
+  outputHeight?: number
+  scaleFlags?: 'area' | 'fast_bilinear' | 'lanczos'
+}) {
+  if (!perspectiveCrop) {
+    const scale = outputWidth
+      ? `,scale=${outputWidth}:${outputHeight ?? -2}:flags=${scaleFlags}`
+      : ''
+    return `crop=${crop.width}:${crop.height}:${crop.x}:${crop.y}${scale}`
+  }
+
+  const { width, height } = perspectiveOutputSize(perspectiveCrop, outputWidth ?? 1280)
+  const outputSize =
+    outputWidth && outputHeight
+      ? `${outputWidth}:${outputHeight}`
+      : `${width}:${outputHeight ?? height}`
+  const { topLeft, topRight, bottomRight, bottomLeft } = perspectiveCrop.corners
+  // FFmpeg's source order is top-left, top-right, bottom-left, bottom-right.
+  const points = [topLeft, topRight, bottomLeft, bottomRight]
+    .flatMap((point) => [point.x * metadata.width, point.y * metadata.height])
+    .map(filterNumber)
+    .join(':')
+
+  return `perspective=${points}:sense=source,scale=${outputSize}:flags=${scaleFlags},setsar=1`
+}
+
 /** Samples 9x8 grayscale frames so slide detection does not need to materialize a cropped video. */
 export async function sampleVideoFrames({
   path,
   crop,
+  perspectiveCrop,
+  metadata,
   sampleIntervalMs,
 }: SampleVideoFramesInput): Promise<FrameHash[]> {
   const frameWidth = 9
@@ -151,7 +213,14 @@ export async function sampleVideoFrames({
     '-an',
     '-sn',
     '-vf',
-    `fps=${fps},crop=${crop.width}:${crop.height}:${crop.x}:${crop.y},scale=${frameWidth}:${frameHeight}:flags=area,format=gray`,
+    `fps=${fps},${buildCropVideoFilter({
+      crop,
+      perspectiveCrop,
+      metadata,
+      outputWidth: frameWidth,
+      outputHeight: frameHeight,
+      scaleFlags: 'area',
+    })},format=gray`,
     '-f',
     'rawvideo',
     '-pix_fmt',
@@ -182,28 +251,41 @@ export async function sampleVideoFrames({
 export async function extractRepresentativeFrame({
   path,
   crop,
+  perspectiveCrop,
+  metadata,
   timestampMs,
   outputPath,
+  signal,
 }: RepresentativeFrameInput) {
-  const output = await executeSidecar('binaries/ffmpeg', [
-    '-hide_banner',
-    '-v',
-    'error',
-    '-ss',
-    String(Math.max(0, timestampMs / 1000)),
-    '-i',
-    path,
-    '-an',
-    '-sn',
-    '-vf',
-    `crop=${crop.width}:${crop.height}:${crop.x}:${crop.y},scale=1280:-2:flags=lanczos`,
-    '-frames:v',
-    '1',
-    '-q:v',
-    '3',
-    '-y',
-    outputPath,
-  ])
+  const output = await executeSidecar(
+    'binaries/ffmpeg',
+    [
+      '-hide_banner',
+      '-v',
+      'error',
+      '-ss',
+      String(Math.max(0, timestampMs / 1000)),
+      '-i',
+      path,
+      '-an',
+      '-sn',
+      '-vf',
+      buildCropVideoFilter({
+        crop,
+        perspectiveCrop,
+        metadata,
+        outputWidth: 1280,
+        scaleFlags: 'lanczos',
+      }),
+      '-frames:v',
+      '1',
+      '-q:v',
+      '3',
+      '-y',
+      outputPath,
+    ],
+    { signal },
+  )
 
   if (output.code !== 0) {
     const detail = output.stderr.trim()
@@ -280,6 +362,54 @@ export async function extractAudio({ path, outputPath, signal }: ExtractAudioInp
   if (output.code !== 0) {
     const detail = output.stderr.trim()
     throw new Error(detail || `音声の抽出に失敗しました (code ${output.code})`)
+  }
+
+  return outputPath
+}
+
+/** Converts a downloaded source into a WebView-compatible H.264/AAC MP4. */
+export async function transcodeVideoForBrowser({
+  path,
+  outputPath,
+  signal,
+}: BrowserCompatibleVideoInput) {
+  const output = await executeSidecar(
+    'binaries/ffmpeg',
+    [
+      '-hide_banner',
+      '-v',
+      'error',
+      '-i',
+      path,
+      '-map',
+      '0:v:0',
+      '-map',
+      '0:a:0?',
+      '-c:v',
+      'libx264',
+      '-preset',
+      'veryfast',
+      '-crf',
+      '18',
+      '-pix_fmt',
+      'yuv420p',
+      '-c:a',
+      'aac',
+      '-b:a',
+      '160k',
+      '-sn',
+      '-dn',
+      '-movflags',
+      '+faststart',
+      '-y',
+      outputPath,
+    ],
+    { signal },
+  )
+
+  if (output.code !== 0) {
+    const detail = output.stderr.trim()
+    throw new Error(detail || `動画を再生可能な形式へ変換できませんでした (code ${output.code})`)
   }
 
   return outputPath

@@ -105,6 +105,8 @@ async function addRepresentativeFrames(
       await extractRepresentativeFrame({
         path: source.path,
         crop: project.crop,
+        perspectiveCrop: project.perspectiveCrop,
+        metadata: source.metadata,
         timestampMs: representativeTimestamp(slide.startMs, slide.endMs),
         outputPath,
       })
@@ -144,6 +146,8 @@ export async function runSlideDetection({
   const frames = await sampleVideoFrames({
     path: source.path,
     crop: project.crop,
+    perspectiveCrop: project.perspectiveCrop,
+    metadata: source.metadata,
     sampleIntervalMs,
   })
   onStage?.('comparing')
