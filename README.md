@@ -93,7 +93,7 @@ bunx tauri build --bundles dmg
 
 ## リリース
 
-リリースは、バージョンを更新して`main`のコミットにタグを作成すると開始します。タグはGitHub Desktopまたはコマンドラインから作成・pushします。Release画面からタグとReleaseを同時に公開する操作は、ビルド前にReleaseが公開されるため使用しません。
+通常の開発とバージョン更新は`develop`で行います。`develop`から`main`へマージされたコミットにリリースタグを作成すると、リリースが開始します。`main`では直接開発せず、タグの作成・pushにだけ使用します。タグをpushしたら、ローカルの作業ブランチを`develop`へ戻します。タグはGitHub Desktopまたはコマンドラインから作成・pushします。Release画面からタグとReleaseを同時に公開する操作は、ビルド前にReleaseが公開されるため使用しません。
 
 バージョンは`package.json`を基準に、関連するTauri/Cargoのマニフェストへ一括反映します。
 
@@ -103,11 +103,17 @@ bun run version:check
 ```
 
 ```bash
+git switch develop
+git pull --ff-only origin develop
+# バージョン更新をコミットしてdevelopへpushし、develop → mainのPRをマージする
 git fetch origin main
 git switch main
 git pull --ff-only origin main
-git tag vX.Y.Z
+git tag --list vX.Y.Z
+git ls-remote --tags origin vX.Y.Z
+git tag -a vX.Y.Z -m "vX.Y.Z"
 git push origin vX.Y.Z
+git switch develop
 ```
 
 GitHub Actionsはタグのコミットが`main`の履歴に含まれているかを確認します。`develop`にしかない未マージのコミットを指定した場合はビルドを開始せず失敗します。

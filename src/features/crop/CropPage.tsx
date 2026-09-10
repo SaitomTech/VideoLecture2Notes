@@ -110,8 +110,7 @@ export function CropPage({
   const metadata = source.metadata
   const initialRegion = pixelToNormalizedCrop(project.crop, metadata)
   const initialCorners = project.perspectiveCrop?.corners ?? rectToCorners(initialRegion)
-  const initialMode: CropMode =
-    project.perspectiveCrop || !project.workflow.cropConfirmedAt ? 'perspective' : 'rect'
+  const initialMode: CropMode = project.perspectiveCrop ? 'perspective' : 'rect'
   const initialAspectRatio = project.perspectiveCrop?.aspectRatio ?? {
     mode: '16:9' as const,
     value: 16 / 9,
