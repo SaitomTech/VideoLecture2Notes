@@ -12,6 +12,7 @@ import {
   type MediaMetadata,
   type MediaProject,
   type MediaSource,
+  type PerspectiveCrop,
   type ProjectStep,
   type SlideData,
   type SlideDetectionResult,
@@ -114,6 +115,7 @@ export function updateProjectCropAndTrim(
   project: MediaProject,
   crop: CropRegion,
   trim?: VideoTrim,
+  perspectiveCrop?: PerspectiveCrop,
 ): MediaProject {
   const previousTrim = project.trim
   const trimChanged =
@@ -125,13 +127,16 @@ export function updateProjectCropAndTrim(
     project.crop.y !== crop.y ||
     project.crop.width !== crop.width ||
     project.crop.height !== crop.height
-  const mediaChanged = trimChanged || cropChanged
+  const perspectiveChanged =
+    JSON.stringify(project.perspectiveCrop) !== JSON.stringify(perspectiveCrop)
+  const mediaChanged = trimChanged || cropChanged || perspectiveChanged
   const now = new Date().toISOString()
 
   return {
     ...project,
     ...(trim ? { trim } : { trim: undefined }),
     crop,
+    ...(perspectiveCrop ? { perspectiveCrop } : { perspectiveCrop: undefined }),
     workflow: {
       ...project.workflow,
       cropConfirmedAt: now,

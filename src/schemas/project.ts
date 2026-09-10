@@ -38,6 +38,25 @@ const CropRegionSchema = z.object({
   height: z.number().finite().positive(),
 })
 
+const NormalizedPointSchema = z.object({
+  x: z.number().finite().min(0).max(1),
+  y: z.number().finite().min(0).max(1),
+})
+
+const PerspectiveCropSchema = z.object({
+  corners: z.object({
+    topLeft: NormalizedPointSchema,
+    topRight: NormalizedPointSchema,
+    bottomRight: NormalizedPointSchema,
+    bottomLeft: NormalizedPointSchema,
+  }),
+  aspectRatio: z.object({
+    mode: z.enum(['16:9', '4:3', 'estimated', 'custom']),
+    value: z.number().finite().positive(),
+  }),
+  transformVersion: z.literal(1),
+})
+
 const SlideBoundarySchema = z.object({
   id: z.string().min(1),
   timestampMs: z.number().int().nonnegative(),
@@ -189,6 +208,7 @@ export const MediaProjectSchema = z.object({
   source: MediaSourceSchema,
   trim: VideoTrimSchema.optional(),
   crop: CropRegionSchema,
+  perspectiveCrop: PerspectiveCropSchema.optional(),
   settings: z.object({
     slideDetection: z.object({
       sampleIntervalMs: z.number().int().positive(),

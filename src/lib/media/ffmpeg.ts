@@ -1,5 +1,5 @@
 import { executeSidecar, executeSidecarRaw } from '../tauri/sidecar'
-import type { CropRegion } from '../../types/project'
+import type { CropRegion, MediaMetadata, PerspectiveCrop } from '../../types/project'
 import { computeAverageLuma, computeDHash } from './dhash'
 
 /** Runs the bundled ffmpeg with an argument array; callers never build a shell command string. */
@@ -16,14 +16,19 @@ export type FrameHash = {
 type SampleVideoFramesInput = {
   path: string
   crop: CropRegion
+  perspectiveCrop?: PerspectiveCrop
+  metadata: Pick<MediaMetadata, 'width' | 'height'>
   sampleIntervalMs: number
 }
 
 type RepresentativeFrameInput = {
   path: string
   crop: CropRegion
+  perspectiveCrop?: PerspectiveCrop
+  metadata: Pick<MediaMetadata, 'width' | 'height'>
   timestampMs: number
   outputPath: string
+  signal?: AbortSignal
 }
 
 type CropDetectionFrameInput = {
@@ -65,10 +70,61 @@ function outputText(value: string | Uint8Array) {
   return typeof value === 'string' ? value : new TextDecoder().decode(value)
 }
 
+function filterNumber(value: number) {
+  return Number.isFinite(value) ? value.toFixed(4) : '0'
+}
+
+function perspectiveOutputSize(perspectiveCrop: PerspectiveCrop, outputWidth = 1280) {
+  const aspectRatio = Math.max(0.1, perspectiveCrop.aspectRatio.value)
+  const width = Math.max(2, Math.round(outputWidth / 2) * 2)
+  const height = Math.max(2, Math.round(width / aspectRatio / 2) * 2)
+  return { width, height }
+}
+
+/** Builds the one crop transform shared by detection, preview exports, and OCR images. */
+export function buildCropVideoFilter({
+  crop,
+  perspectiveCrop,
+  metadata,
+  outputWidth,
+  outputHeight,
+  scaleFlags = 'lanczos',
+}: {
+  crop: CropRegion
+  perspectiveCrop?: PerspectiveCrop
+  metadata: Pick<MediaMetadata, 'width' | 'height'>
+  outputWidth?: number
+  outputHeight?: number
+  scaleFlags?: 'area' | 'fast_bilinear' | 'lanczos'
+}) {
+  if (!perspectiveCrop) {
+    const scale = outputWidth
+      ? `,scale=${outputWidth}:${outputHeight ?? -2}:flags=${scaleFlags}`
+      : ''
+    return `crop=${crop.width}:${crop.height}:${crop.x}:${crop.y}${scale}`
+  }
+
+  const { width, height } = perspectiveOutputSize(perspectiveCrop, outputWidth ?? 1280)
+  const outputSize =
+    outputWidth && outputHeight
+      ? `${outputWidth}:${outputHeight}`
+      : `${width}:${outputHeight ?? height}`
+  const { topLeft, topRight, bottomRight, bottomLeft } = perspectiveCrop.corners
+  // FFmpeg's source order is top-left, top-right, bottom-left, bottom-right.
+  const points = [topLeft, topRight, bottomLeft, bottomRight]
+    .flatMap((point) => [point.x * metadata.width, point.y * metadata.height])
+    .map(filterNumber)
+    .join(':')
+
+  return `perspective=${points}:sense=source,scale=${outputSize}:flags=${scaleFlags},setsar=1`
+}
+
 /** Samples 9x8 grayscale frames so slide detection does not need to materialize a cropped video. */
 export async function sampleVideoFrames({
   path,
   crop,
+  perspectiveCrop,
+  metadata,
   sampleIntervalMs,
 }: SampleVideoFramesInput): Promise<FrameHash[]> {
   const frameWidth = 9
@@ -86,7 +142,14 @@ export async function sampleVideoFrames({
     '-an',
     '-sn',
     '-vf',
-    `fps=${fps},crop=${crop.width}:${crop.height}:${crop.x}:${crop.y},scale=${frameWidth}:${frameHeight}:flags=area,format=gray`,
+    `fps=${fps},${buildCropVideoFilter({
+      crop,
+      perspectiveCrop,
+      metadata,
+      outputWidth: frameWidth,
+      outputHeight: frameHeight,
+      scaleFlags: 'area',
+    })},format=gray`,
     '-f',
     'rawvideo',
     '-pix_fmt',
@@ -117,28 +180,41 @@ export async function sampleVideoFrames({
 export async function extractRepresentativeFrame({
   path,
   crop,
+  perspectiveCrop,
+  metadata,
   timestampMs,
   outputPath,
+  signal,
 }: RepresentativeFrameInput) {
-  const output = await executeSidecar('binaries/ffmpeg', [
-    '-hide_banner',
-    '-v',
-    'error',
-    '-ss',
-    String(Math.max(0, timestampMs / 1000)),
-    '-i',
-    path,
-    '-an',
-    '-sn',
-    '-vf',
-    `crop=${crop.width}:${crop.height}:${crop.x}:${crop.y},scale=1280:-2:flags=lanczos`,
-    '-frames:v',
-    '1',
-    '-q:v',
-    '3',
-    '-y',
-    outputPath,
-  ])
+  const output = await executeSidecar(
+    'binaries/ffmpeg',
+    [
+      '-hide_banner',
+      '-v',
+      'error',
+      '-ss',
+      String(Math.max(0, timestampMs / 1000)),
+      '-i',
+      path,
+      '-an',
+      '-sn',
+      '-vf',
+      buildCropVideoFilter({
+        crop,
+        perspectiveCrop,
+        metadata,
+        outputWidth: 1280,
+        scaleFlags: 'lanczos',
+      }),
+      '-frames:v',
+      '1',
+      '-q:v',
+      '3',
+      '-y',
+      outputPath,
+    ],
+    { signal },
+  )
 
   if (output.code !== 0) {
     const detail = output.stderr.trim()

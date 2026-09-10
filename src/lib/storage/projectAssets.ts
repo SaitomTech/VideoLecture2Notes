@@ -32,6 +32,11 @@ export async function getTrimmedVideoAssetPath(projectId: string) {
   return join(directory, 'trimmed.mp4')
 }
 
+export async function getCropPreviewAssetPath(projectId: string) {
+  const directory = await prepareProjectDerivedAssetDirectory(projectId)
+  return join(directory, 'crop-preview.jpg')
+}
+
 export async function removeTrimmedVideoAsset(projectId: string) {
   await removeAppLocalPath(`${projectAssetDirectory(projectId, 'derived')}/trimmed.mp4`)
 }

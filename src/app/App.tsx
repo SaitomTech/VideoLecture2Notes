@@ -45,6 +45,7 @@ import type {
   CropRegion,
   MediaProject,
   MediaSource,
+  PerspectiveCrop,
   ProjectStep,
   SlideOcrResult,
   SlideResultEdits,
@@ -192,9 +193,11 @@ function App() {
   const handleApplyCrop = async ({
     crop,
     trim: range,
+    perspectiveCrop,
   }: {
     crop: CropRegion
     trim: VideoTrimRange
+    perspectiveCrop?: PerspectiveCrop
   }) => {
     const currentProject = projectRef.current
     if (!currentProject) return
@@ -220,8 +223,10 @@ function App() {
       currentProject.crop.y !== crop.y ||
       currentProject.crop.width !== crop.width ||
       currentProject.crop.height !== crop.height
-    const mediaChanged = trimChanged || cropChanged
-    const nextProject = updateProjectCropAndTrim(currentProject, crop, nextTrim)
+    const perspectiveChanged =
+      JSON.stringify(currentProject.perspectiveCrop) !== JSON.stringify(perspectiveCrop)
+    const mediaChanged = trimChanged || cropChanged || perspectiveChanged
+    const nextProject = updateProjectCropAndTrim(currentProject, crop, nextTrim, perspectiveCrop)
     await persistProject(nextProject)
 
     if (trimChanged) {

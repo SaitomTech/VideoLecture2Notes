@@ -10,7 +10,7 @@ import {
   prepareCropDetectionDirectory,
   removeCropDetectionDirectory,
 } from '../../lib/storage/projectAssets'
-import type { CropRegion, MediaMetadata } from '../../types/project'
+import type { CropRegion, MediaMetadata, PerspectiveCorners } from '../../types/project'
 import { normalizedToPixelCrop } from './utils'
 
 export const AUTO_CROP_SAMPLE_COUNT = 12
@@ -23,6 +23,7 @@ export type AutoCropProgress = {
 
 export type AutoCropResult = {
   crop: CropRegion
+  corners: PerspectiveCorners
   confidence: number
   framesAnalyzed: number
   stableFrames: number
@@ -39,6 +40,7 @@ type NormalizedRegion = {
 type Candidate = {
   frameIndex: number
   region: NormalizedRegion
+  corners: PerspectiveCorners
   score: number
 }
 
@@ -77,6 +79,38 @@ function regionFromPolygon(polygon: VisionPoint[]): NormalizedRegion | null {
 
   if (width <= 0 || height <= 0) return null
   return { x: left, y: top, width, height }
+}
+
+function cornersFromPolygon(polygon: VisionPoint[]): PerspectiveCorners | null {
+  if (polygon.length !== 4) return null
+  return {
+    topLeft: polygon[0],
+    topRight: polygon[1],
+    bottomRight: polygon[2],
+    bottomLeft: polygon[3],
+  }
+}
+
+function weightedMeanCorners(cluster: CandidateCluster): PerspectiveCorners {
+  const totalWeight = cluster.reduce((sum, candidate) => sum + Math.max(candidate.score, 0.05), 0)
+  const corners = (['topLeft', 'topRight', 'bottomRight', 'bottomLeft'] as const).map((corner) => {
+    const point = cluster.reduce(
+      (result, candidate) => {
+        const weight = Math.max(candidate.score, 0.05)
+        result.x += candidate.corners[corner].x * weight
+        result.y += candidate.corners[corner].y * weight
+        return result
+      },
+      { x: 0, y: 0 },
+    )
+    return { x: clamp(point.x / totalWeight), y: clamp(point.y / totalWeight) }
+  })
+  return {
+    topLeft: corners[0],
+    topRight: corners[1],
+    bottomRight: corners[2],
+    bottomLeft: corners[3],
+  }
 }
 
 function area(region: NormalizedRegion) {
@@ -201,12 +235,15 @@ function candidatesFromDetection(
 ): Candidate[] {
   return detection.rectangles.flatMap((observation) => {
     const region = regionFromPolygon(observation.polygon)
-    if (!region || region.width < 0.2 || region.height < 0.1 || area(region) < 0.08) return []
+    const corners = cornersFromPolygon(observation.polygon)
+    if (!region || !corners || region.width < 0.2 || region.height < 0.1 || area(region) < 0.08)
+      return []
 
     return [
       {
         frameIndex,
         region,
+        corners,
         score: scoreCandidate(region, observation, detection.textRegions, detection.faceRegions),
       },
     ]
@@ -277,6 +314,7 @@ export async function detectAutomaticCrop({
     const region = paddedRegion(weightedMeanRegion(selected.cluster))
     return {
       crop: normalizedToPixelCrop(region, metadata),
+      corners: weightedMeanCorners(selected.cluster),
       confidence: selected.confidence,
       framesAnalyzed: detections.length,
       stableFrames: new Set(selected.cluster.map((candidate) => candidate.frameIndex)).size,
