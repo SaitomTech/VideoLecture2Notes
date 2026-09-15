@@ -1,10 +1,8 @@
-import { CheckCircle2, ChevronRight, Film, Trash2, X } from 'lucide-react'
+import { Film, Trash2 } from 'lucide-react'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import { useState } from 'react'
 import { formatTimestamp } from '../../../lib/time'
 import type { Article, MediaProject } from '../../../types/project'
-
-export type CreationNotice = { articleIds: string[]; count: number }
 
 function ArticleThumbnail({ article }: { article: Article }) {
   const [failedPaths, setFailedPaths] = useState<string[]>([])
@@ -46,69 +44,17 @@ function articleActionLabel(article: Article) {
 
 export function ArticleList({
   project,
-  creationNotice,
-  onDismissNotice,
   onStartArticleCreator,
   onOpenArticle,
   onDeleteArticle,
 }: {
   project: MediaProject
-  creationNotice: CreationNotice | null
-  onDismissNotice: () => void
   onStartArticleCreator: () => void
   onOpenArticle: (articleId: string) => void
   onDeleteArticle: (articleId: string) => void
 }) {
   return (
     <section className="mt-0">
-      {creationNotice && (
-        <div className="mt-4 rounded-[10px] border border-[#b7cbc0] bg-[#f1f8f3] px-4 py-3">
-          <div className="flex items-start gap-2.5">
-            <CheckCircle2
-              className="mt-0.5 shrink-0 text-[#1d6b50]"
-              size={17}
-              strokeWidth={1.8}
-              aria-hidden="true"
-            />
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-[#1d6b50]">記事作成の下準備ができました</p>
-              <p className="mt-1 text-xs leading-5 text-[#53615b]">
-                {creationNotice.count}
-                件の区間を追加しました。「作業を開始」から文字起こしを進められます。
-              </p>
-            </div>
-            <button
-              className="rounded-md p-1 text-[#8b9892] hover:bg-white hover:text-[#53615b]"
-              type="button"
-              onClick={onDismissNotice}
-              aria-label="記事化案内を閉じる"
-            >
-              <X size={15} />
-            </button>
-          </div>
-          <div className="mt-3 flex flex-wrap items-center gap-2 pl-[27px]">
-            <button
-              className="inline-flex items-center gap-1.5 rounded-[8px] border border-[#b8d2c5] bg-white px-3 py-2 text-xs font-semibold text-[#1d6b50] hover:bg-[#f4faf6]"
-              type="button"
-              onClick={() => {
-                const firstArticleId = creationNotice.articleIds[0]
-                onDismissNotice()
-                if (firstArticleId) onOpenArticle(firstArticleId)
-              }}
-            >
-              {creationNotice.count === 1 ? '作業を開始' : '1件目の作業を開始'}
-              <ChevronRight size={14} />
-            </button>
-            <button
-              className="rounded-[8px] px-3 py-2 text-xs font-semibold text-[#71807b] hover:bg-white"
-              type="button"
-              onClick={onDismissNotice}
-            >
-              あとで見る
-            </button>
-          </div>
-        </div>
-      )}
       <div className="mt-4 overflow-hidden">
         {project.articles.length === 0 ? (
           <div className="flex flex-col items-center px-6 py-16 text-center">
@@ -122,20 +68,15 @@ export function ArticleList({
               type="button"
               onClick={onStartArticleCreator}
             >
-              記事作成の下準備
+              新しい記事を作成
               <span aria-hidden="true">→</span>
             </button>
           </div>
         ) : (
           project.articles.map((article) => (
             <article
-              className={`flex flex-wrap items-center gap-4 py-3 pl-3 pr-3 ${creationNotice?.articleIds.includes(article.id) ? 'bg-[#eaf5ee]' : 'border-b border-[#d8e1dc]'}`}
+              className="flex flex-wrap items-center gap-4 border-b border-[#d8e1dc] py-3 pl-3 pr-3"
               key={article.id}
-              style={{
-                boxShadow: creationNotice?.articleIds.includes(article.id)
-                  ? 'inset 0 0 0 0.5px #a7cdb8'
-                  : undefined,
-              }}
             >
               <ArticleThumbnail article={article} />
               <div className="min-w-0 flex-1">
@@ -153,7 +94,6 @@ export function ArticleList({
                 className={`rounded-[8px] px-3 py-2 text-xs font-semibold ${articleActionLabel(article) === '作業を開始' ? 'bg-[#1d6b50] text-white hover:bg-[#174d3c]' : 'border border-[#b7cbc0] bg-white text-[#1d6b50] hover:bg-[#f4faf6]'}`}
                 type="button"
                 onClick={() => {
-                  onDismissNotice()
                   onOpenArticle(article.id)
                 }}
               >

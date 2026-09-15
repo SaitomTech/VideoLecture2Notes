@@ -77,7 +77,7 @@ export function ProjectHeader({
             type="button"
             onClick={onOpenArticleCreator}
           >
-            記事作成の下準備
+            新しい記事を作成
             <span aria-hidden="true">→</span>
           </button>
           <button

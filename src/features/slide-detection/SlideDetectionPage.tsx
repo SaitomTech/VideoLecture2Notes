@@ -4,6 +4,7 @@ import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
 import type { WorkflowStep } from '../../lib/workflow'
 import { getActiveMediaSource, type MediaProject, type SlideBoundary } from '../../types/project'
+import { ArticleNavigationBar } from '../article/components/ArticleNavigationBar'
 import { useSlideDetection } from './hooks/useSlideDetection'
 import { buildSlideData } from './detection'
 import { SlideDetectionResultPanel } from './components/SlideDetectionResultPanel'
@@ -15,6 +16,7 @@ type SlideDetectionPageProps = {
   onCompleted: (output: SlideDetectionOutput) => void | Promise<void>
   onContinue: () => void
   onHome: () => void
+  onOpenArticle: (articleId: string) => void | Promise<void>
   maxReachedStep: WorkflowStep
   onStepClick: (step: WorkflowStep) => void
 }
@@ -24,6 +26,7 @@ export function SlideDetectionPage({
   onCompleted,
   onContinue,
   onHome,
+  onOpenArticle,
   maxReachedStep,
   onStepClick,
 }: SlideDetectionPageProps) {
@@ -114,6 +117,13 @@ export function SlideDetectionPage({
         maxReachedStep={maxReachedStep}
         onStepClick={onStepClick}
         disabled={isRunning || isSavingReview || hasUnsavedReview}
+        leadingContent={
+          <ArticleNavigationBar
+            project={project}
+            onSelect={onOpenArticle}
+            disabled={isRunning || isSavingReview || hasUnsavedReview}
+          />
+        }
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">

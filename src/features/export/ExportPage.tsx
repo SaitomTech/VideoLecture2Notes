@@ -11,12 +11,14 @@ import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
 import type { WorkflowStep } from '../../lib/workflow'
 import type { MediaProject } from '../../types/project'
+import { ArticleNavigationBar } from '../article/components/ArticleNavigationBar'
 import { EXPORT_OPTIONS, type ExportFormat } from './export'
 import { useExport, type ExportController } from './hooks/useExport'
 
 type ExportPageProps = {
   project: MediaProject
   onHome: () => void
+  onOpenArticle: (articleId: string) => void | Promise<void>
   onGenerated: () => void | Promise<void>
   maxReachedStep: WorkflowStep
   onStepClick: (step: WorkflowStep) => void
@@ -38,6 +40,7 @@ function getStatusMessage({ status, progress, error }: ExportController) {
 export function ExportPage({
   project,
   onHome,
+  onOpenArticle,
   onGenerated,
   maxReachedStep,
   onStepClick,
@@ -156,6 +159,9 @@ export function ExportPage({
         maxReachedStep={maxReachedStep}
         onStepClick={onStepClick}
         disabled={isBusy}
+        leadingContent={
+          <ArticleNavigationBar project={project} onSelect={onOpenArticle} disabled={isBusy} />
+        }
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">

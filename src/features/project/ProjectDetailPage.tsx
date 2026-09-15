@@ -11,7 +11,7 @@ import type {
   VideoTrimRange,
 } from '../../types/project'
 import type { VideoImportPanelHandle } from './VideoImportPanel'
-import { ArticleList, type CreationNotice } from './components/ArticleList'
+import { ArticleList } from './components/ArticleList'
 import { DeleteArticleDialog } from './components/DeleteArticleDialog'
 import { DeleteProjectDialog } from './components/DeleteProjectDialog'
 import { DeleteVideoDialog } from './components/DeleteVideoDialog'
@@ -66,7 +66,6 @@ export function ProjectDetailPage({
   const [isDeleteProjectOpen, setIsDeleteProjectOpen] = useState(false)
   const [isDeletingProject, setIsDeletingProject] = useState(false)
   const [projectDeleteError, setProjectDeleteError] = useState<string | null>(null)
-  const [creationNotice, setCreationNotice] = useState<CreationNotice | null>(null)
   const videoImportContainerRef = useRef<HTMLDivElement | null>(null)
   const videoImportPanelRef = useRef<VideoImportPanelHandle | null>(null)
   const titleEditor = useProjectTitleEditor({
@@ -94,8 +93,7 @@ export function ProjectDetailPage({
     crop: CropRegion,
     perspectiveCrop?: PerspectiveCrop,
   ) => {
-    const created = await onCreateArticles(videoId, ranges, crop, perspectiveCrop)
-    setCreationNotice({ articleIds: created.map((article) => article.id), count: created.length })
+    await onCreateArticles(videoId, ranges, crop, perspectiveCrop)
   }
 
   const deleteCurrentProject = async () => {
@@ -184,8 +182,6 @@ export function ProjectDetailPage({
             {tab === 'articles' ? (
               <ArticleList
                 project={project}
-                creationNotice={creationNotice}
-                onDismissNotice={() => setCreationNotice(null)}
                 onStartArticleCreator={openArticleCreator}
                 onOpenArticle={onOpenArticle}
                 onDeleteArticle={requestDeleteArticle}

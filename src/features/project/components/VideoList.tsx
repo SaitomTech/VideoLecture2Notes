@@ -87,7 +87,7 @@ export function VideoList({
                 type="button"
                 onClick={() => onStartArticleCreator(video)}
               >
-                この動画で記事作成の下準備
+                この動画から記事を作成
                 <ChevronRight size={14} />
               </button>
               <button

@@ -30,6 +30,7 @@ import { TranscriptionStatus } from './components/TranscriptionStatus'
 import { TranscriptionKeywordsPanel } from './components/TranscriptionKeywordsPanel'
 import { useTranscription } from './hooks/useTranscription'
 import type { TranscriptionLanguage } from './transcription'
+import { ArticleNavigationBar } from '../article/components/ArticleNavigationBar'
 
 type GenerateNotesPageProps = {
   project: MediaProject
@@ -40,6 +41,7 @@ type GenerateNotesPageProps = {
   onSaveSlideResultEdits: (slideId: string, edits: SlideResultEdits) => void | Promise<void>
   onOpenArticleReview: () => void
   onHome: () => void
+  onOpenArticle: (articleId: string) => void | Promise<void>
   maxReachedStep: WorkflowStep
   onStepClick: (step: WorkflowStep) => void
 }
@@ -55,6 +57,7 @@ export function GenerateNotesPage({
   onSaveSlideResultEdits,
   onOpenArticleReview,
   onHome,
+  onOpenArticle,
   maxReachedStep,
   onStepClick,
 }: GenerateNotesPageProps) {
@@ -133,6 +136,13 @@ export function GenerateNotesPage({
         maxReachedStep={maxReachedStep}
         onStepClick={onStepClick}
         disabled={isProcessing}
+        leadingContent={
+          <ArticleNavigationBar
+            project={project}
+            onSelect={onOpenArticle}
+            disabled={isProcessing}
+          />
+        }
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">

@@ -192,17 +192,28 @@ function App() {
         crop,
         perspectiveCrop,
       )
+      const nextProject = {
+        ...current,
+        articles: [...current.articles, ...created],
+        updatedAt: new Date().toISOString(),
+      }
+      const firstArticle = created[0]
+      if (!firstArticle) throw new Error('記事を作成できませんでした。')
+      const activated = markProjectOpened(
+        activateArticle(nextProject, firstArticle.id),
+        firstArticle.workflow.lastVisitedStep,
+      )
       const saved = await saveProjectWithCreatedAssets(
-        {
-          ...current,
-          articles: [...current.articles, ...created],
-          updatedAt: new Date().toISOString(),
-        },
+        activated,
         created.map((article) => ({ collection: 'articles' as const, assetId: article.id })),
       )
       projectRef.current = saved
       setProject(saved)
-      setRoute({ kind: 'project', tab: 'articles' })
+      setRoute({
+        kind: 'article',
+        articleId: firstArticle.id,
+        step: firstArticle.workflow.lastVisitedStep,
+      })
       return created
     })
   }
@@ -341,16 +352,19 @@ function App() {
   if (route.step === 'detect-slides')
     return (
       <SlideDetectionPage
+        key={route.articleId}
         project={project}
         onCompleted={handleSlideDetectionCompleted}
         onContinue={() => void handleProjectStep('generate-notes')}
         onHome={handleBackToProject}
+        onOpenArticle={handleOpenArticle}
         {...articleProps}
       />
     )
   if (route.step === 'generate-notes')
     return (
       <GenerateNotesPage
+        key={route.articleId}
         project={project}
         onCompleted={handleTranscriptionCompleted}
         onOcrSlideCompleted={handleOcrSlideCompleted}
@@ -359,24 +373,29 @@ function App() {
         onSaveSlideResultEdits={handleSaveSlideResultEdits}
         onOpenArticleReview={() => void handleProjectStep('article-review')}
         onHome={handleBackToProject}
+        onOpenArticle={handleOpenArticle}
         {...articleProps}
       />
     )
   if (route.step === 'article-review')
     return (
       <ArticleReviewPage
+        key={route.articleId}
         project={project}
         onSave={handleSaveArticle}
         onSaveSummary={handleSaveArticleSummary}
         onExport={() => void handleProjectStep('export')}
         onHome={handleBackToProject}
+        onOpenArticle={handleOpenArticle}
         {...articleProps}
       />
     )
   return (
     <ExportPage
+      key={route.articleId}
       project={project}
       onHome={handleBackToProject}
+      onOpenArticle={handleOpenArticle}
       onGenerated={handleExportCompleted}
       {...articleProps}
     />

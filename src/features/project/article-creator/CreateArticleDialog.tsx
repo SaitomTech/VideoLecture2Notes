@@ -115,7 +115,7 @@ export function CreateArticleDialog({
             disabled={editor.busy || editor.rows.length === 0}
             onClick={() => void editor.submit()}
           >
-            {editor.busy ? '処理中…' : '区間を確定して続ける'}
+            {editor.busy ? '処理中…' : '区間を確定して、1件目の記事作成へ'}
           </button>
         </div>
       </section>

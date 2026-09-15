@@ -34,10 +34,10 @@ export function SelectArticleVideoDialog({
               id="select-article-video-title"
               className="mt-1 text-[22px] font-bold tracking-[-0.04em]"
             >
-              記事作成の下準備
+              新しい記事を作成
             </h2>
             <p className="mt-1 text-xs text-[#71807b]">
-              記事にする動画を選択して、記事の範囲を指定する準備をします。
+              記事にする動画を選択して、記事の範囲を指定します。
             </p>
           </div>
           <button
@@ -51,14 +51,14 @@ export function SelectArticleVideoDialog({
         </div>
 
         <div className="mt-6">
-          <p className="text-sm font-semibold">新しい動画で記事作成の下準備へ</p>
+          <p className="text-sm font-semibold">新しい動画で記事を作成</p>
           <p className="mt-1 text-[11px] text-[#71807b]">
             動画を追加すると、そのまま記事にする区間の指定へ進みます。
           </p>
         </div>
         <div className="mt-3 rounded-[10px] border border-dashed border-[#b7cbc0] bg-white px-4 py-6 text-center">
           <Upload className="mx-auto text-[#8da79a]" size={25} strokeWidth={1.5} />
-          <p className="mt-2 text-sm font-semibold">動画を選んで下準備へ</p>
+          <p className="mt-2 text-sm font-semibold">動画を選んで記事を作成</p>
           <p className="mt-1 text-[11px] text-[#71807b]">または、追加方法を選択</p>
           <div className="mt-4 grid grid-cols-2 gap-2">
             <button

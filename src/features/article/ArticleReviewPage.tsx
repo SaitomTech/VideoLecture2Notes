@@ -7,6 +7,7 @@ import type { WorkflowStep } from '../../lib/workflow'
 import type { ArticleDraft, ArticleSummary, MediaProject } from '../../types/project'
 import { ArticleSummaryCard } from './components/ArticleSummaryCard'
 import { ArticleSectionEditor } from './components/ArticleSectionEditor'
+import { ArticleNavigationBar } from './components/ArticleNavigationBar'
 import { useArticleSummary } from './hooks/useArticleSummary'
 
 type ArticleReviewPageProps = {
@@ -15,6 +16,7 @@ type ArticleReviewPageProps = {
   onSaveSummary: (summary: ArticleSummary) => void | Promise<void>
   onExport: () => void
   onHome: () => void
+  onOpenArticle: (articleId: string) => void | Promise<void>
   maxReachedStep: WorkflowStep
   onStepClick: (step: WorkflowStep) => void
 }
@@ -27,6 +29,7 @@ export function ArticleReviewPage({
   onSaveSummary,
   onExport,
   onHome,
+  onOpenArticle,
   maxReachedStep,
   onStepClick,
 }: ArticleReviewPageProps) {
@@ -48,6 +51,7 @@ export function ArticleReviewPage({
   const [bodyDraft, setBodyDraft] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [switchingArticleId, setSwitchingArticleId] = useState<string | null>(null)
 
   const isEditingTitle = editingTarget?.type === 'title'
   const editingSlideId = editingTarget?.type === 'slide' ? editingTarget.slideId : null
@@ -118,6 +122,51 @@ export function ArticleReviewPage({
     }
   }
 
+  const switchArticle = async (articleId: string) => {
+    if (articleId === project.activeArticleId) {
+      return true
+    }
+    if (switchingArticleId || isSaving || summaryGeneration.status === 'running') return false
+
+    if (hasUnsavedChanges) {
+      if (isEditingTitle && !titleDraft.trim()) {
+        setSaveError('記事タイトルを入力してから切り替えてください。')
+        return false
+      }
+      const nextBodies =
+        editingSlideId === null ? savedBodies : { ...savedBodies, [editingSlideId]: bodyDraft }
+      const nextTitle = isEditingTitle ? titleDraft.trim() : savedTitle
+      setIsSaving(true)
+      setSaveError(null)
+      try {
+        await onSave({ title: nextTitle, bodies: nextBodies })
+        setSavedTitle(nextTitle)
+        setTitleDraft(nextTitle)
+        setSavedBodies(nextBodies)
+        setBodyDraft('')
+        setEditingTarget(null)
+      } catch (error) {
+        console.error(error)
+        setSaveError(error instanceof Error ? error.message : '記事の保存に失敗しました。')
+        return false
+      } finally {
+        setIsSaving(false)
+      }
+    }
+
+    setSwitchingArticleId(articleId)
+    try {
+      await onOpenArticle(articleId)
+      return true
+    } catch (error) {
+      console.error(error)
+      setSaveError(error instanceof Error ? error.message : '記事を切り替えられませんでした。')
+      return false
+    } finally {
+      setSwitchingArticleId(null)
+    }
+  }
+
   const handleWorkflowNavigation = (nextStep: WorkflowStep) => {
     if (hasUnsavedChanges && !window.confirm('未保存の変更があります。保存せずに移動しますか？'))
       return
@@ -132,6 +181,13 @@ export function ArticleReviewPage({
         maxReachedStep={maxReachedStep}
         onStepClick={handleWorkflowNavigation}
         disabled={isBusy}
+        leadingContent={
+          <ArticleNavigationBar
+            project={project}
+            disabled={isBusy || switchingArticleId !== null}
+            onSelect={switchArticle}
+          />
+        }
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
