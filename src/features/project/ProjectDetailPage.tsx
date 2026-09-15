@@ -158,7 +158,7 @@ export function ProjectDetailPage({
                 onClick={() => onTabChange('articles')}
               >
                 記事{' '}
-                <span className="inline-flex min-w-[24px] items-center justify-center rounded-full bg-[#e8f2ec] px-1.5 py-0.5 font-mono text-[11px] text-[#71807b]">
+                <span className="relative -top-0.5 inline-flex min-w-[24px] items-center justify-center rounded-full bg-[#e8f2ec] px-1.5 py-0.5 align-middle font-mono text-[11px] text-[#71807b]">
                   {project.articles.length}
                 </span>
               </button>
@@ -170,7 +170,7 @@ export function ProjectDetailPage({
                 onClick={() => onTabChange('videos')}
               >
                 動画{' '}
-                <span className="inline-flex min-w-[24px] items-center justify-center rounded-full bg-[#e8f2ec] px-1.5 py-0.5 font-mono text-[11px] text-[#71807b]">
+                <span className="relative -top-0.5 inline-flex min-w-[24px] items-center justify-center rounded-full bg-[#e8f2ec] px-1.5 py-0.5 align-middle font-mono text-[11px] text-[#71807b]">
                   {project.videos.length}
                 </span>
               </button>
