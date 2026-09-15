@@ -37,6 +37,15 @@
           "path": "$APPLOCALDATA/projects/**/*"
         },
         {
+          "path": "$APPLOCALDATA/projects/*/.trash"
+        },
+        {
+          "path": "$APPLOCALDATA/projects/*/.trash/*"
+        },
+        {
+          "path": "$APPLOCALDATA/projects/*/.trash/**/*"
+        },
+        {
           "path": "$APPLOCALDATA/projects/.storage-version"
         },
         {
@@ -141,6 +150,9 @@
         { "path": "$APPLOCALDATA/projects" },
         { "path": "$APPLOCALDATA/projects/*" },
         { "path": "$APPLOCALDATA/projects/**/*" },
+        { "path": "$APPLOCALDATA/projects/*/.trash" },
+        { "path": "$APPLOCALDATA/projects/*/.trash/*" },
+        { "path": "$APPLOCALDATA/projects/*/.trash/**/*" },
         { "path": "$APPLOCALDATA/project-trash" },
         { "path": "$APPLOCALDATA/project-trash/*" },
         { "path": "$APPLOCALDATA/project-trash/**/*" },
@@ -158,6 +170,9 @@
         { "path": "$APPLOCALDATA/projects" },
         { "path": "$APPLOCALDATA/projects/*" },
         { "path": "$APPLOCALDATA/projects/**/*" },
+        { "path": "$APPLOCALDATA/projects/*/.trash" },
+        { "path": "$APPLOCALDATA/projects/*/.trash/*" },
+        { "path": "$APPLOCALDATA/projects/*/.trash/**/*" },
         { "path": "$APPLOCALDATA/project-trash" },
         { "path": "$APPLOCALDATA/project-trash/*" },
         { "path": "$APPLOCALDATA/project-trash/**/*" }
@@ -179,6 +194,9 @@
         { "path": "$APPLOCALDATA/projects/.storage-version" },
         { "path": "$APPLOCALDATA/projects/*" },
         { "path": "$APPLOCALDATA/projects/**/*" },
+        { "path": "$APPLOCALDATA/projects/*/.trash" },
+        { "path": "$APPLOCALDATA/projects/*/.trash/*" },
+        { "path": "$APPLOCALDATA/projects/*/.trash/**/*" },
         { "path": "$APPLOCALDATA/project-trash" },
         { "path": "$APPLOCALDATA/project-trash/*" },
         { "path": "$APPLOCALDATA/project-trash/**/*" },
@@ -195,6 +213,9 @@
         { "path": "$APPLOCALDATA/projects/.storage-version" },
         { "path": "$APPLOCALDATA/projects/*" },
         { "path": "$APPLOCALDATA/projects/**/*" },
+        { "path": "$APPLOCALDATA/projects/*/.trash" },
+        { "path": "$APPLOCALDATA/projects/*/.trash/*" },
+        { "path": "$APPLOCALDATA/projects/*/.trash/**/*" },
         { "path": "$APPLOCALDATA/models/**/*" },
         { "path": "$HOME" },
         { "path": "$HOME/**/*" },
@@ -209,6 +230,9 @@
         { "path": "$APPLOCALDATA/projects/.storage-version" },
         { "path": "$APPLOCALDATA/projects/*" },
         { "path": "$APPLOCALDATA/projects/**/*" },
+        { "path": "$APPLOCALDATA/projects/*/.trash" },
+        { "path": "$APPLOCALDATA/projects/*/.trash/*" },
+        { "path": "$APPLOCALDATA/projects/*/.trash/**/*" },
         { "path": "$HOME" },
         { "path": "$HOME/**/*" },
         { "path": "/Volumes" },
@@ -239,8 +263,9 @@
         { "path": "$APPLOCALDATA/projects" },
         { "path": "$APPLOCALDATA/projects/*" },
         { "path": "$APPLOCALDATA/projects/**/*" },
-        { "path": "$APPLOCALDATA/projects/.trash" },
-        { "path": "$APPLOCALDATA/projects/.trash/**/*" },
+        { "path": "$APPLOCALDATA/projects/*/.trash" },
+        { "path": "$APPLOCALDATA/projects/*/.trash/*" },
+        { "path": "$APPLOCALDATA/projects/*/.trash/**/*" },
         { "path": "$APPLOCALDATA/project-trash" },
         { "path": "$APPLOCALDATA/project-trash/**/*" }
       ]
@@ -252,6 +277,9 @@
         { "path": "$APPLOCALDATA/projects" },
         { "path": "$APPLOCALDATA/projects/*" },
         { "path": "$APPLOCALDATA/projects/**/*" },
+        { "path": "$APPLOCALDATA/projects/*/.trash" },
+        { "path": "$APPLOCALDATA/projects/*/.trash/*" },
+        { "path": "$APPLOCALDATA/projects/*/.trash/**/*" },
         { "path": "$APPLOCALDATA/project-trash" },
         { "path": "$APPLOCALDATA/project-trash/*" },
         { "path": "$APPLOCALDATA/project-trash/**/*" }
