@@ -1,5 +1,12 @@
-import { ArrowLeft, ChevronDown, Download, RefreshCw } from 'lucide-react'
-import { useEffect, useState, type ChangeEvent, type SyntheticEvent } from 'react'
+import { ChevronDown, Download, RefreshCw } from 'lucide-react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type SyntheticEvent,
+} from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
 import type { WorkflowStep } from '../../lib/workflow'
@@ -9,8 +16,8 @@ import { useExport, type ExportController } from './hooks/useExport'
 
 type ExportPageProps = {
   project: MediaProject
-  onBack: () => void
   onHome: () => void
+  onGenerated: () => void | Promise<void>
   maxReachedStep: WorkflowStep
   onStepClick: (step: WorkflowStep) => void
 }
@@ -30,8 +37,8 @@ function getStatusMessage({ status, progress, error }: ExportController) {
 
 export function ExportPage({
   project,
-  onBack,
   onHome,
+  onGenerated,
   maxReachedStep,
   onStepClick,
 }: ExportPageProps) {
@@ -39,7 +46,18 @@ export function ExportPage({
   const { generate } = exporter
   const [isDownloading, setIsDownloading] = useState(false)
   const [downloadMessage, setDownloadMessage] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [previewHeight, setPreviewHeight] = useState(520)
+  const generateRef = useRef(generate)
+  const onGeneratedRef = useRef(onGenerated)
+
+  useEffect(() => {
+    generateRef.current = generate
+  }, [generate])
+
+  useEffect(() => {
+    onGeneratedRef.current = onGenerated
+  }, [onGenerated])
   const isRunning = exporter.status === 'running'
   const isBusy = isRunning || isDownloading
   const statusMessage = getStatusMessage(exporter)
@@ -47,9 +65,40 @@ export function ExportPage({
     ? Math.round((exporter.progress.completed / exporter.progress.total) * 100)
     : 0
 
+  const handleGenerate = useCallback(async () => {
+    setSaveError(null)
+    const output = await generate()
+    if (!output) return
+    try {
+      await onGenerated()
+    } catch (error) {
+      console.error(error)
+      setSaveError(error instanceof Error ? error.message : '書き出し状態を保存できませんでした。')
+    }
+  }, [generate, onGenerated])
+
   useEffect(() => {
-    void generate()
-  }, [generate, project.id])
+    let disposed = false
+    void (async () => {
+      if (!disposed) setSaveError(null)
+      const output = await generateRef.current()
+      if (!output || disposed) return
+      try {
+        await onGeneratedRef.current()
+      } catch (error) {
+        if (disposed) return
+        console.error(error)
+        setSaveError(
+          error instanceof Error ? error.message : '書き出し状態を保存できませんでした。',
+        )
+      }
+    })()
+    // Workflow-only persistence must not trigger a second export for the same article.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      disposed = true
+    }
+  }, [project.id])
 
   const handleDownload = async (event: ChangeEvent<HTMLSelectElement>) => {
     const format = event.target.value as ExportFormat
@@ -110,25 +159,16 @@ export function ExportPage({
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
-        <div className="mb-6 flex items-center justify-between gap-4">
+        <div className="mb-6 flex items-center gap-4">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
-              06 / RESULT
+              04 / RESULT
             </p>
             <h1 className="mt-1 text-[27px] font-bold tracking-[-0.06em]">書き出し結果</h1>
             <p className="mt-1 text-xs text-[#71807b]">
               HTMLの見た目を確認して、必要な形式をダウンロードします。
             </p>
           </div>
-          <button
-            className="inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-[#71807b] transition hover:bg-[#e2eee8] hover:text-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50"
-            type="button"
-            onClick={onBack}
-            disabled={isBusy}
-          >
-            <ArrowLeft size={15} strokeWidth={1.8} />
-            記事プレビューに戻る
-          </button>
         </div>
 
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
@@ -137,7 +177,7 @@ export function ExportPage({
               <button
                 className="inline-flex items-center gap-1.5 rounded-[9px] border border-[#b7cbc0] bg-[#fbfcfa] px-3 py-2 text-xs font-semibold text-[#1d6b50] transition hover:border-[#1d6b50] hover:bg-[#e2eee8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50"
                 type="button"
-                onClick={() => void generate()}
+                onClick={() => void handleGenerate()}
                 disabled={isBusy}
               >
                 <RefreshCw size={13} />
@@ -184,6 +224,11 @@ export function ExportPage({
                 className={`mx-5 mt-0 text-sm md:mx-7 ${exporter.error ? 'text-[#b6533a]' : 'text-[#53615b]'}`}
               >
                 {statusMessage}
+              </p>
+            )}
+            {saveError && (
+              <p className="mx-5 mt-3 text-sm text-[#b6533a] md:mx-7" role="alert">
+                {saveError}
               </p>
             )}
 

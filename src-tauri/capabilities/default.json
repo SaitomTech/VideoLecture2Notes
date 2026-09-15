@@ -31,7 +31,22 @@
           "path": "$APPLOCALDATA/projects"
         },
         {
+          "path": "$APPLOCALDATA/projects/*"
+        },
+        {
           "path": "$APPLOCALDATA/projects/**/*"
+        },
+        {
+          "path": "$APPLOCALDATA/projects/.storage-version"
+        },
+        {
+          "path": "$APPLOCALDATA/project-trash"
+        },
+        {
+          "path": "$APPLOCALDATA/project-trash/*"
+        },
+        {
+          "path": "$APPLOCALDATA/project-trash/**/*"
         }
       ]
     },
@@ -124,7 +139,11 @@
       "identifier": "fs:allow-mkdir",
       "allow": [
         { "path": "$APPLOCALDATA/projects" },
+        { "path": "$APPLOCALDATA/projects/*" },
         { "path": "$APPLOCALDATA/projects/**/*" },
+        { "path": "$APPLOCALDATA/project-trash" },
+        { "path": "$APPLOCALDATA/project-trash/*" },
+        { "path": "$APPLOCALDATA/project-trash/**/*" },
         { "path": "$APPLOCALDATA/models" },
         { "path": "$APPLOCALDATA/models/**/*" },
         { "path": "$HOME" },
@@ -135,16 +154,34 @@
     },
     {
       "identifier": "fs:allow-read-dir",
-      "allow": [{ "path": "$APPLOCALDATA/projects" }, { "path": "$APPLOCALDATA/projects/**/*" }]
+      "allow": [
+        { "path": "$APPLOCALDATA/projects" },
+        { "path": "$APPLOCALDATA/projects/*" },
+        { "path": "$APPLOCALDATA/projects/**/*" },
+        { "path": "$APPLOCALDATA/project-trash" },
+        { "path": "$APPLOCALDATA/project-trash/*" },
+        { "path": "$APPLOCALDATA/project-trash/**/*" }
+      ]
     },
     {
       "identifier": "fs:allow-read-text-file",
-      "allow": [{ "path": "$APPLOCALDATA/projects/**/*" }]
+      "allow": [
+        { "path": "$APPLOCALDATA/projects" },
+        { "path": "$APPLOCALDATA/projects/.storage-version" },
+        { "path": "$APPLOCALDATA/projects/*" },
+        { "path": "$APPLOCALDATA/projects/**/*" }
+      ]
     },
     {
       "identifier": "fs:allow-write-text-file",
       "allow": [
+        { "path": "$APPLOCALDATA/projects" },
+        { "path": "$APPLOCALDATA/projects/.storage-version" },
+        { "path": "$APPLOCALDATA/projects/*" },
         { "path": "$APPLOCALDATA/projects/**/*" },
+        { "path": "$APPLOCALDATA/project-trash" },
+        { "path": "$APPLOCALDATA/project-trash/*" },
+        { "path": "$APPLOCALDATA/project-trash/**/*" },
         { "path": "$HOME" },
         { "path": "$HOME/**/*" },
         { "path": "/Volumes" },
@@ -153,12 +190,38 @@
     },
     {
       "identifier": "fs:allow-read-file",
-      "allow": [{ "path": "$APPLOCALDATA/projects/**/*" }, { "path": "$APPLOCALDATA/models/**/*" }]
+      "allow": [
+        { "path": "$APPLOCALDATA/projects" },
+        { "path": "$APPLOCALDATA/projects/.storage-version" },
+        { "path": "$APPLOCALDATA/projects/*" },
+        { "path": "$APPLOCALDATA/projects/**/*" },
+        { "path": "$APPLOCALDATA/models/**/*" },
+        { "path": "$HOME" },
+        { "path": "$HOME/**/*" },
+        { "path": "/Volumes" },
+        { "path": "/Volumes/**/*" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-copy-file",
+      "allow": [
+        { "path": "$APPLOCALDATA/projects" },
+        { "path": "$APPLOCALDATA/projects/.storage-version" },
+        { "path": "$APPLOCALDATA/projects/*" },
+        { "path": "$APPLOCALDATA/projects/**/*" },
+        { "path": "$HOME" },
+        { "path": "$HOME/**/*" },
+        { "path": "/Volumes" },
+        { "path": "/Volumes/**/*" }
+      ]
     },
     {
       "identifier": "fs:allow-write-file",
       "allow": [
         { "path": "$APPLOCALDATA/models/**/*" },
+        { "path": "$APPLOCALDATA/projects" },
+        { "path": "$APPLOCALDATA/projects/*" },
+        { "path": "$APPLOCALDATA/projects/**/*" },
         { "path": "$HOME" },
         { "path": "$HOME/**/*" },
         { "path": "/Volumes" },
@@ -173,14 +236,26 @@
       "identifier": "fs:allow-remove",
       "allow": [
         { "path": "$APPLOCALDATA/models/**/*" },
+        { "path": "$APPLOCALDATA/projects" },
+        { "path": "$APPLOCALDATA/projects/*" },
         { "path": "$APPLOCALDATA/projects/**/*" },
         { "path": "$APPLOCALDATA/projects/.trash" },
-        { "path": "$APPLOCALDATA/projects/.trash/**/*" }
+        { "path": "$APPLOCALDATA/projects/.trash/**/*" },
+        { "path": "$APPLOCALDATA/project-trash" },
+        { "path": "$APPLOCALDATA/project-trash/**/*" }
       ]
     },
     {
       "identifier": "fs:allow-rename",
-      "allow": [{ "path": "$APPLOCALDATA/models/**/*" }, { "path": "$APPLOCALDATA/projects/**/*" }]
+      "allow": [
+        { "path": "$APPLOCALDATA/models/**/*" },
+        { "path": "$APPLOCALDATA/projects" },
+        { "path": "$APPLOCALDATA/projects/*" },
+        { "path": "$APPLOCALDATA/projects/**/*" },
+        { "path": "$APPLOCALDATA/project-trash" },
+        { "path": "$APPLOCALDATA/project-trash/*" },
+        { "path": "$APPLOCALDATA/project-trash/**/*" }
+      ]
     }
   ]
 }

@@ -7,6 +7,7 @@ import { hammingDistance } from '../../lib/media/dhash'
 import { getSlideAssetPath } from '../../lib/storage/projectAssets'
 import {
   getActiveMediaSource,
+  requireActiveArticleId,
   type MediaProject,
   type SlideBoundary,
   type SlideData,
@@ -90,22 +91,32 @@ function representativeTimestamp(startMs: number, endMs: number) {
   return startMs + Math.min(Math.round(segmentDurationMs / 2), segmentDurationMs - 200)
 }
 
+function fullFrameCrop(source: ReturnType<typeof getActiveMediaSource>) {
+  return {
+    x: 0,
+    y: 0,
+    width: source.metadata.width,
+    height: source.metadata.height,
+  }
+}
+
 async function addRepresentativeFrames(
   project: MediaProject,
   slides: SlideData[],
   onProgress?: (progress: number) => void,
 ) {
   const source = getActiveMediaSource(project)
+  const articleId = requireActiveArticleId(project)
+  const crop = fullFrameCrop(source)
   const completed: SlideData[] = []
   // Keep ffmpeg sidecars sequential so long videos do not spawn dozens of encoders at once.
   for (let index = 0; index < slides.length; index += 1) {
     const slide = slides[index]
     try {
-      const outputPath = await getSlideAssetPath(project.id, index)
+      const outputPath = await getSlideAssetPath(project.id, articleId, index)
       await extractRepresentativeFrame({
         path: source.path,
-        crop: project.crop,
-        perspectiveCrop: project.perspectiveCrop,
+        crop,
         metadata: source.metadata,
         timestampMs: representativeTimestamp(slide.startMs, slide.endMs),
         outputPath,
@@ -138,6 +149,7 @@ export async function runSlideDetection({
   onStage,
 }: RunSlideDetectionInput): Promise<SlideDetectionOutput> {
   const source = getActiveMediaSource(project)
+  const crop = fullFrameCrop(source)
   const { sampleIntervalMs: configuredSampleIntervalMs, threshold: configuredThreshold } =
     project.settings.slideDetection
   const sampleIntervalMs = sampleIntervalOverride ?? configuredSampleIntervalMs
@@ -145,8 +157,7 @@ export async function runSlideDetection({
   onStage?.('sampling')
   const frames = await sampleVideoFrames({
     path: source.path,
-    crop: project.crop,
-    perspectiveCrop: project.perspectiveCrop,
+    crop,
     metadata: source.metadata,
     sampleIntervalMs,
   })

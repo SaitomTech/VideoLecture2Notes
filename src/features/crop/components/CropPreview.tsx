@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import type { CropRegion, MediaMetadata, PerspectiveCrop } from '../../../types/project'
 import { extractRepresentativeFrame } from '../../../lib/media/ffmpeg'
 import { getCropPreviewAssetPath } from '../../../lib/storage/projectAssets'
+import { useDialogA11y } from '../../../lib/ui/useDialogA11y'
 
 type CropPreviewProps = {
   projectId: string
@@ -34,6 +35,10 @@ export function CropPreview({
   isPlaying,
 }: CropPreviewProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const expandedDialogRef = useDialogA11y<HTMLDivElement>({
+    open: isExpanded,
+    onClose: () => setIsExpanded(false),
+  })
   const [state, setState] = useState<PreviewState>({
     path: null,
     revision: 0,
@@ -79,19 +84,10 @@ export function CropPreview({
 
   const imageSrc = state.path ? `${convertFileSrc(state.path)}?v=${state.revision}` : null
 
-  useEffect(() => {
-    if (!isExpanded) return
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsExpanded(false)
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isExpanded])
-
   return (
     <>
       <div
-        className="relative min-h-[160px] overflow-hidden rounded-[8px] border border-[#d8e1dc] bg-[#dce8e0]"
+        className="relative w-full min-w-0 max-w-full overflow-hidden rounded-[8px] border border-[#d8e1dc] bg-[#dce8e0]"
         style={{ aspectRatio: `${Math.max(aspectRatio, 0.1)}` }}
       >
         {imageSrc ? (
@@ -134,13 +130,12 @@ export function CropPreview({
 
       {isExpanded && imageSrc && (
         <div
+          ref={expandedDialogRef}
           className="fixed inset-0 z-50 flex items-center justify-center bg-[#07110d]/82 p-5 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-label="拡大プレビュー"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) setIsExpanded(false)
-          }}
+          tabIndex={-1}
         >
           <div className="relative max-h-full max-w-full overflow-hidden rounded-[10px] border border-[#d8e1dc]/40 bg-[#0b1712] shadow-[0_24px_80px_rgba(0,0,0,0.38)]">
             <img

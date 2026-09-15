@@ -1,4 +1,4 @@
-import { ArrowLeft, Play, Square } from 'lucide-react'
+import { Play, Square } from 'lucide-react'
 import { useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
@@ -33,7 +33,6 @@ import type { TranscriptionLanguage } from './transcription'
 
 type GenerateNotesPageProps = {
   project: MediaProject
-  onBack: () => void
   onCompleted: (result: TranscriptionResult) => void | Promise<void>
   onOcrSlideCompleted: OcrSlideCompleted
   onContentSlideCompleted: ContentProcessingSlideCompleted
@@ -49,7 +48,6 @@ type BatchStage = 'idle' | 'ocr' | 'transcription' | 'content'
 
 export function GenerateNotesPage({
   project,
-  onBack,
   onCompleted,
   onOcrSlideCompleted,
   onContentSlideCompleted,
@@ -138,25 +136,16 @@ export function GenerateNotesPage({
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
-        <div className="mb-6 flex items-center justify-between gap-4">
+        <div className="mb-6 flex items-center gap-4">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
-              04 / GENERATE NOTES
+              02 / GENERATE NOTES
             </p>
             <h1 className="mt-1 text-[27px] font-bold tracking-[-0.06em]">ノートを生成</h1>
             <p className="mt-1 text-xs text-[#71807b]">
               OCR、文字起こし、本文生成を順に実行します。
             </p>
           </div>
-          <button
-            className="inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-[#71807b] transition hover:bg-[#e2eee8] hover:text-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50"
-            type="button"
-            onClick={onBack}
-            disabled={isProcessing}
-          >
-            <ArrowLeft size={15} strokeWidth={1.8} />
-            スライド検出に戻る
-          </button>
         </div>
 
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">

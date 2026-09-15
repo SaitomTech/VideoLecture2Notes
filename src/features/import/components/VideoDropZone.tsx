@@ -1,39 +1,44 @@
-import { Video } from 'lucide-react'
+import { Download, Video } from 'lucide-react'
 
 type VideoDropZoneProps = {
   isDragging: boolean
   onChoose: () => void | Promise<void>
+  onYoutubeClick?: () => void
 }
 
-export function VideoDropZone({ isDragging, onChoose }: VideoDropZoneProps) {
+export function VideoDropZone({ isDragging, onChoose, onYoutubeClick }: VideoDropZoneProps) {
   return (
     <div
-      className={`group relative flex min-h-[300px] cursor-pointer flex-col items-center justify-center rounded-[18px] border border-dashed border-[#a6bcb0] bg-[#fbfcfa]/64 p-8 text-center transition-[border-color,background-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-[#1d6b50] hover:bg-[#e2eee8]/72 hover:shadow-[0_22px_70px_rgba(22,54,42,0.09)] focus-visible:-translate-y-0.5 focus-visible:border-[#1d6b50] focus-visible:bg-[#e2eee8]/72 focus-visible:shadow-[0_22px_70px_rgba(22,54,42,0.09)] focus-visible:outline-none ${isDragging ? 'border-[#1d6b50] bg-[#e2eee8]/72 shadow-[0_22px_70px_rgba(22,54,42,0.09)]' : ''}`}
-      onClick={onChoose}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') void onChoose()
-      }}
-      role="button"
-      tabIndex={0}
-      aria-label="動画ファイルを選択"
+      className={`group relative mx-auto flex min-h-[250px] w-full max-w-[720px] flex-col items-center justify-center rounded-[14px] border border-dashed border-[#a6bcb0] bg-[#fbfcfa]/64 p-6 pb-10 text-center transition-[border-color,background-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-[#1d6b50] hover:bg-[#e2eee8]/72 hover:shadow-[0_22px_70px_rgba(22,54,42,0.09)] ${isDragging ? 'border-[#1d6b50] bg-[#e2eee8]/72 shadow-[0_22px_70px_rgba(22,54,42,0.09)]' : ''}`}
     >
-      <>
-        <div
-          className="relative mb-6 grid h-[62px] w-[54px] place-items-center rounded-[7px] border border-[#adc7b9] bg-[#fbfcfa] text-[#1d6b50] shadow-[5px_5px_0_rgba(177,203,189,0.46)] transition-transform group-hover:-rotate-1 group-hover:-translate-y-0.5 after:absolute after:-right-px after:-top-px after:h-[13px] after:w-[13px] after:rounded-bl-[6px] after:border-b after:border-l after:border-[#adc7b9] after:bg-[#e9f3ed] after:content-['']"
-          aria-hidden="true"
-        >
-          <Video size={25} strokeWidth={1.7} />
-        </div>
-        <div className="text-[18px] font-semibold tracking-[-0.04em] text-[#18211f]">
-          動画ファイルを選択
-        </div>
-        <div className="mt-2 text-xs leading-[1.45] text-[#71807b]">
-          ここにドロップ、またはクリックして選択
-        </div>
-        <div className="mt-[27px] font-mono text-[9px] tracking-[0.06em] text-[#9baaa3]">
-          MP4&nbsp; · &nbsp;MOV&nbsp; · &nbsp;M4V&nbsp; · &nbsp;MKV&nbsp; · &nbsp;WEBM
-        </div>
-      </>
+      <Video className="mb-4 text-[#7f9d90]" size={36} strokeWidth={1.55} aria-hidden="true" />
+      <div className="text-[18px] font-semibold tracking-[-0.05em] text-[#18211f]">
+        動画をここにドロップ
+      </div>
+      <div className="mt-2 text-xs text-[#71807b]">または</div>
+      <button
+        className="mt-3 rounded-[8px] bg-[#1d6b50] px-5 py-2.5 text-sm font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] transition hover:-translate-y-0.5 hover:bg-[#174d3c] hover:shadow-[0_9px_20px_rgba(29,107,80,0.24)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2"
+        type="button"
+        onClick={() => void onChoose()}
+      >
+        Finderで選択
+      </button>
+      <div className="mt-4 font-mono text-[9px] tracking-[0.06em] text-[#9baaa3]">
+        MP4&nbsp; · &nbsp;MOV&nbsp; · &nbsp;M4V&nbsp; · &nbsp;MKV&nbsp; · &nbsp;WEBM
+      </div>
+      {onYoutubeClick && (
+        <>
+          <div className="mt-5 h-px w-[200px] bg-[#d8e1dc]" />
+          <button
+            className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-[#71807b] underline decoration-[#b7cbc0] underline-offset-4 transition hover:text-[#1d6b50] hover:decoration-[#1d6b50]"
+            type="button"
+            onClick={onYoutubeClick}
+          >
+            <Download size={15} strokeWidth={1.7} />
+            YouTubeからダウンロード…
+          </button>
+        </>
+      )}
     </div>
   )
 }

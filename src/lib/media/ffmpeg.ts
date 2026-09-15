@@ -7,6 +7,32 @@ export function runFfmpeg(args: string[]) {
   return executeSidecar('binaries/ffmpeg', args)
 }
 
+export async function extractVideoThumbnail(path: string, outputPath: string, timestampMs = 0) {
+  const seekArgs = timestampMs > 0 ? ['-ss', String(timestampMs / 1000)] : []
+  const output = await executeSidecar('binaries/ffmpeg', [
+    '-hide_banner',
+    '-v',
+    'error',
+    ...seekArgs,
+    '-i',
+    path,
+    '-frames:v',
+    '1',
+    '-vf',
+    'scale=480:-2:force_original_aspect_ratio=decrease',
+    '-q:v',
+    '4',
+    '-y',
+    outputPath,
+  ])
+  if (output.code !== 0) {
+    throw new Error(
+      output.stderr.trim() || `動画サムネイルの生成に失敗しました (code ${output.code})`,
+    )
+  }
+  return outputPath
+}
+
 export type FrameHash = {
   timestampMs: number
   hash: string
@@ -57,6 +83,9 @@ type TrimVideoInput = {
   outputPath: string
   startMs: number
   endMs: number
+  crop?: CropRegion
+  perspectiveCrop?: PerspectiveCrop
+  metadata?: Pick<MediaMetadata, 'width' | 'height'>
   signal?: AbortSignal
 }
 
@@ -345,12 +374,26 @@ export async function transcodeVideoForBrowser({
 }
 
 /** Creates a frame-accurate, browser-friendly MP4 copy for the selected time range. */
-export async function trimVideo({ path, outputPath, startMs, endMs, signal }: TrimVideoInput) {
+export async function trimVideo({
+  path,
+  outputPath,
+  startMs,
+  endMs,
+  crop,
+  perspectiveCrop,
+  metadata,
+  signal,
+}: TrimVideoInput) {
   const startSeconds = Math.max(0, startMs / 1000)
   const durationSeconds = Math.max(0.001, (endMs - startMs) / 1000)
   if (!Number.isFinite(startSeconds) || !Number.isFinite(durationSeconds) || endMs <= startMs) {
     throw new Error('動画のトリミング範囲が不正です')
   }
+
+  const videoFilter =
+    crop && metadata
+      ? `${buildCropVideoFilter({ crop, perspectiveCrop, metadata })}${perspectiveCrop ? '' : ',scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1'}`
+      : undefined
 
   const output = await executeSidecar(
     'binaries/ffmpeg',
@@ -374,6 +417,7 @@ export async function trimVideo({ path, outputPath, startMs, endMs, signal }: Tr
       'veryfast',
       '-crf',
       '18',
+      ...(videoFilter ? ['-vf', videoFilter] : []),
       '-c:a',
       'aac',
       '-b:a',

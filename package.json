@@ -9,6 +9,8 @@
     "fmt": "vp fmt",
     "fmt:check": "vp fmt --check",
     "lint": "vp lint",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
     "preview": "vp preview",
     "version:check": "bun scripts/version.ts check",
     "version:set": "bun scripts/version.ts set",

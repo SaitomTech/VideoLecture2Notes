@@ -21,6 +21,9 @@ type YoutubeImportPanelProps = {
   onImport: () => void | Promise<void>
   onContinue: () => void | Promise<void>
   onCancel: () => void
+  continueLabel?: string
+  importLabel?: string
+  showHeader?: boolean
 }
 
 function progressLabel(progress: YoutubeDownloadProgress | null) {
@@ -55,33 +58,42 @@ export function YoutubeImportPanel({
   onImport,
   onContinue,
   onCancel,
+  continueLabel = '動画一覧へ戻る',
+  importLabel = 'この動画を追加',
+  showHeader = true,
 }: YoutubeImportPanelProps) {
   const canImport = Boolean(info && !isImporting)
 
   return (
     <section
-      className="rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] p-5 shadow-[0_18px_52px_rgba(22,54,42,0.05)] sm:p-6"
-      aria-labelledby="youtube-import-title"
+      className={
+        showHeader
+          ? 'rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] p-5 shadow-[0_18px_52px_rgba(22,54,42,0.05)] sm:p-6'
+          : ''
+      }
+      aria-labelledby={showHeader ? 'youtube-import-title' : undefined}
     >
-      <div className="flex items-start gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] bg-[#e2eee8] text-[#1d6b50]">
-          <Link size={19} strokeWidth={1.7} aria-hidden="true" />
-        </span>
-        <div>
-          <h2
-            id="youtube-import-title"
-            className="text-[17px] font-semibold tracking-[-0.04em] text-[#18211f]"
-          >
-            YouTube URLから読み込む
-          </h2>
-          <p className="mt-1 text-xs leading-5 text-[#71807b]">
-            公開済みの単一動画をMacに保存して、通常の動画として解析します。
-          </p>
+      {showHeader && (
+        <div className="flex items-start gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] bg-[#e2eee8] text-[#1d6b50]">
+            <Link size={19} strokeWidth={1.7} aria-hidden="true" />
+          </span>
+          <div>
+            <h2
+              id="youtube-import-title"
+              className="text-[17px] font-semibold tracking-[-0.04em] text-[#18211f]"
+            >
+              YouTube URLから読み込む
+            </h2>
+            <p className="mt-1 text-xs leading-5 text-[#71807b]">
+              公開済みの単一動画をMacに保存して、通常の動画として解析します。
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       <form
-        className="mt-5"
+        className={showHeader ? 'mt-5' : ''}
         onSubmit={(event) => {
           event.preventDefault()
           void onResolve()
@@ -207,7 +219,7 @@ export function YoutubeImportPanel({
                   onClick={() => void onContinue()}
                   disabled={isContinuing}
                 >
-                  <span>{isContinuing ? '準備中…' : 'スライド領域を設定'}</span>
+                  <span>{isContinuing ? '準備中…' : continueLabel}</span>
                   <span className="text-[17px] font-normal leading-none" aria-hidden="true">
                     →
                   </span>
@@ -222,7 +234,7 @@ export function YoutubeImportPanel({
               disabled={!canImport}
             >
               <Download size={15} />
-              動画を取得してスライド領域を設定
+              {importLabel}
             </button>
           )}
         </div>

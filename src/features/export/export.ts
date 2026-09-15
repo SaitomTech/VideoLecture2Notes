@@ -110,15 +110,17 @@ function buildExportDocument(
   }
 }
 
-async function getExportDirectory(projectId: string) {
-  return join(await appLocalDataDir(), 'projects', projectId, 'exports')
+async function getExportDirectory(projectId: string, articleId?: string) {
+  return articleId
+    ? join(await appLocalDataDir(), 'projects', projectId, 'articles', articleId, 'exports')
+    : join(await appLocalDataDir(), 'projects', projectId, 'exports')
 }
 
 export async function exportProject(
   project: MediaProject,
   onProgress?: (progress: ExportProgress) => void,
 ): Promise<ExportResult> {
-  const destination = await getExportDirectory(project.id)
+  const destination = await getExportDirectory(project.id, project.activeArticleId)
   const document = buildExportDocument(
     project,
     (_sourceImagePath, index) => `./assets/${imageFilename(index)}`,

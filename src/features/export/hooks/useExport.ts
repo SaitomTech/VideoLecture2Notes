@@ -23,7 +23,7 @@ export function useExport(project: MediaProject) {
   const isGenerating = useRef(false)
 
   const generate = useCallback(async () => {
-    if (isGenerating.current) return
+    if (isGenerating.current) return null
 
     isGenerating.current = true
     setStatus('running')
@@ -35,10 +35,12 @@ export function useExport(project: MediaProject) {
       const output = await exportProject(project, setProgress)
       setResult(output)
       setStatus('completed')
+      return output
     } catch (exportError) {
       console.error(exportError)
       setStatus('error')
       setError(exportError instanceof Error ? exportError.message : '書き出しに失敗しました。')
+      return null
     } finally {
       isGenerating.current = false
     }

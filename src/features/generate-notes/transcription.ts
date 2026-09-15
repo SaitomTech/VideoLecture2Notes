@@ -16,6 +16,7 @@ import { normalizeTranscriptSegments } from '../../lib/pipeline/assignTranscript
 import { buildOpenAiTranscriptionContext } from '../../lib/pipeline/transcriptionContext'
 import {
   getActiveMediaSource,
+  requireActiveArticleId,
   type MediaProject,
   type TranscriptionKeywordChunk,
   type TranscriptSegment,
@@ -112,7 +113,7 @@ async function prepareAudio(
   const audioError =
     '動画から音声を準備できませんでした。音声トラックを確認して、再試行してください。'
   return withUserFacingError(audioError, async () => {
-    const path = await getAudioAssetPath(project.id)
+    const path = await getAudioAssetPath(project.id, requireActiveArticleId(project))
     if (!(await fileExists(path))) {
       await extractAudio({ path: source.path, outputPath: path, signal })
     }
@@ -227,7 +228,7 @@ async function runLocalTranscription({
   const audioError =
     '動画から音声を準備できませんでした。音声トラックを確認して、再試行してください。'
   const audioPath = await withUserFacingError(audioError, async () => {
-    const path = await getAudioAssetPath(project.id)
+    const path = await getAudioAssetPath(project.id, requireActiveArticleId(project))
     if (!(await fileExists(path))) {
       await extractAudio({ path: source.path, outputPath: path, signal })
     }
@@ -243,6 +244,7 @@ async function runLocalTranscription({
     () =>
       runWhisper({
         projectId: project.id,
+        articleId: requireActiveArticleId(project),
         audioPath,
         modelPath,
         language: effectiveLanguage,
@@ -343,7 +345,12 @@ async function prepareOpenAiRange({
   signal?: AbortSignal
 }): Promise<PreparedChunk[]> {
   throwIfAborted(signal)
-  const path = await getTranscriptionAudioChunkPath(project.id, provider.provider, chunkIndex)
+  const path = await getTranscriptionAudioChunkPath(
+    project.id,
+    requireActiveArticleId(project),
+    provider.provider,
+    chunkIndex,
+  )
   const sizeBytes = await provider.prepareChunk(audioPath, path, range)
   if (sizeBytes <= MAX_OPENAI_AUDIO_BYTES) return [{ ...range, path }]
 
@@ -453,7 +460,7 @@ export async function runTranscription(input: RunTranscriptionInput): Promise<Tr
   const audioError =
     '動画から音声を準備できませんでした。音声トラックを確認して、再試行してください。'
   const audioPath = await withUserFacingError(audioError, async () => {
-    const path = await getAudioAssetPath(project.id)
+    const path = await getAudioAssetPath(project.id, requireActiveArticleId(project))
     if (!(await fileExists(path))) {
       await extractAudio({ path: source.path, outputPath: path, signal })
     }

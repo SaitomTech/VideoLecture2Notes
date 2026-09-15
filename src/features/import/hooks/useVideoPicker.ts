@@ -125,6 +125,15 @@ export function useVideoPicker(initialVideo?: SelectedVideo) {
     }
   }
 
+  const clearVideo = () => {
+    selectionVersion.current += 1
+    setSelectedVideo(null)
+    setVideoStatus('checking')
+    setMetadataStatus('idle')
+    setMetadataError(null)
+    setError(null)
+  }
+
   return {
     selectedVideo,
     videoStatus,
@@ -134,6 +143,7 @@ export function useVideoPicker(initialVideo?: SelectedVideo) {
     isSelecting,
     error,
     chooseVideo,
+    clearVideo,
     handleVideoReady,
     handleVideoError,
   }

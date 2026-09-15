@@ -14,7 +14,9 @@ export function WorkflowBar({
   onStepClick,
   disabled = false,
 }: WorkflowBarProps) {
-  const activeIndex = WORKFLOW_STEPS.findIndex((step) => step.id === activeStep)
+  const steps =
+    activeStep === 'import' ? [{ id: 'import' as const, label: 'Import' }] : WORKFLOW_STEPS
+  const activeIndex = steps.findIndex((step) => step.id === activeStep)
   const maxReachedIndex = getWorkflowStepIndex(maxReachedStep)
 
   return (
@@ -22,7 +24,7 @@ export function WorkflowBar({
       className="mx-auto flex h-[84px] w-full max-w-[1040px] items-center justify-start gap-0 overflow-x-auto px-4 sm:justify-center sm:gap-3 md:gap-4 md:px-4 min-[821px]:justify-start min-[1101px]:justify-center min-[1101px]:overflow-visible min-[1101px]:px-6"
       aria-label="処理ステップ"
     >
-      {WORKFLOW_STEPS.map((step, index) => {
+      {steps.map((step, index) => {
         const isActive = index === activeIndex
         const isReached = index <= maxReachedIndex
         const isNavigable = Boolean(onStepClick) && isReached && !isActive
@@ -57,7 +59,7 @@ export function WorkflowBar({
                 {stepLabel}
               </div>
             )}
-            {index < WORKFLOW_STEPS.length - 1 && (
+            {index < steps.length - 1 && (
               <span className="h-px w-10 bg-[#d8e1dc] md:w-16" aria-hidden="true" />
             )}
           </div>

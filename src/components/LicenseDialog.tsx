@@ -1,7 +1,8 @@
 import { Check, Copy, Scale, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import appLicense from '../../LICENSE?raw'
 import thirdPartyNotices from '../../THIRD_PARTY_NOTICES.md?raw'
+import { useDialogA11y } from '../lib/ui/useDialogA11y'
 
 type LicenseDocumentId = 'notice' | 'license'
 
@@ -24,15 +25,7 @@ export function LicenseDialog({ onClose }: LicenseDialogProps) {
   const [selectedDocument, setSelectedDocument] = useState<LicenseDocumentId>('notice')
   const [copied, setCopied] = useState(false)
   const document = documents[selectedDocument]
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+  const dialogRef = useDialogA11y({ open: true, onClose })
 
   const handleCopy = async () => {
     try {
@@ -46,17 +39,11 @@ export function LicenseDialog({ onClose }: LicenseDialogProps) {
 
   return (
     <dialog
+      ref={dialogRef}
       className="fixed inset-0 z-50 m-0 grid h-full w-full max-h-none max-w-none place-items-center border-0 bg-[#18211f]/35 px-4 py-6 backdrop-blur-[2px]"
       open
       aria-modal="true"
       aria-labelledby="license-dialog-title"
-      onCancel={(event) => {
-        event.preventDefault()
-        onClose()
-      }}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose()
-      }}
     >
       <section className="flex max-h-full w-full max-w-[860px] flex-col overflow-hidden rounded-[16px] border border-[#b7cbc0] bg-[#fffdfb] shadow-[0_24px_70px_rgba(24,33,31,0.2)]">
         <div className="flex items-start justify-between gap-4 border-b border-[#d8e1dc] px-5 py-4 sm:px-6">

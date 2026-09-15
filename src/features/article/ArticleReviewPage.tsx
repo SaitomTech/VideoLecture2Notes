@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, FilePenLine, Save, X } from 'lucide-react'
+import { ArrowRight, FilePenLine, Save, X } from 'lucide-react'
 import { useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
@@ -11,7 +11,6 @@ import { useArticleSummary } from './hooks/useArticleSummary'
 
 type ArticleReviewPageProps = {
   project: MediaProject
-  onBack: () => void
   onSave: (draft: ArticleDraft) => void | Promise<void>
   onSaveSummary: (summary: ArticleSummary) => void | Promise<void>
   onExport: () => void
@@ -24,7 +23,6 @@ type EditingTarget = { type: 'title' } | { type: 'slide'; slideId: string } | nu
 
 export function ArticleReviewPage({
   project,
-  onBack,
   onSave,
   onSaveSummary,
   onExport,
@@ -120,15 +118,6 @@ export function ArticleReviewPage({
     }
   }
 
-  const handleBack = () => {
-    if (
-      hasUnsavedChanges &&
-      !window.confirm('未保存の変更があります。保存せずに解析へ戻りますか？')
-    )
-      return
-    onBack()
-  }
-
   const handleWorkflowNavigation = (nextStep: WorkflowStep) => {
     if (hasUnsavedChanges && !window.confirm('未保存の変更があります。保存せずに移動しますか？'))
       return
@@ -146,25 +135,16 @@ export function ArticleReviewPage({
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
-        <div className="mb-6 flex items-center justify-between gap-4">
+        <div className="mb-6 flex items-center gap-4">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
-              05 / ARTICLE PREVIEW
+              03 / ARTICLE PREVIEW
             </p>
             <h1 className="mt-1 text-[27px] font-bold tracking-[-0.06em]">記事プレビュー</h1>
             <p className="mt-1 text-xs text-[#71807b]">
               生成した記事の見た目を確認します。必要なSlideだけ編集できます。
             </p>
           </div>
-          <button
-            className="inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-[#71807b] transition hover:bg-[#e2eee8] hover:text-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50"
-            type="button"
-            onClick={handleBack}
-            disabled={isBusy}
-          >
-            <ArrowLeft size={15} strokeWidth={1.8} />
-            解析に戻る
-          </button>
         </div>
 
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
