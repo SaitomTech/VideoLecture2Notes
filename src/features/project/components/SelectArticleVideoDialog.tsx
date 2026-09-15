@@ -1,7 +1,8 @@
-import { ChevronRight, FileVideo, X } from 'lucide-react'
+import { ChevronRight, FolderOpen, Link, Upload, X } from 'lucide-react'
 import { useDialogA11y } from '../../../lib/ui/useDialogA11y'
 import { formatTimestamp } from '../../../lib/time'
 import type { MediaProject, ProjectVideo } from '../../../types/project'
+import type { VideoImportSource } from './VideoList'
 import { VideoThumbnail } from './VideoThumbnail'
 export function SelectArticleVideoDialog({
   project,
@@ -12,7 +13,7 @@ export function SelectArticleVideoDialog({
   project: MediaProject
   onClose: () => void
   onSelect: (video: ProjectVideo) => void
-  onOpenVideos: () => void
+  onOpenVideos: (source: VideoImportSource) => void
 }) {
   const dialogRef = useDialogA11y({ open: true, onClose })
   return (
@@ -33,10 +34,10 @@ export function SelectArticleVideoDialog({
               id="select-article-video-title"
               className="mt-1 text-[22px] font-bold tracking-[-0.04em]"
             >
-              元動画を選ぶ
+              記事作成の下準備
             </h2>
             <p className="mt-1 text-xs text-[#71807b]">
-              記事にする区間を指定する元動画を選択してください。
+              記事にする動画を選択して、記事の範囲を指定する準備をします。
             </p>
           </div>
           <button
@@ -49,66 +50,86 @@ export function SelectArticleVideoDialog({
           </button>
         </div>
 
-        {project.videos.length === 0 ? (
-          <div className="mt-6 rounded-[10px] border border-dashed border-[#b7cbc0] bg-white px-6 py-12 text-center">
-            <FileVideo className="mx-auto text-[#8da79a]" size={28} strokeWidth={1.5} />
-            <p className="mt-3 text-sm font-semibold">元動画がありません</p>
-            <p className="mt-2 text-xs text-[#71807b]">
-              先に動画を追加すると、そこから記事にする区間を指定できます。
-            </p>
+        <div className="mt-6">
+          <p className="text-sm font-semibold">新しい動画で記事作成の下準備へ</p>
+          <p className="mt-1 text-[11px] text-[#71807b]">
+            動画を追加すると、そのまま記事にする区間の指定へ進みます。
+          </p>
+        </div>
+        <div className="mt-3 rounded-[10px] border border-dashed border-[#b7cbc0] bg-white px-4 py-6 text-center">
+          <Upload className="mx-auto text-[#8da79a]" size={25} strokeWidth={1.5} />
+          <p className="mt-2 text-sm font-semibold">動画を選んで下準備へ</p>
+          <p className="mt-1 text-[11px] text-[#71807b]">または、追加方法を選択</p>
+          <div className="mt-4 grid grid-cols-2 gap-2">
             <button
-              className="mt-5 inline-flex items-center gap-1.5 rounded-[8px] bg-[#1d6b50] px-3.5 py-2.5 text-xs font-semibold text-white hover:bg-[#174d3c]"
+              className="inline-flex items-center justify-center gap-1.5 rounded-[8px] border border-[#b7cbc0] bg-white px-2 py-2.5 text-[11px] font-semibold text-[#1d6b50] hover:bg-[#f4faf6]"
               type="button"
-              onClick={onOpenVideos}
+              onClick={() => onOpenVideos('finder')}
             >
-              動画を追加
-              <ChevronRight size={14} />
+              <FolderOpen size={14} /> Finderから選ぶ
+            </button>
+            <button
+              className="inline-flex items-center justify-center gap-1.5 rounded-[8px] border border-[#b7cbc0] bg-white px-2 py-2.5 text-[11px] font-semibold text-[#1d6b50] hover:bg-[#f4faf6]"
+              type="button"
+              onClick={() => onOpenVideos('youtube')}
+            >
+              <Link size={14} /> YouTube URL
             </button>
           </div>
-        ) : (
-          <div className="mt-6 space-y-2">
-            {project.videos.map((video) => {
-              const articleCount = project.articles.filter(
-                (article) => article.sourceVideoId === video.id,
-              ).length
-              const isYoutube = video.media.origin?.kind === 'youtube'
-              return (
-                <button
-                  className="flex w-full items-center gap-3 rounded-[10px] border border-[#d8e1dc] bg-white p-3 text-left transition hover:border-[#9fc3b0] hover:bg-[#f8fbf9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/25"
-                  key={video.id}
-                  type="button"
-                  onClick={() => onSelect(video)}
-                >
-                  <VideoThumbnail video={video} />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex min-w-0 items-center gap-2">
-                      <span className="truncate text-sm font-semibold">{video.title}</span>
-                      <span
-                        className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${isYoutube ? 'bg-[#fff0e9] text-[#a4573e]' : 'bg-[#e8f2ec] text-[#1d6b50]'}`}
-                      >
-                        {isYoutube ? 'YouTube' : 'ローカル'}
+        </div>
+        {project.videos.length > 0 && (
+          <>
+            <div className="mt-6 flex items-center gap-3 text-[11px] font-semibold text-[#71807b]">
+              <span className="h-px flex-1 bg-[#d8e1dc]" />
+              <span>または</span>
+              <span className="h-px flex-1 bg-[#d8e1dc]" />
+            </div>
+            <div className="mt-6">
+              <p className="text-sm font-semibold">プロジェクトに追加済みの動画を使う</p>
+              <div className="mt-3 space-y-1">
+                {project.videos.map((video) => {
+                  const articleCount = project.articles.filter(
+                    (article) => article.sourceVideoId === video.id,
+                  ).length
+                  const isYoutube = video.media.origin?.kind === 'youtube'
+                  return (
+                    <button
+                      className="flex w-full items-center gap-3 border-b border-[#d8e1dc] bg-transparent px-0 py-3 text-left transition hover:bg-[#f4f7f4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/25"
+                      key={video.id}
+                      type="button"
+                      onClick={() => onSelect(video)}
+                    >
+                      <VideoThumbnail video={video} />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="truncate text-sm font-semibold">{video.title}</span>
+                          <span
+                            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${isYoutube ? 'bg-[#fff0e9] text-[#a4573e]' : 'bg-[#e8f2ec] text-[#1d6b50]'}`}
+                          >
+                            {isYoutube ? 'YouTube' : 'ローカル'}
+                          </span>
+                        </span>
+                        <span className="mt-1 flex flex-wrap items-center gap-x-2 text-[10px] text-[#71807b]">
+                          <span>{formatTimestamp(video.media.metadata.durationMs)}</span>
+                          <span className="text-[#b7cbc0]">·</span>
+                          <span>{articleCount}件の記事</span>
+                        </span>
                       </span>
-                    </span>
-                    <span className="mt-1 flex flex-wrap items-center gap-x-2 text-[10px] text-[#71807b]">
-                      <span>{formatTimestamp(video.media.metadata.durationMs)}</span>
-                      <span className="text-[#b7cbc0]">·</span>
-                      <span>{articleCount}件の記事</span>
-                    </span>
-                  </span>
-                  <ChevronRight className="shrink-0 text-[#8da79a]" size={16} />
-                </button>
-              )
-            })}
-          </div>
+                      <ChevronRight className="shrink-0 text-[#8da79a]" size={16} />
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </>
         )}
-
         <div className="mt-6 flex justify-end border-t border-[#d8e1dc] pt-4">
           <button
             className="rounded-[8px] px-3 py-2.5 text-xs font-semibold text-[#71807b] hover:bg-[#eef3ef]"
             type="button"
             onClick={onClose}
           >
-            キャンセル
+            閉じる
           </button>
         </div>
       </section>

@@ -43,8 +43,11 @@ export function ProjectDetailPage({
   onBack: () => void
   onDeleteProject: () => Promise<void>
   onRenameProject: (title: string) => Promise<void>
-  onAddLocalVideo: (video: SelectedVideo) => Promise<void>
-  onAddYoutubeVideo: (request: YoutubeImportRequest, options: YoutubeImportOptions) => Promise<void>
+  onAddLocalVideo: (video: SelectedVideo) => Promise<ProjectVideo>
+  onAddYoutubeVideo: (
+    request: YoutubeImportRequest,
+    options: YoutubeImportOptions,
+  ) => Promise<ProjectVideo>
   onOpenArticle: (articleId: string) => void
   onDeleteArticle: (articleId: string) => Promise<void>
   onDeleteVideo: (videoId: string) => Promise<void>
@@ -57,6 +60,7 @@ export function ProjectDetailPage({
 }) {
   const [createVideo, setCreateVideo] = useState<ProjectVideo | null>(null)
   const [showVideoPicker, setShowVideoPicker] = useState(false)
+  const [prepareAfterImport, setPrepareAfterImport] = useState(false)
   const [deleteVideo, setDeleteVideo] = useState<ProjectVideo | null>(null)
   const [deleteArticle, setDeleteArticle] = useState<Article | null>(null)
   const [isDeleteProjectOpen, setIsDeleteProjectOpen] = useState(false)
@@ -72,6 +76,7 @@ export function ProjectDetailPage({
 
   const openArticleCreator = () => setShowVideoPicker(true)
   const openVideoImportSource = (source: VideoImportSource) => {
+    setPrepareAfterImport(true)
     const open = () => {
       videoImportContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       if (source === 'finder') void videoImportPanelRef.current?.openFinder()
@@ -83,7 +88,6 @@ export function ProjectDetailPage({
       window.setTimeout(open, 0)
     }
   }
-
   const handleCreateArticles = async (
     videoId: string,
     ranges: Array<{ title: string; range: VideoTrimRange }>,
@@ -141,7 +145,6 @@ export function ProjectDetailPage({
             onTitleBlur={titleEditor.handleBlur}
             onTitleCompositionStart={titleEditor.handleCompositionStart}
             onTitleCompositionEnd={titleEditor.handleCompositionEnd}
-            onOpenVideoImportSource={openVideoImportSource}
             onOpenArticleCreator={openArticleCreator}
             onRequestDelete={() => {
               setProjectDeleteError(null)
@@ -167,7 +170,10 @@ export function ProjectDetailPage({
                 type="button"
                 role="tab"
                 aria-selected={tab === 'videos'}
-                onClick={() => onTabChange('videos')}
+                onClick={() => {
+                  setPrepareAfterImport(false)
+                  onTabChange('videos')
+                }}
               >
                 動画{' '}
                 <span className="relative -top-0.5 inline-flex min-w-[24px] items-center justify-center rounded-full bg-[#e8f2ec] px-1.5 py-0.5 align-middle font-mono text-[11px] text-[#71807b]">
@@ -190,6 +196,12 @@ export function ProjectDetailPage({
                 videoImportContainerRef={videoImportContainerRef}
                 videoImportPanelRef={videoImportPanelRef}
                 onStartArticleCreator={setCreateVideo}
+                onVideoAdded={(video) => {
+                  if (!prepareAfterImport) return
+                  setPrepareAfterImport(false)
+                  setCreateVideo(video)
+                }}
+                continueToPreparation={prepareAfterImport}
                 onDeleteVideo={requestDeleteVideo}
                 onAddLocalVideo={onAddLocalVideo}
                 onAddYoutubeVideo={onAddYoutubeVideo}
@@ -200,14 +212,17 @@ export function ProjectDetailPage({
         {showVideoPicker && (
           <SelectArticleVideoDialog
             project={project}
-            onClose={() => setShowVideoPicker(false)}
+            onClose={() => {
+              setPrepareAfterImport(false)
+              setShowVideoPicker(false)
+            }}
             onSelect={(video) => {
               setShowVideoPicker(false)
               setCreateVideo(video)
             }}
-            onOpenVideos={() => {
+            onOpenVideos={(source) => {
               setShowVideoPicker(false)
-              onTabChange('videos')
+              openVideoImportSource(source)
             }}
           />
         )}

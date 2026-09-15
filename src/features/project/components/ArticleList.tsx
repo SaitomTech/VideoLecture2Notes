@@ -71,7 +71,7 @@ export function ArticleList({
               aria-hidden="true"
             />
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-[#1d6b50]">記事作成の準備ができました</p>
+              <p className="text-xs font-semibold text-[#1d6b50]">記事作成の下準備ができました</p>
               <p className="mt-1 text-xs leading-5 text-[#53615b]">
                 {creationNotice.count}
                 件の区間を追加しました。「作業を開始」から文字起こしを進められます。
@@ -122,8 +122,8 @@ export function ArticleList({
               type="button"
               onClick={onStartArticleCreator}
             >
-              <ChevronRight size={14} />
-              記事作成の準備
+              記事作成の下準備
+              <span aria-hidden="true">→</span>
             </button>
           </div>
         ) : (

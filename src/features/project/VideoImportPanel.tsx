@@ -9,10 +9,16 @@ import { useVideoPicker } from '../import/hooks/useVideoPicker'
 import { useYoutubeImporter } from '../import/hooks/useYoutubeImporter'
 import type { SelectedVideo, YoutubeImportOptions, YoutubeImportRequest } from '../import/types'
 import type { YoutubeDownloadProgress } from '../../lib/youtube/types'
+import type { ProjectVideo } from '../../types/project'
 
 type VideoImportPanelProps = {
-  onAddLocalVideo: (video: SelectedVideo) => Promise<void>
-  onAddYoutubeVideo: (request: YoutubeImportRequest, options: YoutubeImportOptions) => Promise<void>
+  onAddLocalVideo: (video: SelectedVideo) => Promise<ProjectVideo>
+  onAddYoutubeVideo: (
+    request: YoutubeImportRequest,
+    options: YoutubeImportOptions,
+  ) => Promise<ProjectVideo>
+  onVideoAdded?: (video: ProjectVideo) => void
+  continueToPreparation?: boolean
 }
 
 export type VideoImportPanelHandle = {
@@ -21,7 +27,10 @@ export type VideoImportPanelHandle = {
 }
 
 export const VideoImportPanel = forwardRef<VideoImportPanelHandle, VideoImportPanelProps>(
-  function VideoImportPanel({ onAddLocalVideo, onAddYoutubeVideo }, ref) {
+  function VideoImportPanel(
+    { onAddLocalVideo, onAddYoutubeVideo, onVideoAdded, continueToPreparation },
+    ref,
+  ) {
     const picker = useVideoPicker()
     const youtube = useYoutubeImporter()
     const youtubeAbortRef = useRef<AbortController | null>(null)
@@ -60,8 +69,9 @@ export const VideoImportPanel = forwardRef<VideoImportPanelHandle, VideoImportPa
       setLocalError(null)
       setLocalSuccess(null)
       try {
-        await onAddLocalVideo(picker.selectedVideo)
+        const added = await onAddLocalVideo(picker.selectedVideo)
         picker.clearVideo()
+        onVideoAdded?.(added)
         setLocalSuccess('動画をプロジェクトへ追加しました。')
       } catch (error) {
         console.error(error)
@@ -81,10 +91,11 @@ export const VideoImportPanel = forwardRef<VideoImportPanelHandle, VideoImportPa
       setYoutubeError(null)
 
       try {
-        await onAddYoutubeVideo(request, {
+        const added = await onAddYoutubeVideo(request, {
           signal: controller.signal,
           onProgress: setYoutubeProgress,
         })
+        onVideoAdded?.(added)
         setIsYoutubeImportComplete(true)
         closeYoutube(true)
       } catch (error) {
@@ -161,7 +172,11 @@ export const VideoImportPanel = forwardRef<VideoImportPanelHandle, VideoImportPa
               }
             >
               {isAddingLocal && <LoaderCircle className="animate-spin" size={14} />}
-              {isAddingLocal ? '追加中…' : 'この動画を追加'}
+              {isAddingLocal
+                ? '追加中…'
+                : continueToPreparation
+                  ? '追加して記事の範囲を指定'
+                  : 'この動画を追加'}
             </button>
           </YoutubeDownloadModal>
         )}
@@ -192,7 +207,7 @@ export const VideoImportPanel = forwardRef<VideoImportPanelHandle, VideoImportPa
               onContinue={closeYoutube}
               onCancel={() => youtubeAbortRef.current?.abort()}
               continueLabel="動画一覧へ戻る"
-              importLabel="この動画を追加"
+              importLabel={continueToPreparation ? '追加して記事の範囲を指定' : 'この動画を追加'}
               showHeader={false}
             />
           </YoutubeDownloadModal>

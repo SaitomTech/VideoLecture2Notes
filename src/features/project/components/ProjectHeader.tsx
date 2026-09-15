@@ -1,7 +1,5 @@
-import { ChevronDown, PencilLine, Plus, Trash2 } from 'lucide-react'
-import type { ChangeEvent } from 'react'
+import { PencilLine, Trash2 } from 'lucide-react'
 import type { MediaProject } from '../../../types/project'
-import type { VideoImportSource } from './VideoList'
 
 export function ProjectHeader({
   project,
@@ -15,7 +13,6 @@ export function ProjectHeader({
   onTitleBlur,
   onTitleCompositionStart,
   onTitleCompositionEnd,
-  onOpenVideoImportSource,
   onOpenArticleCreator,
   onRequestDelete,
 }: {
@@ -30,7 +27,6 @@ export function ProjectHeader({
   onTitleBlur: (event: React.FocusEvent<HTMLInputElement>) => void
   onTitleCompositionStart: (event: React.CompositionEvent<HTMLInputElement>) => void
   onTitleCompositionEnd: (event: React.CompositionEvent<HTMLInputElement>) => void
-  onOpenVideoImportSource: (source: VideoImportSource) => void
   onOpenArticleCreator: () => void
   onRequestDelete: () => void
 }) {
@@ -76,35 +72,13 @@ export function ProjectHeader({
           {titleError && <p className="mt-1 text-xs text-[#b6533a]">{titleError}</p>}
         </div>
         <div className="mt-4 flex shrink-0 flex-wrap items-center gap-2">
-          <label className="relative inline-flex items-center">
-            <Plus className="pointer-events-none absolute left-2.5 text-[#1d6b50]" size={14} />
-            <select
-              className="h-9 w-[136px] cursor-pointer appearance-none rounded-[8px] border border-[#b8d2c5] bg-white py-2 pl-8 pr-9 text-xs font-semibold text-[#1d6b50] outline-none transition hover:bg-[#f4faf6] focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2"
-              defaultValue=""
-              onChange={(event: ChangeEvent<HTMLSelectElement>) => {
-                const source = event.currentTarget.value as VideoImportSource
-                event.currentTarget.value = ''
-                if (source === 'finder' || source === 'youtube') onOpenVideoImportSource(source)
-              }}
-              aria-label="動画の追加方法を選択"
-            >
-              <option value="" disabled>
-                動画を追加
-              </option>
-              <option value="finder">Finderから追加</option>
-              <option value="youtube">YouTubeから追加</option>
-            </select>
-            <span className="pointer-events-none absolute inset-y-0 right-0 flex w-8 items-center justify-center border-l border-[#d8e1dc] text-[#1d6b50]">
-              <ChevronDown size={15} strokeWidth={2.2} aria-hidden="true" />
-            </span>
-          </label>
           <button
             className="inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-[#1d6b50] px-3 text-xs font-semibold text-white hover:bg-[#174d3c]"
             type="button"
             onClick={onOpenArticleCreator}
           >
-            <Plus size={15} />
-            記事作成の準備
+            記事作成の下準備
+            <span aria-hidden="true">→</span>
           </button>
           <button
             className="ml-auto inline-flex h-9 w-9 items-center justify-center rounded-[8px] border border-[#d6a18f] text-[#a4573e] transition hover:bg-[#fff0e9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b6533a]/30"

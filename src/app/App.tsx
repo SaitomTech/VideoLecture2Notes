@@ -42,6 +42,7 @@ import type {
   MediaProject,
   PerspectiveCrop,
   ProjectStep,
+  ProjectVideo,
   SlideOcrResult,
   SlideResultEdits,
   TranscriptionResult,
@@ -129,8 +130,8 @@ function App() {
     })
   }
 
-  const handleAddLocalVideo = async (video: SelectedVideo) => {
-    await enqueueProjectOperation(async () => {
+  const handleAddLocalVideo = async (video: SelectedVideo): Promise<ProjectVideo> => {
+    return enqueueProjectOperation(async () => {
       const current = projectRef.current
       if (!current) throw new Error('プロジェクトが選択されていません。')
       const added = await addProjectVideo(current, video)
@@ -139,15 +140,16 @@ function App() {
       ])
       projectRef.current = saved
       setProject(saved)
+      return added.video
     })
   }
 
   const handleAddYoutubeVideo = async (
     request: YoutubeImportRequest,
     options: YoutubeImportOptions,
-  ) => {
+  ): Promise<ProjectVideo> => {
     const temporaryProjectId = crypto.randomUUID()
-    await enqueueProjectOperation(async () => {
+    return enqueueProjectOperation(async () => {
       try {
         const video = await downloadYoutubeVideo({
           projectId: temporaryProjectId,
@@ -164,6 +166,7 @@ function App() {
         ])
         projectRef.current = saved
         setProject(saved)
+        return added.video
       } finally {
         await removeProjectSourceAssetDirectory(temporaryProjectId).catch(() => undefined)
       }

@@ -17,14 +17,21 @@ export function VideoList({
   onDeleteVideo,
   onAddLocalVideo,
   onAddYoutubeVideo,
+  onVideoAdded,
+  continueToPreparation,
 }: {
   project: MediaProject
   videoImportContainerRef: RefObject<HTMLDivElement | null>
   videoImportPanelRef: RefObject<VideoImportPanelHandle | null>
   onStartArticleCreator: (video: ProjectVideo) => void
   onDeleteVideo: (videoId: string) => void
-  onAddLocalVideo: (video: SelectedVideo) => Promise<void>
-  onAddYoutubeVideo: (request: YoutubeImportRequest, options: YoutubeImportOptions) => Promise<void>
+  onAddLocalVideo: (video: SelectedVideo) => Promise<ProjectVideo>
+  onAddYoutubeVideo: (
+    request: YoutubeImportRequest,
+    options: YoutubeImportOptions,
+  ) => Promise<ProjectVideo>
+  onVideoAdded?: (video: ProjectVideo) => void
+  continueToPreparation?: boolean
 }) {
   return (
     <section className="mt-0">
@@ -76,11 +83,11 @@ export function VideoList({
                 </p>
               </div>
               <button
-                className="inline-flex items-center gap-2 rounded-[8px] bg-[#1d6b50] px-3 py-2.5 text-xs font-semibold text-white hover:bg-[#174d3c]"
+                className="inline-flex items-center gap-2 rounded-[8px] border border-[#b8d2c5] bg-white px-3 py-2.5 text-xs font-semibold text-[#1d6b50] hover:bg-[#f4faf6]"
                 type="button"
                 onClick={() => onStartArticleCreator(video)}
               >
-                記事作成の準備
+                この動画で記事作成の下準備
                 <ChevronRight size={14} />
               </button>
               <button
@@ -101,6 +108,8 @@ export function VideoList({
           ref={videoImportPanelRef}
           onAddLocalVideo={onAddLocalVideo}
           onAddYoutubeVideo={onAddYoutubeVideo}
+          onVideoAdded={onVideoAdded}
+          continueToPreparation={continueToPreparation}
         />
       </div>
     </section>
