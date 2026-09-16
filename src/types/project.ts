@@ -25,6 +25,7 @@ export type MediaSourceOrigin =
   | { kind: 'local-file' }
   | {
       kind: 'youtube'
+      originalUrl: string
       videoId: string
       canonicalUrl: string
       pageTitle?: string

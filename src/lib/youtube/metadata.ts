@@ -67,6 +67,7 @@ export async function getYoutubeVideoInfo(value: string): Promise<YoutubeVideoIn
   const channelTitle = typeof info.channel === 'string' ? info.channel.trim() : ''
 
   return {
+    originalUrl: parsedUrl.originalUrl,
     videoId: parsedUrl.videoId,
     canonicalUrl: parsedUrl.canonicalUrl,
     title,

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import { isTauriEnvironment } from '../../../lib/tauri/environment'
 import { pickVideoPath } from '../../../lib/tauri/dialog'
@@ -8,7 +8,7 @@ import type { VideoExtension } from '../../../types/media'
 import { getExtension, getFileName, isSupportedVideo } from '../utils'
 import type { MetadataLoadStatus, SelectedVideo, VideoLoadStatus } from '../types'
 
-export function useVideoPicker(initialVideo?: SelectedVideo) {
+export function useVideoPicker(initialVideo?: SelectedVideo, onVideoSelected?: () => void) {
   const [selectedVideo, setSelectedVideo] = useState<SelectedVideo | null>(initialVideo ?? null)
   const [videoStatus, setVideoStatus] = useState<VideoLoadStatus>('checking')
   const [metadataStatus, setMetadataStatus] = useState<MetadataLoadStatus>(
@@ -20,52 +20,56 @@ export function useVideoPicker(initialVideo?: SelectedVideo) {
   const [error, setError] = useState<string | null>(null)
   const selectionVersion = useRef(0)
 
-  const setVideo = async (path: string) => {
-    const name = getFileName(path)
-    const extension = getExtension(name)
-    const currentVersion = selectionVersion.current + 1
-    selectionVersion.current = currentVersion
+  const setVideo = useCallback(
+    async (path: string) => {
+      const name = getFileName(path)
+      const extension = getExtension(name)
+      const currentVersion = selectionVersion.current + 1
+      selectionVersion.current = currentVersion
 
-    if (!isSupportedVideo(name)) {
-      setVideoStatus('error')
-      setMetadataStatus('error')
-      setError('対応していない形式です。動画ファイルを選択してください。')
-      return
-    }
-
-    setSelectedVideo({
-      name,
-      path,
-      extension: extension as VideoExtension,
-    })
-    setVideoStatus('checking')
-    setMetadataStatus('checking')
-    setMetadataError(null)
-    setError(null)
-
-    try {
-      const sizeBytes = await getFileSize(path)
-      if (selectionVersion.current === currentVersion) {
-        setSelectedVideo((current) =>
-          current?.path === path ? { ...current, sizeBytes } : current,
-        )
+      if (!isSupportedVideo(name)) {
+        setVideoStatus('error')
+        setMetadataStatus('error')
+        setError('対応していない形式です。動画ファイルを選択してください。')
+        return
       }
-    } catch (sizeError) {
-      console.error(sizeError)
-    }
 
-    try {
-      const metadata = await probeVideo(path)
-      if (selectionVersion.current !== currentVersion) return
-      setSelectedVideo((current) => (current?.path === path ? { ...current, metadata } : current))
-      setMetadataStatus('ready')
-    } catch (probeError) {
-      if (selectionVersion.current !== currentVersion) return
-      console.error(probeError)
-      setMetadataStatus('error')
-      setMetadataError('動画情報を解析できませんでした。sidecarの準備状態を確認してください。')
-    }
-  }
+      onVideoSelected?.()
+      setSelectedVideo({
+        name,
+        path,
+        extension: extension as VideoExtension,
+      })
+      setVideoStatus('checking')
+      setMetadataStatus('checking')
+      setMetadataError(null)
+      setError(null)
+
+      try {
+        const sizeBytes = await getFileSize(path)
+        if (selectionVersion.current === currentVersion) {
+          setSelectedVideo((current) =>
+            current?.path === path ? { ...current, sizeBytes } : current,
+          )
+        }
+      } catch (sizeError) {
+        console.error(sizeError)
+      }
+
+      try {
+        const metadata = await probeVideo(path)
+        if (selectionVersion.current !== currentVersion) return
+        setSelectedVideo((current) => (current?.path === path ? { ...current, metadata } : current))
+        setMetadataStatus('ready')
+      } catch (probeError) {
+        if (selectionVersion.current !== currentVersion) return
+        console.error(probeError)
+        setMetadataStatus('error')
+        setMetadataError('動画情報を解析できませんでした。sidecarの準備状態を確認してください。')
+      }
+    },
+    [onVideoSelected],
+  )
 
   const handleVideoReady = () => {
     setVideoStatus('ready')
@@ -108,7 +112,7 @@ export function useVideoPicker(initialVideo?: SelectedVideo) {
       disposed = true
       unlisten?.()
     }
-  }, [])
+  }, [setVideo])
 
   const chooseVideo = async () => {
     setError(null)

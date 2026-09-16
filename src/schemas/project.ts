@@ -38,6 +38,7 @@ const MediaSourceOriginSchema = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('local-file') }),
   z.strictObject({
     kind: z.literal('youtube'),
+    originalUrl: z.url(),
     videoId: z.string().min(1),
     canonicalUrl: z.url(),
     pageTitle: z.string().min(1).optional(),
