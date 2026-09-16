@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, CircleDot, Film, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, CircleDot, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { formatPlaybackTime } from '../article-creator/rangeDraft'
 import { formatTimestamp } from '../../../lib/time'
@@ -279,25 +279,7 @@ export function ProjectArticleMap({
     return () => window.clearTimeout(timeoutId)
   }, [project.articles])
 
-  if (project.videos.length === 0) {
-    return (
-      <div className="flex flex-col items-center px-6 py-16 text-center">
-        <Film className="text-[#9aada3]" size={32} strokeWidth={1.3} />
-        <p className="mt-4 text-sm font-semibold">まず動画を追加してください</p>
-        <p className="mt-2 text-xs text-[#71807b]">
-          元動画を追加すると、記事セクションを整理できます。
-        </p>
-        <button
-          className="mt-5 inline-flex items-center gap-1.5 rounded-[8px] bg-[#1d6b50] px-3.5 py-2.5 text-xs font-semibold text-white transition hover:bg-[#174d3c]"
-          type="button"
-          onClick={() => onStartArticleCreator()}
-        >
-          動画を追加
-          <ChevronRight size={14} />
-        </button>
-      </div>
-    )
-  }
+  if (project.videos.length === 0) return null
 
   return (
     <section className="mt-5 space-y-3.5" aria-label="動画と記事の一覧">
