@@ -1,5 +1,5 @@
 import { ArrowRight } from 'lucide-react'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { ArticleContextRow } from '../../components/ArticleContextRow'
 import { WorkflowPanelHeader } from '../../components/WorkflowPanelHeader'
@@ -77,6 +77,7 @@ function CropTrimEditor({
   article: NonNullable<CropTrimPageProps['project']['articles'][number]>
   video: NonNullable<CropTrimPageProps['project']['videos'][number]>
 }) {
+  const [isCropPreviewOpen, setIsCropPreviewOpen] = useState(true)
   const editor = useArticleRangeEditor({
     projectId: project.id,
     video,
@@ -121,9 +122,22 @@ function CropTrimEditor({
             description="記事にする時間範囲と、スライドの切り出し領域を設定します。"
           />
 
-          <div className="grid min-h-0 gap-4 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-0">
-            <RangeEditor video={video} editor={editor} />
-            <CropSettingsPanel projectId={project.id} video={video} editor={editor} />
+          <div
+            className={`grid min-h-0 gap-4 lg:gap-0 ${isCropPreviewOpen ? 'lg:grid-cols-[minmax(0,1fr)_300px]' : 'lg:grid-cols-1'}`}
+          >
+            <RangeEditor
+              video={video}
+              editor={editor}
+              onOpenCropPreview={!isCropPreviewOpen ? () => setIsCropPreviewOpen(true) : undefined}
+            />
+            {isCropPreviewOpen && (
+              <CropSettingsPanel
+                projectId={project.id}
+                video={video}
+                editor={editor}
+                onClose={() => setIsCropPreviewOpen(false)}
+              />
+            )}
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#d8e1dc] px-5 py-4 md:px-7">

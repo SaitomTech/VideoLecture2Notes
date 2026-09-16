@@ -1,4 +1,4 @@
-import { ScanLine, Undo2 } from 'lucide-react'
+import { Eye, ScanLine, Undo2 } from 'lucide-react'
 import { VideoPlayButton } from '../../../components/VideoPlaybackControls'
 import { formatPlaybackTime, formatTrimTime } from './rangeDraft'
 import { CropSelector } from '../../crop/components/CropSelector'
@@ -9,9 +9,11 @@ import type { ArticleRangeEditor } from './useArticleRangeEditor'
 export function RangeEditor({
   video,
   editor,
+  onOpenCropPreview,
 }: {
   video: ProjectVideo
   editor: ArticleRangeEditor
+  onOpenCropPreview?: () => void
 }) {
   const {
     duration,
@@ -88,6 +90,18 @@ export function RangeEditor({
                   : '検出中…'
                 : '四隅を自動検出'}
             </button>
+            {onOpenCropPreview && (
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 rounded-md border border-[#b7cbc0] px-2.5 py-2 text-[10px] font-semibold text-[#1d6b50] transition hover:border-[#1d6b50] hover:bg-[#edf4ef] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-40"
+                onClick={onOpenCropPreview}
+                disabled={busy || isDetecting}
+                aria-label="スライド領域のプレビューを表示"
+              >
+                <Eye size={14} strokeWidth={1.8} aria-hidden="true" />
+                プレビューを表示
+              </button>
+            )}
           </div>
         </div>
         <div
