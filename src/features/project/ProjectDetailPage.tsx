@@ -10,23 +10,22 @@ import type {
   ProjectVideo,
   VideoTrimRange,
 } from '../../types/project'
-import type { VideoImportPanelHandle } from './VideoImportPanel'
-import { ArticleList } from './components/ArticleList'
+import {
+  VideoImportPanel,
+  type VideoImportPanelHandle,
+  type VideoImportSource,
+} from './VideoImportPanel'
+import { ProjectArticleMap } from './components/ProjectArticleMap'
 import { DeleteArticleDialog } from './components/DeleteArticleDialog'
 import { DeleteProjectDialog } from './components/DeleteProjectDialog'
 import { DeleteVideoDialog } from './components/DeleteVideoDialog'
 import { ProjectHeader } from './components/ProjectHeader'
 import { SelectArticleVideoDialog } from './components/SelectArticleVideoDialog'
-import { VideoList, type VideoImportSource } from './components/VideoList'
 import { CreateArticleDialog } from './article-creator/CreateArticleDialog'
 import { useProjectTitleEditor } from './hooks/useProjectTitleEditor'
 
-type Tab = 'articles' | 'videos'
-
 export function ProjectDetailPage({
   project,
-  tab,
-  onTabChange,
   onBack,
   onDeleteProject,
   onRenameProject,
@@ -38,8 +37,6 @@ export function ProjectDetailPage({
   onCreateArticles,
 }: {
   project: MediaProject
-  tab: Tab
-  onTabChange: (tab: Tab) => void
   onBack: () => void
   onDeleteProject: () => Promise<void>
   onRenameProject: (title: string) => Promise<void>
@@ -73,7 +70,14 @@ export function ProjectDetailPage({
     onSave: onRenameProject,
   })
 
-  const openArticleCreator = () => setShowVideoPicker(true)
+  const startArticleCreator = (video?: ProjectVideo) => {
+    if (video) {
+      setShowVideoPicker(false)
+      setCreateVideo(video)
+      return
+    }
+    setShowVideoPicker(true)
+  }
   const openVideoImportSource = (source: VideoImportSource) => {
     setPrepareAfterImport(true)
     const open = () => {
@@ -81,21 +85,8 @@ export function ProjectDetailPage({
       if (source === 'finder') void videoImportPanelRef.current?.openFinder()
       else videoImportPanelRef.current?.openYoutube()
     }
-    if (tab === 'videos') open()
-    else {
-      onTabChange('videos')
-      window.setTimeout(open, 0)
-    }
+    window.setTimeout(open, 0)
   }
-  const handleCreateArticles = async (
-    videoId: string,
-    ranges: Array<{ title: string; range: VideoTrimRange }>,
-    crop: CropRegion,
-    perspectiveCrop?: PerspectiveCrop,
-  ) => {
-    await onCreateArticles(videoId, ranges, crop, perspectiveCrop)
-  }
-
   const deleteCurrentProject = async () => {
     setIsDeletingProject(true)
     setProjectDeleteError(null)
@@ -121,16 +112,16 @@ export function ProjectDetailPage({
   return (
     <main className="min-h-svh bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[#18211f]">
       <AppHeader onHome={onBack} />
-      <section className="mx-auto w-[calc(100%-48px)] max-w-[1040px] pb-16 pt-6 md:w-[calc(100%-11.6vw)] md:pt-8">
+      <section className="mx-auto w-[calc(100%-48px)] max-w-[1040px] pb-16 pt-5 md:w-[calc(100%-11.6vw)] md:pt-6">
         <button
-          className="mb-7 inline-flex items-center gap-1.5 rounded-[8px] px-2 py-1.5 text-xs font-semibold text-[#71807b] hover:bg-[#e2eee8] hover:text-[#1d6b50]"
+          className="mb-5 inline-flex items-center gap-1.5 rounded-[8px] px-2 py-1.5 text-xs font-semibold text-[#71807b] hover:bg-[#e2eee8] hover:text-[#1d6b50]"
           type="button"
           onClick={onBack}
         >
           <ArrowLeft size={14} strokeWidth={1.8} aria-hidden="true" />
           プロジェクト一覧へ戻る
         </button>
-        <div className="mt-2 overflow-hidden rounded-[16px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.05)]">
+        <div className="overflow-hidden rounded-[16px] border border-[#b7cbc0] bg-white shadow-[0_18px_52px_rgba(22,54,42,0.05)]">
           <ProjectHeader
             project={project}
             isEditingTitle={titleEditor.isEditing}
@@ -143,66 +134,32 @@ export function ProjectDetailPage({
             onTitleBlur={titleEditor.handleBlur}
             onTitleCompositionStart={titleEditor.handleCompositionStart}
             onTitleCompositionEnd={titleEditor.handleCompositionEnd}
-            onOpenArticleCreator={openArticleCreator}
             onRequestDelete={() => {
               setProjectDeleteError(null)
               setIsDeleteProjectOpen(true)
             }}
           />
           <div className="px-6 pb-8 sm:px-8 sm:pb-10">
-            <div className="mt-6 flex gap-8 border-b border-[#b7cbc0]" role="tablist">
-              <button
-                className={`border-b-2 px-1 pb-1 text-sm font-semibold ${tab === 'articles' ? 'border-[#1d6b50] text-[#1d6b50]' : 'border-transparent text-[#9aa6a1]'}`}
-                type="button"
-                role="tab"
-                aria-selected={tab === 'articles'}
-                onClick={() => onTabChange('articles')}
-              >
-                記事{' '}
-                <span className="relative -top-0.5 inline-flex min-w-[24px] items-center justify-center rounded-full bg-[#e8f2ec] px-1.5 py-0.5 align-middle font-mono text-[11px] text-[#71807b]">
-                  {project.articles.length}
-                </span>
-              </button>
-              <button
-                className={`border-b-2 px-1 pb-1 text-sm font-semibold ${tab === 'videos' ? 'border-[#1d6b50] text-[#1d6b50]' : 'border-transparent text-[#9aa6a1]'}`}
-                type="button"
-                role="tab"
-                aria-selected={tab === 'videos'}
-                onClick={() => {
-                  setPrepareAfterImport(false)
-                  onTabChange('videos')
-                }}
-              >
-                動画{' '}
-                <span className="relative -top-0.5 inline-flex min-w-[24px] items-center justify-center rounded-full bg-[#e8f2ec] px-1.5 py-0.5 align-middle font-mono text-[11px] text-[#71807b]">
-                  {project.videos.length}
-                </span>
-              </button>
-            </div>
-            {tab === 'articles' ? (
-              <ArticleList
-                project={project}
-                onStartArticleCreator={openArticleCreator}
-                onOpenArticle={onOpenArticle}
-                onDeleteArticle={requestDeleteArticle}
-              />
-            ) : (
-              <VideoList
-                project={project}
-                videoImportContainerRef={videoImportContainerRef}
-                videoImportPanelRef={videoImportPanelRef}
-                onStartArticleCreator={setCreateVideo}
+            <ProjectArticleMap
+              project={project}
+              onStartArticleCreator={startArticleCreator}
+              onOpenArticle={onOpenArticle}
+              onDeleteArticle={requestDeleteArticle}
+              onDeleteVideo={requestDeleteVideo}
+            />
+            <div ref={videoImportContainerRef} className="mt-8 pt-6">
+              <VideoImportPanel
+                ref={videoImportPanelRef}
+                onAddLocalVideo={onAddLocalVideo}
+                onAddYoutubeVideo={onAddYoutubeVideo}
                 onVideoAdded={(video) => {
                   if (!prepareAfterImport) return
                   setPrepareAfterImport(false)
                   setCreateVideo(video)
                 }}
                 continueToPreparation={prepareAfterImport}
-                onDeleteVideo={requestDeleteVideo}
-                onAddLocalVideo={onAddLocalVideo}
-                onAddYoutubeVideo={onAddYoutubeVideo}
               />
-            )}
+            </div>
           </div>
         </div>
         {showVideoPicker && (
@@ -228,7 +185,7 @@ export function ProjectDetailPage({
             video={createVideo}
             onClose={() => setCreateVideo(null)}
             onSubmit={(ranges, crop, perspectiveCrop) =>
-              handleCreateArticles(createVideo.id, ranges, crop, perspectiveCrop)
+              onCreateArticles(createVideo.id, ranges, crop, perspectiveCrop)
             }
           />
         )}

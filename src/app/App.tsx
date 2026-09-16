@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { ArticleReviewPage } from '../features/article/ArticleReviewPage'
+import { CropTrimPage } from '../features/crop/CropTrimPage'
 import { ExportPage } from '../features/export/ExportPage'
 import { GenerateNotesPage } from '../features/generate-notes/GenerateNotesPage'
 import { HomePage } from '../features/home/HomePage'
@@ -12,6 +13,7 @@ import {
   markProjectOpened,
   markProjectExported,
   updateProjectArticleDraft,
+  updateProjectArticleSourceSettings,
   updateProjectArticleSummary,
   updateProjectSlideContent,
   updateProjectSlideDetection,
@@ -52,7 +54,7 @@ import type { SlideDetectionOutput } from '../features/slide-detection/types'
 
 type Route =
   | { kind: 'home' }
-  | { kind: 'project'; tab: 'articles' | 'videos' }
+  | { kind: 'project' }
   | { kind: 'article'; articleId: string; step: ProjectStep }
 
 function App() {
@@ -92,7 +94,7 @@ function App() {
   const handleCreateProject = async (title: string) => {
     const next = createEmptyProject(title)
     await persistProject(next)
-    setRoute({ kind: 'project', tab: 'articles' })
+    setRoute({ kind: 'project' })
   }
 
   const handleRenameProject = async (title: string) => {
@@ -115,7 +117,7 @@ function App() {
         loaded.activeArticleId ? loaded.workflow.lastVisitedStep : 'detect-slides',
       )
       await saveProjectState(next)
-      if (requestId === navigationRequestRef.current) setRoute({ kind: 'project', tab: 'articles' })
+      if (requestId === navigationRequestRef.current) setRoute({ kind: 'project' })
     })
   }
 
@@ -197,23 +199,13 @@ function App() {
         articles: [...current.articles, ...created],
         updatedAt: new Date().toISOString(),
       }
-      const firstArticle = created[0]
-      if (!firstArticle) throw new Error('記事を作成できませんでした。')
-      const activated = markProjectOpened(
-        activateArticle(nextProject, firstArticle.id),
-        firstArticle.workflow.lastVisitedStep,
-      )
+      if (created.length === 0) throw new Error('記事を作成できませんでした。')
       const saved = await saveProjectWithCreatedAssets(
-        activated,
+        nextProject,
         created.map((article) => ({ collection: 'articles' as const, assetId: article.id })),
       )
       projectRef.current = saved
       setProject(saved)
-      setRoute({
-        kind: 'article',
-        articleId: firstArticle.id,
-        step: firstArticle.workflow.lastVisitedStep,
-      })
       return created
     })
   }
@@ -258,7 +250,12 @@ function App() {
 
   const handleBackToProject = () => {
     navigationRequestRef.current += 1
-    setRoute({ kind: 'project', tab: 'articles' })
+    setRoute({ kind: 'project' })
+  }
+
+  const handleBackToHome = () => {
+    navigationRequestRef.current += 1
+    setRoute({ kind: 'home' })
   }
 
   const handleWorkflowStep = async (nextStep: WorkflowStep) => {
@@ -306,6 +303,17 @@ function App() {
       updateProjectSlideDetection(current, output.result, output.slides),
     )
   }
+  const handleArticleCropCompleted = async (
+    range: VideoTrimRange,
+    crop: CropRegion,
+    perspectiveCrop?: PerspectiveCrop,
+  ) => {
+    await updateCurrentProject((current) =>
+      updateProjectArticleSourceSettings(current, range, crop, perspectiveCrop),
+    )
+    if (route.kind === 'article')
+      setRoute({ kind: 'article', articleId: route.articleId, step: 'detect-slides' })
+  }
   const handleTranscriptionCompleted = async (transcription: TranscriptionResult) => {
     await updateCurrentProject((current) => updateProjectTranscription(current, transcription))
   }
@@ -332,8 +340,6 @@ function App() {
     return (
       <ProjectDetailPage
         project={project}
-        tab={route.tab}
-        onTabChange={(tab) => setRoute({ kind: 'project', tab })}
         onBack={() => setRoute({ kind: 'home' })}
         onDeleteProject={() => handleDeleteProject(project.id)}
         onRenameProject={handleRenameProject}
@@ -349,6 +355,18 @@ function App() {
     maxReachedStep: project.workflow.maxReachedStep,
     onStepClick: handleWorkflowStep,
   }
+  if (route.step === 'crop')
+    return (
+      <CropTrimPage
+        key={route.articleId}
+        project={project}
+        onCompleted={handleArticleCropCompleted}
+        onHome={handleBackToHome}
+        onBackToProject={handleBackToProject}
+        onOpenArticle={handleOpenArticle}
+        {...articleProps}
+      />
+    )
   if (route.step === 'detect-slides')
     return (
       <SlideDetectionPage
@@ -356,7 +374,8 @@ function App() {
         project={project}
         onCompleted={handleSlideDetectionCompleted}
         onContinue={() => void handleProjectStep('generate-notes')}
-        onHome={handleBackToProject}
+        onHome={handleBackToHome}
+        onBackToProject={handleBackToProject}
         onOpenArticle={handleOpenArticle}
         {...articleProps}
       />
@@ -372,7 +391,8 @@ function App() {
         getCurrentProject={() => projectRef.current}
         onSaveSlideResultEdits={handleSaveSlideResultEdits}
         onOpenArticleReview={() => void handleProjectStep('article-review')}
-        onHome={handleBackToProject}
+        onHome={handleBackToHome}
+        onBackToProject={handleBackToProject}
         onOpenArticle={handleOpenArticle}
         {...articleProps}
       />
@@ -385,7 +405,8 @@ function App() {
         onSave={handleSaveArticle}
         onSaveSummary={handleSaveArticleSummary}
         onExport={() => void handleProjectStep('export')}
-        onHome={handleBackToProject}
+        onHome={handleBackToHome}
+        onBackToProject={handleBackToProject}
         onOpenArticle={handleOpenArticle}
         {...articleProps}
       />
@@ -394,7 +415,8 @@ function App() {
     <ExportPage
       key={route.articleId}
       project={project}
-      onHome={handleBackToProject}
+      onHome={handleBackToHome}
+      onBackToProject={handleBackToProject}
       onOpenArticle={handleOpenArticle}
       onGenerated={handleExportCompleted}
       {...articleProps}

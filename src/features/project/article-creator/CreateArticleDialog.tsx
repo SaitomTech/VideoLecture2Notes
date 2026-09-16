@@ -48,20 +48,20 @@ export function CreateArticleDialog({
       aria-modal="true"
       aria-labelledby="create-article-dialog-title"
     >
-      <section className="max-h-[96vh] w-full max-w-[1180px] overflow-auto rounded-[16px] border border-[#b7cbc0] bg-[#fbfcfa] p-6 shadow-[0_24px_70px_rgba(24,33,31,0.2)] sm:p-8">
+      <section className="max-h-[96vh] w-full max-w-[1180px] overflow-auto rounded-[16px] border border-[#b7cbc0] bg-white p-6 shadow-[0_24px_70px_rgba(24,33,31,0.2)] sm:p-8">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#71807b]">
-              Create articles
+              Article setup
             </p>
             <h2
               id="create-article-dialog-title"
               className="mt-1 text-[22px] font-bold tracking-[-0.04em]"
             >
-              記事にする区間を指定
+              文字起こし記事作成フローを追加
             </h2>
             <p className="mt-1 text-xs text-[#71807b]">
-              記事にする時間区間と、スライドの切り出し領域を設定します。
+              元動画のスライド領域を指定し、必要に応じてトリミングや分割を行います。区間ごとに記事作成フローを立ち上げます。
             </p>
           </div>
           <button
@@ -69,13 +69,13 @@ export function CreateArticleDialog({
             type="button"
             onClick={onClose}
             disabled={editor.busy}
-            aria-label="記事にする区間の指定を閉じる"
+            aria-label="記事作成の開始を閉じる"
           >
             <X size={18} />
           </button>
         </div>
 
-        <div className="mx-auto mt-5 w-full max-w-[1120px] overflow-hidden rounded-[12px] border border-[#b7cbc0] bg-[#fbfcfa]">
+        <div className="mx-auto mt-5 w-full max-w-[1120px] overflow-hidden rounded-[12px] border border-[#b7cbc0] bg-white">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d8e1dc] px-4 py-3">
             <div className="min-w-0">
               <p className="truncate text-xs font-semibold text-[#18211f]" title={video.media.path}>
@@ -115,7 +115,7 @@ export function CreateArticleDialog({
             disabled={editor.busy || editor.rows.length === 0}
             onClick={() => void editor.submit()}
           >
-            {editor.busy ? '処理中…' : '区間を確定して、1件目の記事作成へ'}
+            {editor.busy ? '処理中…' : '各区間ごとに記事作成フローを追加'}
           </button>
         </div>
       </section>

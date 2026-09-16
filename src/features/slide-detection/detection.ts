@@ -6,12 +6,12 @@ import {
 import { hammingDistance } from '../../lib/media/dhash'
 import { getSlideAssetPath } from '../../lib/storage/projectAssets'
 import {
-  getActiveMediaSource,
   requireActiveArticleId,
   type MediaProject,
   type SlideBoundary,
   type SlideData,
 } from '../../types/project'
+import { getActiveArticleSourceContext } from '../../lib/project/articleSource'
 import type { SlideDetectionOutput, SlideDetectionStage } from './types'
 
 export const MINIMUM_BOUNDARY_GAP_MS = 1500
@@ -91,23 +91,13 @@ function representativeTimestamp(startMs: number, endMs: number) {
   return startMs + Math.min(Math.round(segmentDurationMs / 2), segmentDurationMs - 200)
 }
 
-function fullFrameCrop(source: ReturnType<typeof getActiveMediaSource>) {
-  return {
-    x: 0,
-    y: 0,
-    width: source.metadata.width,
-    height: source.metadata.height,
-  }
-}
-
 async function addRepresentativeFrames(
   project: MediaProject,
   slides: SlideData[],
   onProgress?: (progress: number) => void,
 ) {
-  const source = getActiveMediaSource(project)
+  const context = getActiveArticleSourceContext(project)
   const articleId = requireActiveArticleId(project)
-  const crop = fullFrameCrop(source)
   const completed: SlideData[] = []
   // Keep ffmpeg sidecars sequential so long videos do not spawn dozens of encoders at once.
   for (let index = 0; index < slides.length; index += 1) {
@@ -115,10 +105,11 @@ async function addRepresentativeFrames(
     try {
       const outputPath = await getSlideAssetPath(project.id, articleId, index)
       await extractRepresentativeFrame({
-        path: source.path,
-        crop,
-        metadata: source.metadata,
-        timestampMs: representativeTimestamp(slide.startMs, slide.endMs),
+        path: context.source.path,
+        crop: context.crop,
+        perspectiveCrop: context.perspectiveCrop,
+        metadata: context.source.metadata,
+        timestampMs: context.range.startMs + representativeTimestamp(slide.startMs, slide.endMs),
         outputPath,
       })
       completed.push({ ...slide, image: { representativeFramePath: outputPath } })
@@ -148,25 +139,28 @@ export async function runSlideDetection({
   onProgress,
   onStage,
 }: RunSlideDetectionInput): Promise<SlideDetectionOutput> {
-  const source = getActiveMediaSource(project)
-  const crop = fullFrameCrop(source)
+  const context = getActiveArticleSourceContext(project)
+  const durationMs = context.range.endMs - context.range.startMs
   const { sampleIntervalMs: configuredSampleIntervalMs, threshold: configuredThreshold } =
     project.settings.slideDetection
   const sampleIntervalMs = sampleIntervalOverride ?? configuredSampleIntervalMs
   const threshold = thresholdOverride ?? configuredThreshold
   onStage?.('sampling')
   const frames = await sampleVideoFrames({
-    path: source.path,
-    crop,
-    metadata: source.metadata,
+    path: context.source.path,
+    crop: context.crop,
+    perspectiveCrop: context.perspectiveCrop,
+    metadata: context.source.metadata,
     sampleIntervalMs,
+    startMs: context.range.startMs,
+    endMs: context.range.endMs,
   })
   onStage?.('comparing')
   const boundaries = detectSlideBoundaries({ frames, threshold })
   onStage?.('extracting')
   const slides = await addRepresentativeFrames(
     project,
-    buildSlideData(boundaries, source.metadata.durationMs),
+    buildSlideData(boundaries, durationMs),
     onProgress,
   )
 

@@ -9,8 +9,10 @@ import {
   type ArticleDraft,
   type ArticleSummary,
   type ContentProcessingResult,
+  type CropRegion,
   type MediaProject,
   type MediaSource,
+  type PerspectiveCrop,
   type ProjectSettings,
   type ProjectStep,
   type ProjectVideo,
@@ -19,8 +21,11 @@ import {
   type SlideOcrResult,
   type SlideResultEdits,
   type TranscriptionResult,
+  type VideoTrimRange,
 } from '../../types/project'
 import { getFurthestWorkflowStep, getWorkflowStepIndex } from '../workflow'
+import { normalizeTrimRange } from './videoRange'
+import { normalizeArticleCrop } from './articleSource'
 
 export const DEFAULT_SETTINGS: ProjectSettings = {
   slideDetection: { sampleIntervalMs: 500, threshold: 12 },
@@ -71,6 +76,9 @@ function articleToWorkspace(project: MediaProject, article: Article): MediaProje
     ...project,
     activeArticleId: article.id,
     source: article.inputMedia,
+    sourceRange: article.sourceRange,
+    crop: article.crop,
+    perspectiveCrop: article.perspectiveCrop,
     settings: article.settings,
     slides: article.slides,
     slideDetection: article.slideDetection,
@@ -113,6 +121,9 @@ export function syncActiveArticle(project: MediaProject): MediaProject {
     slideDetection: project.slideDetection,
     transcription: project.transcription,
     article: project.article,
+    sourceRange: project.sourceRange ?? article.sourceRange,
+    crop: project.crop,
+    perspectiveCrop: project.perspectiveCrop,
     workflow: project.workflow,
     updatedAt: project.updatedAt,
   }
@@ -163,6 +174,52 @@ export function createEmptyProject(title: string, projectId = crypto.randomUUID(
       lastOpenedAt: now,
     },
   }
+}
+
+/** Save the article-local range/crop selection and invalidate downstream outputs. */
+export function updateProjectArticleSourceSettings(
+  project: MediaProject,
+  range: VideoTrimRange,
+  crop: CropRegion,
+  perspectiveCrop?: PerspectiveCrop,
+): MediaProject {
+  const article = getActiveArticle(project)
+  if (!article) return project
+  const sourceVideo = article.sourceVideoId
+    ? project.videos.find((video) => video.id === article.sourceVideoId)
+    : undefined
+  const duration = sourceVideo?.media.metadata.durationMs ?? project.source.metadata.durationMs
+  const sourceMetadata = sourceVideo?.media.metadata ?? project.source.metadata
+  const nextRange = normalizeTrimRange(range, duration)
+  const nextCrop = normalizeArticleCrop(crop, sourceMetadata)
+  const now = new Date().toISOString()
+  const nextArticle: Article = {
+    ...article,
+    sourceRange: nextRange,
+    crop: nextCrop,
+    ...(perspectiveCrop ? { perspectiveCrop } : { perspectiveCrop: undefined }),
+    slides: [],
+    slideDetection: undefined,
+    transcription: undefined,
+    article: undefined,
+    workflow: {
+      ...article.workflow,
+      lastVisitedStep: 'detect-slides',
+      maxReachedStep: 'detect-slides',
+      lastOpenedAt: now,
+    },
+    updatedAt: now,
+  }
+  return articleToWorkspace(
+    {
+      ...project,
+      articles: project.articles.map((candidate) =>
+        candidate.id === article.id ? nextArticle : candidate,
+      ),
+      updatedAt: now,
+    },
+    nextArticle,
+  )
 }
 
 export function updateProjectWorkflow(project: MediaProject, step: ProjectStep): MediaProject {

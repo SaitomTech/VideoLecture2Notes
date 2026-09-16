@@ -10,6 +10,8 @@ type SlideDetectionResultPanelProps = {
   boundaries: SlideBoundary[]
   slides: SlideData[]
   onChange: (boundaries: SlideBoundary[]) => void
+  durationMs?: number
+  timeOffsetMs?: number
 }
 
 export function SlideDetectionResultPanel({
@@ -17,10 +19,12 @@ export function SlideDetectionResultPanel({
   boundaries,
   slides,
   onChange,
+  durationMs: rangeDurationMs,
+  timeOffsetMs = 0,
 }: SlideDetectionResultPanelProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [currentTimeMs, setCurrentTimeMs] = useState(0)
-  const [durationMs, setDurationMs] = useState(() => slides.at(-1)?.endMs ?? 0)
+  const [durationMs, setDurationMs] = useState(() => rangeDurationMs ?? slides.at(-1)?.endMs ?? 0)
   const [isPlaying, setIsPlaying] = useState(false)
   const [followPlayback, setFollowPlayback] = useState(true)
   const activeSlideIndex = useMemo(
@@ -36,26 +40,41 @@ export function SlideDetectionResultPanel({
 
   const handleLoadedMetadata = (event: SyntheticEvent<HTMLVideoElement>) => {
     const loadedDurationMs = event.currentTarget.duration * 1000
-    if (Number.isFinite(loadedDurationMs) && loadedDurationMs > 0) setDurationMs(loadedDurationMs)
+    if (timeOffsetMs > 0) event.currentTarget.currentTime = timeOffsetMs / 1000
+    if (rangeDurationMs === undefined && Number.isFinite(loadedDurationMs) && loadedDurationMs > 0)
+      setDurationMs(loadedDurationMs)
   }
 
   const handleTimeUpdate = (event: SyntheticEvent<HTMLVideoElement>) => {
-    setCurrentTimeMs(event.currentTarget.currentTime * 1000)
+    const localTimeMs = event.currentTarget.currentTime * 1000 - timeOffsetMs
+    if (localTimeMs >= durationMs && (timeOffsetMs > 0 || rangeDurationMs !== undefined)) {
+      event.currentTarget.pause()
+      event.currentTarget.currentTime = (timeOffsetMs + durationMs) / 1000
+    }
+    setCurrentTimeMs(Math.min(durationMs, Math.max(0, localTimeMs)))
   }
 
   const handleTogglePlayback = useCallback(() => {
     const video = videoRef.current
     if (!video) return
-    if (video.paused) void video.play().catch((error) => console.error(error))
-    else video.pause()
-  }, [])
+    if (video.paused) {
+      if (rangeDurationMs !== undefined) {
+        const currentLocal = video.currentTime * 1000 - timeOffsetMs
+        if (currentLocal < 0 || currentLocal >= durationMs) video.currentTime = timeOffsetMs / 1000
+      }
+      void video.play().catch((error) => console.error(error))
+    } else video.pause()
+  }, [durationMs, rangeDurationMs, timeOffsetMs])
 
-  const handleSeek = useCallback((timestampMs: number) => {
-    const video = videoRef.current
-    if (!video) return
-    video.currentTime = timestampMs / 1000
-    setCurrentTimeMs(timestampMs)
-  }, [])
+  const handleSeek = useCallback(
+    (timestampMs: number) => {
+      const video = videoRef.current
+      if (!video) return
+      video.currentTime = (timeOffsetMs + timestampMs) / 1000
+      setCurrentTimeMs(timestampMs)
+    },
+    [timeOffsetMs],
+  )
 
   const handleSelectSlide = useCallback(
     (index: number) => {

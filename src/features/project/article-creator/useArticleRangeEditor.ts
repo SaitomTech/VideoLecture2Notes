@@ -38,7 +38,12 @@ type ArticleRange = { title: string; range: VideoTrimRange }
 type UseArticleRangeEditorOptions = {
   projectId: string
   video: ProjectVideo
-  onClose: () => void
+  onClose?: () => void
+  initialRange?: VideoTrimRange
+  initialTitle?: string
+  initialCrop?: CropRegion
+  initialPerspectiveCrop?: PerspectiveCrop
+  autoCropOnOpen?: boolean
   onSubmit: (
     ranges: ArticleRange[],
     crop: CropRegion,
@@ -65,6 +70,11 @@ export function useArticleRangeEditor({
   projectId,
   video,
   onClose,
+  initialRange: requestedInitialRange,
+  initialTitle,
+  initialCrop: requestedInitialCrop,
+  initialPerspectiveCrop,
+  autoCropOnOpen = true,
   onSubmit,
 }: UseArticleRangeEditorOptions) {
   const duration = video.media.metadata.durationMs
@@ -74,7 +84,22 @@ export function useArticleRangeEditor({
     width: video.media.metadata.width,
     height: video.media.metadata.height,
   }
-  const fullCropNormalized = pixelToNormalizedCrop(fullCrop, video.media.metadata)
+  const initialStartMs = Math.min(
+    duration,
+    Math.max(0, Math.round(requestedInitialRange?.startMs ?? 0)),
+  )
+  const initialEndMs = Math.min(
+    duration,
+    Math.max(initialStartMs + 100, Math.round(requestedInitialRange?.endMs ?? duration)),
+  )
+  const initialCropNormalized = pixelToNormalizedCrop(
+    requestedInitialCrop ?? fullCrop,
+    video.media.metadata,
+  )
+  const initialCropMode: CropMode = initialPerspectiveCrop ? 'perspective' : 'rect'
+  const initialCorners = initialPerspectiveCrop?.corners ?? rectToCorners(initialCropNormalized)
+  const initialAspectRatioMode = initialPerspectiveCrop?.aspectRatio.mode ?? '16:9'
+  const initialAspectRatio = initialPerspectiveCrop?.aspectRatio.value ?? 16 / 9
   const videoSource = useVideoSourceUrl(video.media.path)
   const videoRef = useRef<HTMLVideoElement>(null)
   const timelineRef = useRef<HTMLDivElement>(null)
@@ -86,23 +111,21 @@ export function useArticleRangeEditor({
   const initialAutoCropStartedRef = useRef(false)
   const [initialRange] = useState<RangeDraft>(() => ({
     id: crypto.randomUUID(),
-    title: `${video.title} 1`,
-    start: '00:00',
-    end: formatRangeInput(duration),
+    title: initialTitle?.trim() || `${video.title} 1`,
+    start: formatRangeInput(initialStartMs),
+    end: formatRangeInput(initialEndMs),
   }))
   const [rows, setRows] = useState<RangeDraft[]>(() => [initialRange])
   const [draft, setDraft] = useState<RangeDraft>(() => initialRange)
-  const [cropRegion, setCropRegion] = useState<NormalizedCropRegion>(() => fullCropNormalized)
-  const [cropMode, setCropMode] = useState<CropMode>('rect')
-  const [cropCorners, setCropCorners] = useState<PerspectiveCorners>(() =>
-    rectToCorners(fullCropNormalized),
-  )
+  const [cropRegion, setCropRegion] = useState<NormalizedCropRegion>(() => initialCropNormalized)
+  const [cropMode, setCropMode] = useState<CropMode>(initialCropMode)
+  const [cropCorners, setCropCorners] = useState<PerspectiveCorners>(() => initialCorners)
   const [selectedCorner, setSelectedCorner] =
     useState<(typeof CORNER_GRID_ORDER)[number]>('topLeft')
   const [isZoomed, setIsZoomed] = useState(false)
   const [aspectRatioMode, setAspectRatioMode] =
-    useState<PerspectiveCrop['aspectRatio']['mode']>('16:9')
-  const [aspectRatio, setAspectRatio] = useState(16 / 9)
+    useState<PerspectiveCrop['aspectRatio']['mode']>(initialAspectRatioMode)
+  const [aspectRatio, setAspectRatio] = useState(initialAspectRatio)
   const [isDetecting, setIsDetecting] = useState(false)
   const [autoCropProgress, setAutoCropProgress] = useState<AutoCropProgress | null>(null)
   const [currentTime, setCurrentTime] = useState(0)
@@ -115,11 +138,11 @@ export function useArticleRangeEditor({
   const [resetSnapshot, setResetSnapshot] = useState<CropSnapshot>({
     start: initialRange.start,
     end: initialRange.end,
-    crop: fullCropNormalized,
-    cropMode: 'rect',
-    cropCorners: rectToCorners(fullCropNormalized),
-    aspectRatioMode: '16:9',
-    aspectRatio: 16 / 9,
+    crop: initialCropNormalized,
+    cropMode: initialCropMode,
+    cropCorners: cloneCorners(initialCorners),
+    aspectRatioMode: initialAspectRatioMode,
+    aspectRatio: initialAspectRatio,
   })
   const { refreshRangeThumbnail, removeRangeThumbnail, scheduleRangeThumbnail } =
     useRangeThumbnails({ projectId, video, rows, setRows })
@@ -298,10 +321,10 @@ export function useArticleRangeEditor({
   ])
 
   useEffect(() => {
-    if (initialAutoCropStartedRef.current || !video.media.path) return
+    if (!autoCropOnOpen || initialAutoCropStartedRef.current || !video.media.path) return
     initialAutoCropStartedRef.current = true
     void handleAutomaticCrop()
-  }, [handleAutomaticCrop, video.media.path])
+  }, [autoCropOnOpen, handleAutomaticCrop, video.media.path])
 
   const seekTo = (timeMs: number) => {
     const nextTime = Math.min(duration, Math.max(0, timeMs))
@@ -621,7 +644,7 @@ export function useArticleRangeEditor({
         normalizedToPixelCrop(cropRegion, video.media.metadata),
         activePerspectiveCrop,
       )
-      onClose()
+      onClose?.()
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : '区間を追加できませんでした。')
     } finally {

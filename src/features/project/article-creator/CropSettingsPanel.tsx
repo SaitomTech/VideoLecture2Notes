@@ -34,7 +34,7 @@ export function CropSettingsPanel({
   } = editor
 
   return (
-    <aside className="min-w-0 bg-[#fbfcfa] p-4 lg:min-h-[600px] lg:row-span-2 lg:border-l lg:border-[#d8e1dc]">
+    <aside className="min-w-0 bg-white p-4 lg:min-h-[600px] lg:row-span-2 lg:border-l lg:border-[#d8e1dc]">
       <h3 className="text-[17px] font-bold tracking-[-0.04em]">スライド領域のプレビュー</h3>
       <CropPreview
         projectId={projectId}
@@ -69,7 +69,7 @@ export function CropSettingsPanel({
           {aspectRatioMode === 'custom' && (
             <label className="mt-2 flex items-center gap-2 text-[10px] text-[#71807b]">
               <input
-                className="w-16 rounded border border-[#b7cbc0] bg-[#fbfcfa] px-2 py-1.5 font-mono text-right text-xs text-[#18211f]"
+                className="w-16 rounded border border-[#b7cbc0] bg-white px-2 py-1.5 font-mono text-right text-xs text-[#18211f]"
                 type="number"
                 min="0.1"
                 step="0.01"
@@ -112,7 +112,7 @@ export function CropSettingsPanel({
               const isSelected = selectedCorner === corner
               return (
                 <div
-                  className={`rounded-md border p-2 transition-colors ${isSelected ? 'border-[#1d6b50] bg-[#edf4ef]' : 'border-[#d8e1dc] bg-[#fbfcfa]'}`}
+                  className={`rounded-md border p-2 transition-colors ${isSelected ? 'border-[#1d6b50] bg-[#edf4ef]' : 'border-[#d8e1dc] bg-white'}`}
                   key={corner}
                 >
                   <button
@@ -133,7 +133,7 @@ export function CropSettingsPanel({
                       >
                         <span className="font-mono uppercase">{axis}</span>
                         <input
-                          className="min-w-0 flex-1 rounded border border-[#b7cbc0] bg-[#fbfcfa] px-2 py-1.5 font-mono text-[11px] text-[#18211f]"
+                          className="min-w-0 flex-1 rounded border border-[#b7cbc0] bg-white px-2 py-1.5 font-mono text-[11px] text-[#18211f]"
                           type="number"
                           min="0"
                           max={

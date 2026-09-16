@@ -3,7 +3,8 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { WorkflowBar } from '../../components/WorkflowBar'
 import type { WorkflowStep } from '../../lib/workflow'
-import { getActiveMediaSource, type MediaProject, type SlideBoundary } from '../../types/project'
+import type { MediaProject, SlideBoundary } from '../../types/project'
+import { getActiveArticleSourceContext } from '../../lib/project/articleSource'
 import { ArticleNavigationBar } from '../article/components/ArticleNavigationBar'
 import { useSlideDetection } from './hooks/useSlideDetection'
 import { buildSlideData } from './detection'
@@ -16,6 +17,7 @@ type SlideDetectionPageProps = {
   onCompleted: (output: SlideDetectionOutput) => void | Promise<void>
   onContinue: () => void
   onHome: () => void
+  onBackToProject: () => void
   onOpenArticle: (articleId: string) => void | Promise<void>
   maxReachedStep: WorkflowStep
   onStepClick: (step: WorkflowStep) => void
@@ -26,12 +28,14 @@ export function SlideDetectionPage({
   onCompleted,
   onContinue,
   onHome,
+  onBackToProject,
   onOpenArticle,
   maxReachedStep,
   onStepClick,
 }: SlideDetectionPageProps) {
-  const source = getActiveMediaSource(project)
-  const durationMs = source.metadata.durationMs
+  const sourceContext = getActiveArticleSourceContext(project)
+  const source = sourceContext.source
+  const durationMs = sourceContext.range.endMs - sourceContext.range.startMs
   const [reviewBoundaries, setReviewBoundaries] = useState<SlideBoundary[] | null>(
     () => project.slideDetection?.boundaries ?? null,
   )
@@ -120,6 +124,7 @@ export function SlideDetectionPage({
         leadingContent={
           <ArticleNavigationBar
             project={project}
+            onBack={onBackToProject}
             onSelect={onOpenArticle}
             disabled={isRunning || isSavingReview || hasUnsavedReview}
           />
@@ -127,19 +132,16 @@ export function SlideDetectionPage({
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
-        <div className="mb-6 flex items-center gap-4">
-          <div>
+        <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
+          <div className="border-b border-[#d8e1dc] px-5 py-4 md:px-7">
             <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
-              01 / DETECT SLIDES
+              02 / DETECT SLIDES
             </p>
-            <h1 className="mt-1 text-[27px] font-bold tracking-[-0.06em]">スライドを検出</h1>
+            <h2 className="mt-1 text-[21px] font-bold tracking-[-0.05em]">スライドを検出</h2>
             <p className="mt-1 text-xs text-[#71807b]">
               画面の変化を比較して、スライド区間を自動で分けます。
             </p>
           </div>
-        </div>
-
-        <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d8e1dc] px-5 py-3.5">
             <div className="min-w-0">
               <p className="truncate text-xs font-semibold text-[#18211f]" title={source.path}>
@@ -147,7 +149,10 @@ export function SlideDetectionPage({
               </p>
               <p className="mt-0.5 font-mono text-[10px] text-[#71807b]">
                 {source.metadata.width} × {source.metadata.height}px ·
-                元動画から作成した記事用データ
+                {sourceContext.range.startMs === 0 &&
+                sourceContext.range.endMs === source.metadata.durationMs
+                  ? '元動画'
+                  : `元動画の ${Math.round(sourceContext.range.startMs / 1000)}秒〜${Math.round(sourceContext.range.endMs / 1000)}秒`}
               </p>
             </div>
           </div>
@@ -172,6 +177,8 @@ export function SlideDetectionPage({
                 boundaries={boundaries}
                 slides={slides}
                 onChange={updateReviewBoundaries}
+                durationMs={durationMs}
+                timeOffsetMs={sourceContext.range.startMs}
               />
             )}
           </div>

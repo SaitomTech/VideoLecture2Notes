@@ -2,7 +2,7 @@ import type { VideoExtension } from './media'
 
 export const PROJECT_VERSION = 11
 
-export type ProjectStep = 'detect-slides' | 'generate-notes' | 'article-review' | 'export'
+export type ProjectStep = 'crop' | 'detect-slides' | 'generate-notes' | 'article-review' | 'export'
 export type ProjectWorkflow = {
   lastVisitedStep: ProjectStep
   maxReachedStep: ProjectStep
@@ -53,11 +53,17 @@ export type ProjectVideo = {
   updatedAt: string
 }
 export type VideoTrimRange = { startMs: number; endMs: number }
-/** Used only while creating an Article input video. */
+/**
+ * The media a generated article reads from.
+ *
+ * New articles reference the project-owned original video directly.  The
+ * optional preparation fields remain for backwards compatibility with
+ * projects created before the reference-based workflow was introduced.
+ */
 export type ArticleInputMedia = ManagedMedia & {
-  preparedFromVideoId: string
-  preparation: 'copy' | 'prepared'
-  preparedAt: string
+  preparedFromVideoId?: string
+  preparation?: 'copy' | 'prepared' | 'reference'
+  preparedAt?: string
 }
 export type CropRegion = { x: number; y: number; width: number; height: number }
 export type NormalizedPoint = { x: number; y: number }
@@ -176,6 +182,8 @@ export type Article = {
   sourceVideoId?: string
   inputMedia: ArticleInputMedia
   sourceRange: VideoTrimRange
+  crop?: CropRegion
+  perspectiveCrop?: PerspectiveCrop
   settings: ProjectSettings
   slides: SlideData[]
   slideDetection?: SlideDetectionResult
@@ -225,6 +233,9 @@ export type PersistedProject = {
 /** Root fields after the active article is materialized for the editor. */
 export type ArticleWorkspace = PersistedProject & {
   source: MediaSource
+  sourceRange?: VideoTrimRange
+  crop?: CropRegion
+  perspectiveCrop?: PerspectiveCrop
   settings: ProjectSettings
   slides: SlideData[]
   slideDetection?: SlideDetectionResult

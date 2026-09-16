@@ -37,7 +37,7 @@ export function ConfirmDialog({
       aria-modal="true"
       aria-labelledby={dialogTitleId}
     >
-      <section className="w-full max-w-[460px] rounded-[16px] border border-[#d6a18f] bg-[#fffdfb] p-6 shadow-[0_24px_70px_rgba(24,33,31,0.2)]">
+      <section className="w-full max-w-[460px] rounded-[16px] border border-[#d6a18f] bg-white p-6 shadow-[0_24px_70px_rgba(24,33,31,0.2)]">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#71807b]">

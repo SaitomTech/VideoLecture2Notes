@@ -45,7 +45,7 @@ export function LicenseDialog({ onClose }: LicenseDialogProps) {
       aria-modal="true"
       aria-labelledby="license-dialog-title"
     >
-      <section className="flex max-h-full w-full max-w-[860px] flex-col overflow-hidden rounded-[16px] border border-[#b7cbc0] bg-[#fffdfb] shadow-[0_24px_70px_rgba(24,33,31,0.2)]">
+      <section className="flex max-h-full w-full max-w-[860px] flex-col overflow-hidden rounded-[16px] border border-[#b7cbc0] bg-white shadow-[0_24px_70px_rgba(24,33,31,0.2)]">
         <div className="flex items-start justify-between gap-4 border-b border-[#d8e1dc] px-5 py-4 sm:px-6">
           <div className="flex min-w-0 items-start gap-3">
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#e8f2ec] text-[#1d6b50]">

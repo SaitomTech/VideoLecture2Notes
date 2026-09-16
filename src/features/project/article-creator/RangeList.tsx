@@ -28,7 +28,7 @@ export function RangeList({ video, editor }: { video: ProjectVideo; editor: Arti
   return (
     <div className="mt-5">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold">記事にする区間（{rows.length}件）</p>
+        <p className="text-sm font-semibold">区間（{rows.length}件）</p>
         <button
           className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[8px] border border-[#b7cbc0] px-3 text-xs font-semibold text-[#1d6b50] hover:bg-[#e8f2ec]"
           type="button"

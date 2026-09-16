@@ -21,6 +21,8 @@ type VideoImportPanelProps = {
   continueToPreparation?: boolean
 }
 
+export type VideoImportSource = 'finder' | 'youtube'
+
 export type VideoImportPanelHandle = {
   openFinder: () => Promise<void>
   openYoutube: () => void
@@ -206,7 +208,7 @@ export const VideoImportPanel = forwardRef<VideoImportPanelHandle, VideoImportPa
               }}
               onContinue={closeYoutube}
               onCancel={() => youtubeAbortRef.current?.abort()}
-              continueLabel="動画一覧へ戻る"
+              continueLabel="プロジェクト詳細へ戻る"
               importLabel={continueToPreparation ? '追加して記事の範囲を指定' : 'この動画を追加'}
               showHeader={false}
             />

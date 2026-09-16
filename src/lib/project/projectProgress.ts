@@ -10,6 +10,8 @@ function active(project: PersistedProject) {
 export function getProjectResumeStep(project: PersistedProject): ProjectStep {
   const article = active(project)
   if (!article) return 'detect-slides'
+  if (article.workflow.lastVisitedStep === 'crop') return 'crop'
+  if (article.inputMedia.preparation === 'reference' && !article.crop) return 'crop'
   if (!article.slideDetection || article.slides.length === 0) return 'detect-slides'
   if (article.slides.some((slide) => !slide.image.representativeFramePath)) return 'detect-slides'
   if (article.workflow.lastVisitedStep === 'export') return 'export'

@@ -7,6 +7,7 @@ import {
   syncActiveArticle,
   toPersistedProject,
   updateProjectArticleDraft,
+  updateProjectArticleSourceSettings,
   updateProjectSlideContent,
   updateProjectSlideDetection,
   updateProjectSlideOcr,
@@ -14,6 +15,9 @@ import {
   updateProjectWorkflow,
 } from '../src/lib/project/project'
 import { normalizeTrimRange, isFullTrimRange } from '../src/lib/project/videoRange'
+import { getActiveArticleSourceContext } from '../src/lib/project/articleSource'
+import { createArticleFromRange } from '../src/lib/project/projectMedia'
+import { getProjectResumeStep } from '../src/lib/project/projectProgress'
 import {
   canNavigateToWorkflowStep,
   getFurthestWorkflowStep,
@@ -252,6 +256,73 @@ test('range normalization clamps invalid edges and preserves a near-full selecti
   })
   expect(isFullTrimRange({ startMs: 0, endMs: 9_100 }, 10_000)).toBe(true)
   expect(() => normalizeTrimRange({ startMs: 0, endMs: 1 }, 0)).toThrow()
+})
+
+test('new article candidates reference the original project video without creating a copy', async () => {
+  const project = createArticleWorkspace()
+  const video = project.videos[0]
+  if (!video) throw new Error('テスト用動画がありません。')
+  const article = await createArticleFromRange(
+    project,
+    video.id,
+    'candidate',
+    { startMs: 1_000, endMs: 4_000 },
+    { x: 20, y: 30, width: 1_000, height: 600 },
+  )
+
+  expect(article.inputMedia.path).toBe(video.media.path)
+  expect(article.inputMedia.preparation).toBe('reference')
+  expect(article.sourceRange).toEqual({ startMs: 1_000, endMs: 4_000 })
+  expect(article.workflow.lastVisitedStep).toBe('crop')
+  const next = {
+    ...project,
+    articles: [article],
+    activeArticleId: article.id,
+    source: article.inputMedia,
+    sourceRange: article.sourceRange,
+    crop: article.crop,
+    workflow: article.workflow,
+    settings: article.settings,
+    slides: article.slides,
+  }
+  const context = getActiveArticleSourceContext(next)
+  expect(context.usesOriginalVideo).toBe(true)
+  expect(context.source.path).toBe(video.media.path)
+  expect(context.range).toEqual(article.sourceRange)
+})
+
+test('changing one article range invalidates only that article outputs', () => {
+  const project = createArticleWorkspace()
+  const article = project.articles[0]
+  if (!article) throw new Error('テスト用記事がありません。')
+  const changed = updateProjectArticleSourceSettings(
+    project,
+    { startMs: 2_000, endMs: 8_000 },
+    { x: 0, y: 0, width: 1_920, height: 1_080 },
+  )
+  expect(changed.articles).toHaveLength(1)
+  expect(changed.articles[0]?.sourceRange).toEqual({ startMs: 2_000, endMs: 8_000 })
+  expect(changed.articles[0]?.slides).toEqual([])
+  expect(changed.articles[0]?.slideDetection).toBeUndefined()
+  expect(changed.articles[0]?.workflow.lastVisitedStep).toBe('detect-slides')
+})
+
+test('a candidate with an initial crop still resumes at the crop step', () => {
+  const project = createArticleWorkspace()
+  const article = project.articles[0]
+  if (!article) throw new Error('テスト用記事がありません。')
+  const candidate: Article = {
+    ...article,
+    inputMedia: { ...article.inputMedia, preparation: 'reference' },
+    crop: { x: 0, y: 0, width: 1_920, height: 1_080 },
+    workflow: { ...article.workflow, lastVisitedStep: 'crop', maxReachedStep: 'crop' },
+  }
+  const persisted = toPersistedProject({
+    ...project,
+    articles: [candidate],
+    activeArticleId: candidate.id,
+  })
+  expect(getProjectResumeStep(persisted)).toBe('crop')
 })
 
 test('project parser accepts the current persisted shape and rejects stale or unknown data', () => {

@@ -45,6 +45,8 @@ type SampleVideoFramesInput = {
   perspectiveCrop?: PerspectiveCrop
   metadata: Pick<MediaMetadata, 'width' | 'height'>
   sampleIntervalMs: number
+  startMs?: number
+  endMs?: number
 }
 
 type RepresentativeFrameInput = {
@@ -67,6 +69,8 @@ type CropDetectionFrameInput = {
 type ExtractAudioInput = {
   path: string
   outputPath: string
+  startMs?: number
+  endMs?: number
   signal?: AbortSignal
 }
 
@@ -155,6 +159,8 @@ export async function sampleVideoFrames({
   perspectiveCrop,
   metadata,
   sampleIntervalMs,
+  startMs = 0,
+  endMs,
 }: SampleVideoFramesInput): Promise<FrameHash[]> {
   const frameWidth = 9
   const frameHeight = 8
@@ -162,12 +168,16 @@ export async function sampleVideoFrames({
   const fps = 1000 / sampleIntervalMs
   if (!Number.isFinite(fps) || fps <= 0) throw new Error('サンプリング間隔が不正です')
 
+  const durationSeconds =
+    endMs === undefined ? undefined : Math.max(0.001, (endMs - Math.max(0, startMs)) / 1000)
   const output = await executeSidecarRaw('binaries/ffmpeg', [
     '-hide_banner',
     '-v',
     'error',
+    ...(startMs > 0 ? ['-ss', String(startMs / 1000)] : []),
     '-i',
     path,
+    ...(durationSeconds ? ['-t', String(durationSeconds)] : []),
     '-an',
     '-sn',
     '-vf',
@@ -293,15 +303,25 @@ export async function extractCropDetectionFrame({
   return outputPath
 }
 
-export async function extractAudio({ path, outputPath, signal }: ExtractAudioInput) {
+export async function extractAudio({
+  path,
+  outputPath,
+  startMs = 0,
+  endMs,
+  signal,
+}: ExtractAudioInput) {
+  const durationSeconds =
+    endMs === undefined ? undefined : Math.max(0.001, (endMs - Math.max(0, startMs)) / 1000)
   const output = await executeSidecar(
     'binaries/ffmpeg',
     [
       '-hide_banner',
       '-v',
       'error',
+      ...(startMs > 0 ? ['-ss', String(startMs / 1000)] : []),
       '-i',
       path,
+      ...(durationSeconds ? ['-t', String(durationSeconds)] : []),
       '-vn',
       '-sn',
       '-dn',

@@ -31,6 +31,7 @@ import { TranscriptionKeywordsPanel } from './components/TranscriptionKeywordsPa
 import { useTranscription } from './hooks/useTranscription'
 import type { TranscriptionLanguage } from './transcription'
 import { ArticleNavigationBar } from '../article/components/ArticleNavigationBar'
+import { getActiveArticleSourceContext } from '../../lib/project/articleSource'
 
 type GenerateNotesPageProps = {
   project: MediaProject
@@ -41,6 +42,7 @@ type GenerateNotesPageProps = {
   onSaveSlideResultEdits: (slideId: string, edits: SlideResultEdits) => void | Promise<void>
   onOpenArticleReview: () => void
   onHome: () => void
+  onBackToProject: () => void
   onOpenArticle: (articleId: string) => void | Promise<void>
   maxReachedStep: WorkflowStep
   onStepClick: (step: WorkflowStep) => void
@@ -57,11 +59,14 @@ export function GenerateNotesPage({
   onSaveSlideResultEdits,
   onOpenArticleReview,
   onHome,
+  onBackToProject,
   onOpenArticle,
   maxReachedStep,
   onStepClick,
 }: GenerateNotesPageProps) {
   const source = getActiveMediaSource(project)
+  const sourceContext = getActiveArticleSourceContext(project)
+  const durationMs = sourceContext.range.endMs - sourceContext.range.startMs
   const [language, setLanguage] = useState<TranscriptionLanguage>(
     project.transcription?.language === 'ja' || project.transcription?.language === 'en'
       ? project.transcription.language
@@ -139,6 +144,7 @@ export function GenerateNotesPage({
         leadingContent={
           <ArticleNavigationBar
             project={project}
+            onBack={onBackToProject}
             onSelect={onOpenArticle}
             disabled={isProcessing}
           />
@@ -146,26 +152,23 @@ export function GenerateNotesPage({
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
-        <div className="mb-6 flex items-center gap-4">
-          <div>
+        <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
+          <div className="border-b border-[#d8e1dc] px-5 py-4 md:px-7">
             <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
-              02 / GENERATE NOTES
+              03 / GENERATE NOTES
             </p>
-            <h1 className="mt-1 text-[27px] font-bold tracking-[-0.06em]">ノートを生成</h1>
+            <h2 className="mt-1 text-[21px] font-bold tracking-[-0.05em]">ノートを生成</h2>
             <p className="mt-1 text-xs text-[#71807b]">
               OCR、文字起こし、本文生成を順に実行します。
             </p>
           </div>
-        </div>
-
-        <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d8e1dc] px-5 py-3.5">
             <div className="min-w-0">
               <p className="truncate text-xs font-semibold text-[#18211f]" title={source.path}>
                 {source.name}
               </p>
               <p className="mt-0.5 font-mono text-[10px] text-[#71807b]">
-                {project.slides.length} slides · {Math.round(source.metadata.durationMs / 1000)}秒
+                {project.slides.length} slides · {Math.round(durationMs / 1000)}秒
               </p>
             </div>
           </div>
@@ -232,7 +235,7 @@ export function GenerateNotesPage({
                   <TranscriptionSettings
                     language={language}
                     modelId={transcriptionModelId}
-                    durationMs={source.metadata.durationMs}
+                    durationMs={durationMs}
                     status={transcription.status}
                     disabled={isBatchRunning || isOcrRunning || isContentProcessing}
                     onLanguageChange={setLanguage}

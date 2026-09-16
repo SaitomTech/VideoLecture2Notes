@@ -18,6 +18,7 @@ import { useExport, type ExportController } from './hooks/useExport'
 type ExportPageProps = {
   project: MediaProject
   onHome: () => void
+  onBackToProject: () => void
   onOpenArticle: (articleId: string) => void | Promise<void>
   onGenerated: () => void | Promise<void>
   maxReachedStep: WorkflowStep
@@ -40,6 +41,7 @@ function getStatusMessage({ status, progress, error }: ExportController) {
 export function ExportPage({
   project,
   onHome,
+  onBackToProject,
   onOpenArticle,
   onGenerated,
   maxReachedStep,
@@ -160,24 +162,26 @@ export function ExportPage({
         onStepClick={onStepClick}
         disabled={isBusy}
         leadingContent={
-          <ArticleNavigationBar project={project} onSelect={onOpenArticle} disabled={isBusy} />
+          <ArticleNavigationBar
+            project={project}
+            onBack={onBackToProject}
+            onSelect={onOpenArticle}
+            disabled={isBusy}
+          />
         }
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
-        <div className="mb-6 flex items-center gap-4">
-          <div>
+        <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
+          <div className="border-b border-[#d8e1dc] px-5 py-4 md:px-7">
             <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
-              04 / RESULT
+              05 / RESULT
             </p>
-            <h1 className="mt-1 text-[27px] font-bold tracking-[-0.06em]">書き出し結果</h1>
+            <h2 className="mt-1 text-[21px] font-bold tracking-[-0.05em]">書き出し結果</h2>
             <p className="mt-1 text-xs text-[#71807b]">
               HTMLの見た目を確認して、必要な形式をダウンロードします。
             </p>
           </div>
-        </div>
-
-        <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
           <div className="flex justify-end px-5 py-4 md:px-7">
             <div className="flex flex-wrap items-center justify-end gap-2">
               <button

@@ -2,7 +2,7 @@ import { ChevronRight, FolderOpen, Link, Upload, X } from 'lucide-react'
 import { useDialogA11y } from '../../../lib/ui/useDialogA11y'
 import { formatTimestamp } from '../../../lib/time'
 import type { MediaProject, ProjectVideo } from '../../../types/project'
-import type { VideoImportSource } from './VideoList'
+import type { VideoImportSource } from '../VideoImportPanel'
 import { VideoThumbnail } from './VideoThumbnail'
 export function SelectArticleVideoDialog({
   project,
@@ -24,20 +24,20 @@ export function SelectArticleVideoDialog({
       aria-modal="true"
       aria-labelledby="select-article-video-title"
     >
-      <section className="max-h-[88vh] w-full max-w-[680px] overflow-auto rounded-[16px] border border-[#b7cbc0] bg-[#fbfcfa] p-6 shadow-[0_24px_70px_rgba(24,33,31,0.2)] sm:p-7">
+      <section className="max-h-[88vh] w-full max-w-[680px] overflow-auto rounded-[16px] border border-[#b7cbc0] bg-white p-6 shadow-[0_24px_70px_rgba(24,33,31,0.2)] sm:p-7">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#71807b]">
-              Create article
+              Article setup
             </p>
             <h2
               id="select-article-video-title"
               className="mt-1 text-[22px] font-bold tracking-[-0.04em]"
             >
-              新しい記事を作成
+              動画を選択
             </h2>
             <p className="mt-1 text-xs text-[#71807b]">
-              記事にする動画を選択して、記事の範囲を指定します。
+              記事作成フローの元動画を選択します。範囲の指定は次のモーダルで行います。
             </p>
           </div>
           <button
@@ -51,9 +51,9 @@ export function SelectArticleVideoDialog({
         </div>
 
         <div className="mt-6">
-          <p className="text-sm font-semibold">新しい動画で記事を作成</p>
+          <p className="text-sm font-semibold">新しい動画を追加して記事作成フローを開始</p>
           <p className="mt-1 text-[11px] text-[#71807b]">
-            動画を追加すると、そのまま記事にする区間の指定へ進みます。
+            動画を追加すると、追加後に範囲をまとめて指定できます。
           </p>
         </div>
         <div className="mt-3 rounded-[10px] border border-dashed border-[#b7cbc0] bg-white px-4 py-6 text-center">

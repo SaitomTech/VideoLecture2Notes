@@ -71,9 +71,9 @@ const ProjectVideoSchema = z.strictObject({
 })
 
 const ArticleInputMediaSchema = ManagedMediaSchema.extend({
-  preparedFromVideoId: IdSchema,
-  preparation: z.enum(['copy', 'prepared']),
-  preparedAt: IsoDateSchema,
+  preparedFromVideoId: IdSchema.optional(),
+  preparation: z.enum(['copy', 'prepared', 'reference']).optional(),
+  preparedAt: IsoDateSchema.optional(),
 })
 
 const VideoTrimRangeSchema = z
@@ -83,6 +83,32 @@ const VideoTrimRangeSchema = z
   })
 
   .refine((range) => range.endMs > range.startMs, '動画範囲が不正です。')
+
+const CropRegionSchema = z.strictObject({
+  x: z.number().nonnegative(),
+  y: z.number().nonnegative(),
+  width: z.number().positive(),
+  height: z.number().positive(),
+})
+
+const PerspectivePointSchema = z.strictObject({
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+})
+
+const PerspectiveCropSchema = z.strictObject({
+  corners: z.strictObject({
+    topLeft: PerspectivePointSchema,
+    topRight: PerspectivePointSchema,
+    bottomRight: PerspectivePointSchema,
+    bottomLeft: PerspectivePointSchema,
+  }),
+  aspectRatio: z.strictObject({
+    mode: z.enum(['16:9', '4:3', 'estimated', 'custom']),
+    value: z.number().positive(),
+  }),
+  transformVersion: z.literal(1),
+})
 
 const SlideBoundarySchema = z.strictObject({
   id: IdSchema,
@@ -219,8 +245,8 @@ const ArticleDataSchema = z.strictObject({
 })
 
 const ProjectWorkflowSchema = z.strictObject({
-  lastVisitedStep: z.enum(['detect-slides', 'generate-notes', 'article-review', 'export']),
-  maxReachedStep: z.enum(['detect-slides', 'generate-notes', 'article-review', 'export']),
+  lastVisitedStep: z.enum(['crop', 'detect-slides', 'generate-notes', 'article-review', 'export']),
+  maxReachedStep: z.enum(['crop', 'detect-slides', 'generate-notes', 'article-review', 'export']),
   lastOpenedAt: IsoDateSchema,
   lastExportedAt: IsoDateSchema.optional(),
 })
@@ -231,6 +257,8 @@ const ArticleSchema = z.strictObject({
   sourceVideoId: z.string().min(1).optional(),
   inputMedia: ArticleInputMediaSchema,
   sourceRange: VideoTrimRangeSchema,
+  crop: CropRegionSchema.optional(),
+  perspectiveCrop: PerspectiveCropSchema.optional(),
   settings: ProjectSettingsSchema,
   slides: z.array(SlideDataSchema),
   slideDetection: SlideDetectionResultSchema.optional(),
@@ -313,6 +341,9 @@ function workspaceFor(project: PersistedProject): MediaProject {
   return {
     ...project,
     source: article?.inputMedia ?? video?.media ?? EMPTY_SOURCE,
+    sourceRange: article?.sourceRange,
+    crop: article?.crop,
+    perspectiveCrop: article?.perspectiveCrop,
     settings: article?.settings ?? DEFAULT_SETTINGS,
     slides: article?.slides ?? [],
     ...(article?.slideDetection ? { slideDetection: article.slideDetection } : {}),

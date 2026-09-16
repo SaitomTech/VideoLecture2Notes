@@ -13,7 +13,7 @@ export function VideoDropZone({ isDragging, onChoose, onYoutubeClick }: VideoDro
     >
       <Upload className="text-[#8da79a]" size={28} strokeWidth={1.5} aria-hidden="true" />
       <div className="mt-3 text-[16px] font-semibold tracking-[-0.05em] text-[#18211f]">
-        動画をここにドロップ
+        動画をここにドロップして追加
       </div>
       <div className="mt-1 text-[11px] text-[#71807b]">または、追加方法を選択</div>
       <div className="mt-4 flex flex-wrap justify-center gap-2">

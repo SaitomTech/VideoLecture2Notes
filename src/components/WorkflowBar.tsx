@@ -24,7 +24,7 @@ export function WorkflowBar({
 
   const navigation = (
     <nav
-      className={`${leadingContent ? 'min-w-0 flex-1 ' : 'mx-auto w-full max-w-[1040px] '}flex h-[84px] items-center justify-start gap-0 overflow-x-auto px-4 sm:justify-center sm:gap-3 md:gap-4 md:px-4 min-[821px]:justify-start min-[1101px]:justify-center min-[1101px]:overflow-visible min-[1101px]:px-6`}
+      className={`${leadingContent ? 'w-full ' : 'mx-auto w-full max-w-[1040px] '}flex h-[84px] items-center justify-start gap-0 overflow-x-auto px-4 sm:justify-center sm:gap-3 md:gap-4 md:px-4 min-[821px]:justify-start min-[1101px]:justify-center min-[1101px]:overflow-visible min-[1101px]:px-6`}
       aria-label="処理ステップ"
     >
       {steps.map((step, index) => {
@@ -74,8 +74,8 @@ export function WorkflowBar({
   if (!leadingContent) return navigation
 
   return (
-    <div className="mx-auto flex h-[84px] w-full max-w-[1040px] items-center gap-2 overflow-hidden px-4 min-[1101px]:gap-3 min-[1101px]:px-6">
-      {leadingContent}
+    <div className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-col overflow-hidden md:w-[calc(100%-11.6vw)]">
+      <div className="flex min-h-[56px] w-full items-center">{leadingContent}</div>
       {navigation}
     </div>
   )

@@ -28,7 +28,7 @@ export function AppHeader({ onHome, homeDisabled = false }: AppHeaderProps) {
   const updateMessage = getUpdateMessage(updates)
 
   return (
-    <header className="flex h-[76px] items-center justify-between border-b border-[#d8e1dc]/75 px-[5.8vw]">
+    <header className="flex h-[76px] items-center justify-between border-b border-[#d8e1dc]/75 bg-white px-[5.8vw]">
       {onHome ? (
         <button
           className="inline-flex cursor-pointer items-center gap-3 rounded-[9px] px-1.5 py-1 text-left transition hover:bg-[#e2eee8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-45"

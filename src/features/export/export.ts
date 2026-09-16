@@ -4,6 +4,7 @@ import { open, save } from '@tauri-apps/plugin-dialog'
 import { copyFile, ensureDirectory, writeTextFile } from '../../lib/tauri/filesystem'
 import { hasCurrentArticleSummary } from '../article/article'
 import { getActiveMediaSource, type ArticleSummary, type MediaProject } from '../../types/project'
+import { getActiveArticleDuration } from '../../lib/project/articleSource'
 import { renderHtml, renderMarkdown, renderTxt } from './renderers'
 
 export const EXPORT_OPTIONS = [
@@ -91,7 +92,7 @@ function buildExportDocument(
   return {
     title: defaultArticleTitle(project),
     sourceName: source.name,
-    durationMs: source.metadata.durationMs,
+    durationMs: getActiveArticleDuration(project),
     summary:
       project.article?.summary && hasCurrentArticleSummary(project, project.article.summary.model)
         ? project.article.summary
