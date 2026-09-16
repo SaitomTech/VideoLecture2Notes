@@ -1,6 +1,6 @@
-import { ArrowLeft } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
+import { ArticleNavigationBar } from '../article/components/ArticleNavigationBar'
 import type { SelectedVideo, YoutubeImportOptions, YoutubeImportRequest } from '../import/types'
 import type {
   Article,
@@ -112,15 +112,10 @@ export function ProjectDetailPage({
   return (
     <main className="min-h-svh bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[#18211f]">
       <AppHeader onHome={onBack} />
-      <section className="mx-auto w-[calc(100%-48px)] max-w-[1040px] pb-16 pt-5 md:w-[calc(100%-11.6vw)] md:pt-6">
-        <button
-          className="mb-5 inline-flex items-center gap-1.5 rounded-[8px] px-2 py-1.5 text-xs font-semibold text-[#71807b] hover:bg-[#e2eee8] hover:text-[#1d6b50]"
-          type="button"
-          onClick={onBack}
-        >
-          <ArrowLeft size={14} strokeWidth={1.8} aria-hidden="true" />
-          プロジェクト一覧へ戻る
-        </button>
+      <div className="mx-auto flex min-h-[56px] w-[calc(100%-48px)] max-w-[1040px] items-center md:w-[calc(100%-11.6vw)]">
+        <ArticleNavigationBar onBack={onBack} label="プロジェクト一覧へ戻る" />
+      </div>
+      <section className="mx-auto w-[calc(100%-48px)] max-w-[1040px] pb-16 md:w-[calc(100%-11.6vw)]">
         <div className="overflow-hidden rounded-[16px] border border-[#b7cbc0] bg-white shadow-[0_18px_52px_rgba(22,54,42,0.05)]">
           <ProjectHeader
             project={project}

@@ -3,9 +3,14 @@ import { ArrowLeft } from 'lucide-react'
 type ArticleNavigationBarProps = {
   onBack: () => void
   disabled?: boolean
+  label?: string
 }
 
-export function ArticleNavigationBar({ onBack, disabled = false }: ArticleNavigationBarProps) {
+export function ArticleNavigationBar({
+  onBack,
+  disabled = false,
+  label = 'プロジェクト詳細へ戻る',
+}: ArticleNavigationBarProps) {
   return (
     <div className="flex w-full items-center">
       <button
@@ -15,7 +20,7 @@ export function ArticleNavigationBar({ onBack, disabled = false }: ArticleNaviga
         disabled={disabled}
       >
         <ArrowLeft size={14} strokeWidth={1.8} aria-hidden="true" />
-        プロジェクト詳細へ戻る
+        {label}
       </button>
     </div>
   )
