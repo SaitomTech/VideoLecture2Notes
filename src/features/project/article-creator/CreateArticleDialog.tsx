@@ -1,4 +1,5 @@
-import { X } from 'lucide-react'
+import { Eye, X } from 'lucide-react'
+import { useState } from 'react'
 import { useDialogA11y } from '../../../lib/ui/useDialogA11y'
 import { formatTimestamp } from '../../../lib/time'
 import type {
@@ -30,6 +31,7 @@ export function CreateArticleDialog({
     perspectiveCrop?: PerspectiveCrop,
   ) => Promise<Article[] | void>
 }) {
+  const [isCropPreviewOpen, setIsCropPreviewOpen] = useState(true)
   const editor = useArticleRangeEditor({
     projectId,
     video,
@@ -86,11 +88,32 @@ export function CreateArticleDialog({
                 {formatTimestamp(video.media.metadata.durationMs)}
               </p>
             </div>
+            {!isCropPreviewOpen && (
+              <button
+                type="button"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-[#b7cbc0] px-2.5 py-2 text-[10px] font-semibold text-[#1d6b50] transition hover:border-[#1d6b50] hover:bg-[#edf4ef] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-40"
+                onClick={() => setIsCropPreviewOpen(true)}
+                disabled={editor.busy || editor.isDetecting}
+                aria-label="スライド領域のプレビューを表示"
+              >
+                <Eye size={14} strokeWidth={1.8} aria-hidden="true" />
+                プレビューを表示
+              </button>
+            )}
           </div>
 
-          <div className="grid min-h-0 gap-4 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-0">
+          <div
+            className={`grid min-h-0 gap-4 lg:gap-0 ${isCropPreviewOpen ? 'lg:grid-cols-[minmax(0,1fr)_300px]' : 'lg:grid-cols-1'}`}
+          >
             <RangeEditor video={video} editor={editor} />
-            <CropSettingsPanel projectId={projectId} video={video} editor={editor} />
+            {isCropPreviewOpen && (
+              <CropSettingsPanel
+                projectId={projectId}
+                video={video}
+                editor={editor}
+                onClose={() => setIsCropPreviewOpen(false)}
+              />
+            )}
           </div>
         </div>
 

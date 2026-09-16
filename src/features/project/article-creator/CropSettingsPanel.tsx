@@ -1,4 +1,4 @@
-import { ZoomIn } from 'lucide-react'
+import { X, ZoomIn } from 'lucide-react'
 import { CropPreview } from '../../crop/components/CropPreview'
 import { CornerPositionIcon } from '../../crop/components/QuadCropSelector'
 import type { ProjectVideo } from '../../../types/project'
@@ -9,10 +9,12 @@ export function CropSettingsPanel({
   projectId,
   video,
   editor,
+  onClose,
 }: {
   projectId: string
   video: ProjectVideo
   editor: ArticleRangeEditor
+  onClose?: () => void
 }) {
   const {
     cropMode,
@@ -35,7 +37,22 @@ export function CropSettingsPanel({
 
   return (
     <aside className="min-w-0 p-4 lg:min-h-[600px] lg:row-span-2 lg:border-l lg:border-[#d8e1dc]">
-      <h3 className="text-[17px] font-bold tracking-[-0.04em]">スライド領域のプレビュー</h3>
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="text-[17px] font-bold tracking-[-0.04em]">スライド領域のプレビュー</h3>
+        {onClose && (
+          <button
+            type="button"
+            className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[10px] font-semibold text-[#71807b] transition hover:bg-[#edf4ef] hover:text-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-40"
+            onClick={onClose}
+            disabled={busy || isDetecting}
+            aria-label="スライド領域のプレビューを閉じる"
+            title="プレビューを閉じる"
+          >
+            <X size={13} strokeWidth={2} aria-hidden="true" />
+            閉じる
+          </button>
+        )}
+      </div>
       <CropPreview
         projectId={projectId}
         sourcePath={video.media.path}
