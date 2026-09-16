@@ -211,9 +211,15 @@ export function RangeEditor({
               return (
                 <button
                   key={handle}
-                  className={`absolute inset-y-[-5px] z-10 w-6 -translate-x-1/2 cursor-ew-resize rounded-md bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/40 ${draggingHandle === handle ? 'opacity-70' : ''}`}
+                  className={`group absolute inset-y-[-5px] z-10 w-6 -translate-x-1/2 cursor-ew-resize rounded-md bg-transparent focus-visible:outline-none ${draggingHandle === handle ? 'opacity-70' : ''}`}
                   style={{ left: `${handle === 'start' ? startPercent : endPercent}%` }}
                   type="button"
+                  role="slider"
+                  aria-orientation="horizontal"
+                  aria-valuemin={handle === 'start' ? 0 : startMs + 100}
+                  aria-valuemax={handle === 'start' ? endMs - 100 : duration}
+                  aria-valuenow={timestampMs}
+                  aria-valuetext={formatTrimTime(timestampMs)}
                   title={`${handle === 'start' ? '開始' : '終了'} ${formatTrimTime(timestampMs)}`}
                   aria-label={`${handle === 'start' ? '開始' : '終了'}位置 ${formatTrimTime(timestampMs)}を移動`}
                   onPointerDown={(event) => startHandleDrag(event, handle)}
@@ -229,10 +235,10 @@ export function RangeEditor({
                     className="absolute bottom-9 left-1/2 -translate-x-1/2 whitespace-nowrap px-1 py-0.5 font-mono text-[9px] font-medium"
                     style={{ color: activeRangeColor.text }}
                   >
-                    {formatPlaybackTime(timestampMs)}
+                    {formatTrimTime(timestampMs)}
                   </span>
                   <span
-                    className="absolute left-1/2 top-1/2 h-7 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full border bg-[#f3faf6] shadow-[0_1px_3px_rgba(22,54,42,0.22)]"
+                    className="absolute left-1/2 top-1/2 h-7 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full border bg-[#f3faf6] shadow-[0_1px_3px_rgba(22,54,42,0.22)] group-focus-visible:ring-2 group-focus-visible:ring-[#1d6b50]/40"
                     style={{ borderColor: activeRangeColor.border }}
                   />
                 </button>
@@ -262,7 +268,8 @@ export function RangeEditor({
           </div>
         )}
         <p className="pointer-events-none absolute bottom-2 left-3.5 text-[10px] leading-4 text-[#71807b]">
-          左右のつまみで記事にする区間を指定できます。選択した各区間で文字起こしの準備ができます。
+          左右のつまみで記事にする区間を指定できます。フォーカス後は矢印キーで1秒ずつ、Shift +
+          矢印キーで10秒ずつ移動できます。
         </p>
       </div>
     </div>

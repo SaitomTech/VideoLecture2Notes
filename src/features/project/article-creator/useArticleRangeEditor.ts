@@ -399,6 +399,9 @@ export function useArticleRangeEditor({
     if (event.button !== 0) return
     event.preventDefault()
     event.stopPropagation()
+    // preventDefault() stops the browser's implicit button focus on pointer down.
+    // Restore it explicitly so a click followed by an arrow key keeps moving this handle.
+    event.currentTarget.focus({ preventScroll: true })
     event.currentTarget.setPointerCapture(event.pointerId)
     setDraggingHandle(handle)
     if (isPlaying) togglePlayback()
@@ -406,11 +409,11 @@ export function useArticleRangeEditor({
   }
 
   const handleHandleKeyDown = (event: KeyboardEvent<HTMLButtonElement>, handle: TrimHandle) => {
-    const stepMs = event.shiftKey ? 1_000 : 100
+    const stepMs = event.shiftKey ? 10_000 : 1_000
     const currentMs = handle === 'start' ? startMs : endMs
     let nextMs: number | null = null
-    if (event.key === 'ArrowLeft') nextMs = currentMs - stepMs
-    if (event.key === 'ArrowRight') nextMs = currentMs + stepMs
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') nextMs = currentMs - stepMs
+    if (event.key === 'ArrowRight' || event.key === 'ArrowUp') nextMs = currentMs + stepMs
     if (event.key === 'Home') nextMs = handle === 'start' ? 0 : startMs + 100
     if (event.key === 'End') nextMs = handle === 'end' ? duration : endMs - 100
     if (nextMs === null) return
