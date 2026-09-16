@@ -117,27 +117,6 @@ function area(region: NormalizedRegion) {
   return region.width * region.height
 }
 
-function center(region: NormalizedRegion) {
-  return {
-    x: region.x + region.width / 2,
-    y: region.y + region.height / 2,
-  }
-}
-
-function contains(region: NormalizedRegion, point: VisionPoint) {
-  return (
-    point.x >= region.x &&
-    point.x <= region.x + region.width &&
-    point.y >= region.y &&
-    point.y <= region.y + region.height
-  )
-}
-
-function centerOfRegion(observation: VisionRegion): VisionPoint | null {
-  const region = regionFromPolygon(observation.polygon)
-  return region ? center(region) : null
-}
-
 function intersectionOverUnion(first: NormalizedRegion, second: NormalizedRegion) {
   const left = Math.max(first.x, second.x)
   const top = Math.max(first.y, second.y)
@@ -162,28 +141,8 @@ function areaScore(region: NormalizedRegion) {
   return clamp((regionArea - 0.08) / 0.7)
 }
 
-function scoreCandidate(
-  region: NormalizedRegion,
-  observation: VisionRegion,
-  textRegions: VisionRegion[],
-  faceRegions: VisionRegion[],
-) {
-  const textCenters = textRegions
-    .map(centerOfRegion)
-    .filter((point): point is VisionPoint => point !== null)
-  const faceCenters = faceRegions
-    .map(centerOfRegion)
-    .filter((point): point is VisionPoint => point !== null)
-  const textScore = clamp(textCenters.filter((point) => contains(region, point)).length / 8)
-  const facePenalty = clamp(faceCenters.filter((point) => contains(region, point)).length / 2)
-
-  return clamp(
-    observation.confidence * 0.5 +
-      aspectScore(region) * 0.2 +
-      areaScore(region) * 0.15 +
-      textScore * 0.15 -
-      facePenalty * 0.1,
-  )
+function scoreCandidate(region: NormalizedRegion, observation: VisionRegion) {
+  return clamp(observation.confidence * 0.5 + aspectScore(region) * 0.2 + areaScore(region) * 0.15)
 }
 
 function clusterCandidates(candidates: Candidate[]) {
@@ -244,7 +203,7 @@ function candidatesFromDetection(
         frameIndex,
         region,
         corners,
-        score: scoreCandidate(region, observation, detection.textRegions, detection.faceRegions),
+        score: scoreCandidate(region, observation),
       },
     ]
   })

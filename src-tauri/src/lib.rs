@@ -66,6 +66,22 @@ fn sha256_file(path: PathBuf) -> Result<String, String> {
         .collect())
 }
 
+#[tauri::command]
+fn get_ffmpeg_path() -> Result<String, String> {
+    let executable = std::env::current_exe()
+        .map_err(|error| format!("アプリ実行ファイルの場所を取得できませんでした: {error}"))?;
+    let directory = executable
+        .parent()
+        .ok_or_else(|| "アプリ実行ファイルの親ディレクトリを取得できませんでした".to_string())?;
+    let path = directory.join("ffmpeg");
+
+    if !path.is_file() {
+        return Err(format!("同梱FFmpegが見つかりません: {}", path.display()));
+    }
+
+    Ok(path.to_string_lossy().into_owned())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -87,6 +103,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             sha256_app_local_file,
+            get_ffmpeg_path,
             video_server::video_stream_url,
             openai::get_openai_api_key_status,
             openai::validate_and_save_openai_api_key,

@@ -9,12 +9,14 @@ type ProbeStream = {
   height?: unknown
   avg_frame_rate?: unknown
   r_frame_rate?: unknown
+  pix_fmt?: unknown
 }
 
 type ProbeResult = {
   streams?: ProbeStream[]
   format?: {
     duration?: unknown
+    format_name?: unknown
   }
 }
 
@@ -80,6 +82,9 @@ export async function probeVideo(path: string): Promise<MediaMetadata> {
     height: Math.round(height),
     fps: parseFrameRate(videoStream.avg_frame_rate) ?? parseFrameRate(videoStream.r_frame_rate),
     videoCodec: typeof videoStream.codec_name === 'string' ? videoStream.codec_name : undefined,
+    videoPixelFormat: typeof videoStream.pix_fmt === 'string' ? videoStream.pix_fmt : undefined,
     audioCodec: typeof audioStream?.codec_name === 'string' ? audioStream.codec_name : undefined,
+    formatName:
+      typeof parsed.format?.format_name === 'string' ? parsed.format.format_name : undefined,
   }
 }

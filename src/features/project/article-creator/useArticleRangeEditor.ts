@@ -7,6 +7,7 @@ import {
   type PointerEvent,
 } from 'react'
 import { useVideoSourceUrl } from '../../../lib/media/useVideoSourceUrl'
+import { getErrorDetail } from '../../../lib/errors'
 import { normalizedToPixelCrop, pixelToNormalizedCrop } from '../../crop/utils'
 import type { NormalizedCropRegion } from '../../crop/types'
 import { detectAutomaticCrop, type AutoCropProgress } from '../../crop/autoCrop'
@@ -303,7 +304,9 @@ export function useArticleRangeEditor({
     } catch (cause) {
       if (!controller.signal.aborted) {
         console.error('スライド領域の自動検出に失敗しました。', cause)
-        setError('スライド領域の自動検出に失敗しました。手動で指定してください。')
+        setError(
+          `スライド領域の自動検出に失敗しました。${getErrorDetail(cause, '手動で指定してください。')}`,
+        )
       }
     } finally {
       if (autoCropControllerRef.current === controller) autoCropControllerRef.current = null

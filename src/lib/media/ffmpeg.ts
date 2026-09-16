@@ -1,5 +1,6 @@
 import { executeSidecar, executeSidecarRaw } from '../tauri/sidecar'
 import type { CropRegion, MediaMetadata, PerspectiveCrop } from '../../types/project'
+import type { VideoFormatAdjustment } from '../../types/media'
 import { computeAverageLuma, computeDHash } from './dhash'
 
 /** Runs the bundled ffmpeg with an argument array; callers never build a shell command string. */
@@ -93,9 +94,10 @@ type TrimVideoInput = {
   signal?: AbortSignal
 }
 
-type BrowserCompatibleVideoInput = {
+type ConvertVideoForWebViewInput = {
   path: string
   outputPath: string
+  adjustment: VideoFormatAdjustment
   signal?: AbortSignal
 }
 
@@ -105,6 +107,25 @@ function outputText(value: string | Uint8Array) {
 
 function filterNumber(value: number) {
   return Number.isFinite(value) ? value.toFixed(4) : '0'
+}
+
+function fileExtension(path: string) {
+  return path.split(/[\\/]/).pop()?.split('.').pop()?.toLowerCase()
+}
+
+function hasMp4Container(formatName?: string) {
+  return formatName?.split(',').some((format) => format.trim() === 'mp4') ?? false
+}
+
+export function getWebViewFormatAdjustment(
+  path: string,
+  metadata: Pick<MediaMetadata, 'formatName' | 'videoCodec' | 'videoPixelFormat' | 'audioCodec'>,
+): VideoFormatAdjustment {
+  return {
+    container: fileExtension(path) !== 'mp4' || !hasMp4Container(metadata.formatName),
+    video: metadata.videoCodec !== 'h264' || metadata.videoPixelFormat !== 'yuv420p',
+    audio: metadata.audioCodec !== 'aac',
+  }
 }
 
 function perspectiveOutputSize(perspectiveCrop: PerspectiveCrop, outputWidth = 1280) {
@@ -345,12 +366,18 @@ export async function extractAudio({
   return outputPath
 }
 
-/** Converts a downloaded source into a WebView-compatible H.264/AAC MP4. */
-export async function transcodeVideoForBrowser({
+/** Converts only tracks that are outside the WebView-compatible format. */
+export async function convertVideoForWebView({
   path,
   outputPath,
+  adjustment,
   signal,
-}: BrowserCompatibleVideoInput) {
+}: ConvertVideoForWebViewInput) {
+  const videoArguments = adjustment.video
+    ? ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p']
+    : ['-c:v', 'copy']
+  const audioArguments = adjustment.audio ? ['-c:a', 'aac', '-b:a', '160k'] : ['-c:a', 'copy']
+
   const output = await executeSidecar(
     'binaries/ffmpeg',
     [
@@ -362,19 +389,9 @@ export async function transcodeVideoForBrowser({
       '-map',
       '0:v:0',
       '-map',
-      '0:a:0?',
-      '-c:v',
-      'libx264',
-      '-preset',
-      'veryfast',
-      '-crf',
-      '18',
-      '-pix_fmt',
-      'yuv420p',
-      '-c:a',
-      'aac',
-      '-b:a',
-      '160k',
+      '0:a:0',
+      ...videoArguments,
+      ...audioArguments,
       '-sn',
       '-dn',
       '-movflags',
@@ -387,7 +404,7 @@ export async function transcodeVideoForBrowser({
 
   if (output.code !== 0) {
     const detail = output.stderr.trim()
-    throw new Error(detail || `動画を再生可能な形式へ変換できませんでした (code ${output.code})`)
+    throw new Error(detail || `動画をWebView対応形式へ変換できませんでした (code ${output.code})`)
   }
 
   return outputPath

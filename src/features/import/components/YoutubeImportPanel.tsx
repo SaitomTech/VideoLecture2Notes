@@ -1,6 +1,7 @@
 import { Check, Download, Link, LoaderCircle, Search } from 'lucide-react'
 import { formatDuration } from '../utils'
 import type { YoutubeDownloadProgress, YoutubeVideoInfo } from '../../../lib/youtube/types'
+import type { VideoFormatAdjustment } from '../../../types/media'
 import type { YoutubeImportQuality } from '../../../types/project'
 import type { YoutubeResolveStatus } from '../types'
 
@@ -28,17 +29,30 @@ type YoutubeImportPanelProps = {
 
 function progressLabel(progress: YoutubeDownloadProgress | null) {
   if (!progress) return '動画を取得しています…'
-  if (progress.phase === 'merging') return '映像と音声を結合しています…'
-  if (progress.phase === 'transcoding') return '再生用に動画を変換しています…'
-  if (progress.phase === 'checking') return '動画を確認しています…'
-  if (progress.phase === 'finalizing') return '動画を保存しています…'
+
+  if (progress.stage === 'checking') return '動画の形式を確認しています…'
+  if (progress.stage === 'saving') return 'プロジェクトを保存しています…'
+  if (progress.stage === 'converting') {
+    const changes = formatAdjustmentChanges(progress.adjustment)
+    return `アプリで再生できる形式に合わせています（${changes.join('、')}）…`
+  }
+
   if (progress.percent === undefined) return '動画を取得しています…'
-  const streamLabel = progress.stream === 'audio' ? '音声' : '映像'
-  return `${streamLabel}を取得しています… ${Math.round(progress.percent)}%`
+  return `動画を取得しています… ${Math.round(progress.percent)}%`
+}
+
+function formatAdjustmentChanges(adjustment?: VideoFormatAdjustment) {
+  if (!adjustment) return ['動画を調整']
+
+  return [
+    adjustment.video ? '映像をH.264に変換' : null,
+    adjustment.audio ? '音声をAACに変換' : null,
+    adjustment.container ? 'MP4にまとめる（再圧縮なし）' : null,
+  ].filter((change): change is string => change !== null)
 }
 
 function isPostProcessing(progress: YoutubeDownloadProgress | null) {
-  return Boolean(progress && progress.phase !== 'downloading')
+  return Boolean(progress && progress.stage !== 'downloading')
 }
 
 export function YoutubeImportPanel({

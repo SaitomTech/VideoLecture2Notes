@@ -27,7 +27,9 @@ const MediaMetadataSchema = z.strictObject({
   height: z.number().positive(),
   fps: z.number().positive().optional(),
   videoCodec: z.string().min(1).optional(),
+  videoPixelFormat: z.string().min(1).optional(),
   audioCodec: z.string().min(1).optional(),
+  formatName: z.string().min(1).optional(),
 })
 
 const YoutubeImportQualitySchema = z.enum(['720p', '1080p', 'best'])

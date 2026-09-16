@@ -1,4 +1,5 @@
 import type { YoutubeImportQuality } from '../../types/project'
+import type { VideoFormatAdjustment } from '../../types/media'
 
 export type YoutubeVideoInfo = {
   videoId: string
@@ -10,11 +11,11 @@ export type YoutubeVideoInfo = {
 }
 
 export type YoutubeDownloadProgress = {
-  phase: 'downloading' | 'merging' | 'transcoding' | 'checking' | 'finalizing'
+  stage: 'downloading' | 'checking' | 'converting' | 'saving'
   percent?: number
   speed?: string
   eta?: string
-  stream?: 'video' | 'audio'
+  adjustment?: VideoFormatAdjustment
 }
 
 export type YoutubeDownloadInput = {

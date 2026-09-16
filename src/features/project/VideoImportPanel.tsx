@@ -7,6 +7,7 @@ import { VideoDropZone } from '../import/components/VideoDropZone'
 import { VideoPreview } from '../import/components/VideoPreview'
 import { useVideoPicker } from '../import/hooks/useVideoPicker'
 import { useYoutubeImporter } from '../import/hooks/useYoutubeImporter'
+import { getErrorDetail } from '../../lib/errors'
 import type { SelectedVideo, YoutubeImportOptions, YoutubeImportRequest } from '../import/types'
 import type { YoutubeDownloadProgress } from '../../lib/youtube/types'
 import type { ProjectVideo } from '../../types/project'
@@ -103,9 +104,7 @@ export const VideoImportPanel = forwardRef<VideoImportPanelHandle, VideoImportPa
       } catch (error) {
         if (!controller.signal.aborted) {
           console.error(error)
-          setYoutubeError(
-            error instanceof Error ? error.message : 'YouTube動画を追加できませんでした。',
-          )
+          setYoutubeError(getErrorDetail(error, 'YouTube動画を追加できませんでした。'))
         }
       } finally {
         if (youtubeAbortRef.current === controller) youtubeAbortRef.current = null

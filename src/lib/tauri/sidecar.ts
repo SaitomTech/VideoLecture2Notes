@@ -1,4 +1,5 @@
 import { Command, type Child } from '@tauri-apps/plugin-shell'
+import { invoke } from '@tauri-apps/api/core'
 
 export type SidecarName =
   | 'binaries/ffmpeg'
@@ -9,6 +10,10 @@ export type SidecarName =
   | 'binaries/apple-speech-transcriber'
   | 'binaries/apple-foundation-models'
   | 'binaries/yt-dlp'
+
+export function getBundledFfmpegPath() {
+  return invoke<string>('get_ffmpeg_path')
+}
 
 type SidecarStreamHandlers = {
   onStdout?: (chunk: string) => void
