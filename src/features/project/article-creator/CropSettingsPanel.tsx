@@ -34,7 +34,7 @@ export function CropSettingsPanel({
   } = editor
 
   return (
-    <aside className="min-w-0 bg-white p-4 lg:min-h-[600px] lg:row-span-2 lg:border-l lg:border-[#d8e1dc]">
+    <aside className="min-w-0 p-4 lg:min-h-[600px] lg:row-span-2 lg:border-l lg:border-[#d8e1dc]">
       <h3 className="text-[17px] font-bold tracking-[-0.04em]">スライド領域のプレビュー</h3>
       <CropPreview
         projectId={projectId}
