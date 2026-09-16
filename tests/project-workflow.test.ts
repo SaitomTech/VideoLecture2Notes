@@ -7,6 +7,8 @@ import {
   syncActiveArticle,
   toPersistedProject,
   updateProjectArticleDraft,
+  updateProjectArticleTitle,
+  updateProjectArticleSummary,
   updateProjectArticleSourceSettings,
   updateProjectSlideContent,
   updateProjectSlideDetection,
@@ -212,6 +214,50 @@ test('unchanged article drafts do not invalidate the export, but edits do', () =
   expect(changed.workflow.maxReachedStep).toBe('export')
   expect(changed.workflow.lastVisitedStep).toBe('article-review')
   expect(changed.slides[0].transcript?.articleBody).toBe('edited body')
+})
+
+test('workflow article title is kept as the generated article title', () => {
+  const project = createArticleWorkspace()
+  const activeArticle = project.articles[0]
+  if (!activeArticle) throw new Error('テスト用記事がありません。')
+  const withDifferentGeneratedTitle = {
+    ...project,
+    article: { title: 'generated title' },
+    articles: [
+      {
+        ...activeArticle,
+        title: 'workflow title',
+        article: { title: 'generated title' },
+      },
+    ],
+  }
+
+  const draft = updateProjectArticleDraft(withDifferentGeneratedTitle, {
+    title: '',
+    bodies: { 'slide-1': 'body' },
+  })
+  expect(draft.article?.title).toBe('workflow title')
+  expect(draft.articles[0]?.title).toBe('workflow title')
+
+  const summary = updateProjectArticleSummary(withDifferentGeneratedTitle, {
+    overview: 'overview',
+    mainMessage: 'message',
+    keyPoints: ['point'],
+    keywords: ['keyword'],
+    model: 'article-model',
+    inputFingerprint: 'summary-fingerprint',
+  })
+  expect(summary.article?.title).toBe('workflow title')
+  expect(syncActiveArticle(withDifferentGeneratedTitle).articles[0]?.title).toBe('workflow title')
+})
+
+test('article title updates the workflow title and generated title together', () => {
+  const project = createArticleWorkspace()
+  const renamed = updateProjectArticleTitle(project, 'renamed article')
+
+  expect(renamed.articles[0]?.title).toBe('renamed article')
+  expect(renamed.article?.title).toBe('renamed article')
+  expect(renamed.workflow).toEqual(project.workflow)
 })
 
 test('changed slide detection invalidates downstream steps', () => {

@@ -1,7 +1,8 @@
-import { ArrowRight, FilePenLine, Save, X } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
-import { WorkflowBar } from '../../components/WorkflowBar'
+import { ArticleContextRow } from '../../components/ArticleContextRow'
+import { WorkflowPanelHeader } from '../../components/WorkflowPanelHeader'
 import { getArticleModel, type ArticleModelId } from '../../lib/article/articleModel'
 import type { WorkflowStep } from '../../lib/workflow'
 import type { ArticleDraft, ArticleSummary, MediaProject } from '../../types/project'
@@ -18,11 +19,12 @@ type ArticleReviewPageProps = {
   onHome: () => void
   onBackToProject: () => void
   onOpenArticle: (articleId: string) => void | Promise<void>
+  onSaveTitle: (title: string) => void | Promise<void>
   maxReachedStep: WorkflowStep
   onStepClick: (step: WorkflowStep) => void
 }
 
-type EditingTarget = { type: 'title' } | { type: 'slide'; slideId: string } | null
+type EditingTarget = { type: 'slide'; slideId: string } | null
 
 export function ArticleReviewPage({
   project,
@@ -32,11 +34,16 @@ export function ArticleReviewPage({
   onHome,
   onBackToProject,
   onOpenArticle,
+  onSaveTitle,
   maxReachedStep,
   onStepClick,
 }: ArticleReviewPageProps) {
   const articleSlides = project.slides.filter((slide) => Boolean(slide.transcript))
-  const initialTitle = project.article?.title?.trim() || project.source.name.replace(/\.[^.]+$/, '')
+  const activeArticle = project.articles.find((article) => article.id === project.activeArticleId)
+  const articleTitle =
+    activeArticle?.title.trim() ||
+    project.article?.title?.trim() ||
+    project.source.name.replace(/\.[^.]+$/, '')
   const [summaryModelId, setSummaryModelId] = useState<ArticleModelId>(
     () =>
       getArticleModel(project.article?.summary?.model ?? articleSlides[0]?.transcript?.articleModel)
@@ -46,31 +53,18 @@ export function ArticleReviewPage({
   const initialBodies = Object.fromEntries(
     articleSlides.map((slide) => [slide.id, slide.transcript?.articleBody ?? '']),
   )
-  const [savedTitle, setSavedTitle] = useState(initialTitle)
   const [savedBodies, setSavedBodies] = useState<Record<string, string>>(initialBodies)
   const [editingTarget, setEditingTarget] = useState<EditingTarget>(null)
-  const [titleDraft, setTitleDraft] = useState(initialTitle)
   const [bodyDraft, setBodyDraft] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [switchingArticleId, setSwitchingArticleId] = useState<string | null>(null)
 
-  const isEditingTitle = editingTarget?.type === 'title'
   const editingSlideId = editingTarget?.type === 'slide' ? editingTarget.slideId : null
   const isBodyDirty = editingSlideId !== null && bodyDraft !== (savedBodies[editingSlideId] ?? '')
-  const isTitleDirty = isEditingTitle && titleDraft.trim() !== savedTitle
-  const hasUnsavedChanges = isBodyDirty || isTitleDirty
-  const currentTitle = isEditingTitle ? titleDraft : savedTitle
-  const hasEmptyTitle = !currentTitle.trim()
+  const hasUnsavedChanges = isBodyDirty
   const isBusy = isSaving || summaryGeneration.status === 'running'
   const canEdit = editingTarget === null && !isBusy
-
-  const startTitleEditing = () => {
-    if (!canEdit) return
-    setTitleDraft(savedTitle)
-    setEditingTarget({ type: 'title' })
-    setSaveError(null)
-  }
 
   const startSlideEditing = (slideId: string) => {
     if (!canEdit) return
@@ -81,28 +75,8 @@ export function ArticleReviewPage({
 
   const cancelEditing = () => {
     setEditingTarget(null)
-    setTitleDraft(savedTitle)
     setBodyDraft('')
     setSaveError(null)
-  }
-
-  const saveTitle = async () => {
-    if (!isEditingTitle || !isTitleDirty || !titleDraft.trim()) return
-
-    setIsSaving(true)
-    setSaveError(null)
-    try {
-      const nextTitle = titleDraft.trim()
-      await onSave({ title: nextTitle, bodies: savedBodies })
-      setSavedTitle(nextTitle)
-      setTitleDraft(nextTitle)
-      setEditingTarget(null)
-    } catch (error) {
-      console.error(error)
-      setSaveError(error instanceof Error ? error.message : '記事の保存に失敗しました。')
-    } finally {
-      setIsSaving(false)
-    }
   }
 
   const saveSlide = async () => {
@@ -112,7 +86,7 @@ export function ArticleReviewPage({
     setSaveError(null)
     try {
       const nextBodies = { ...savedBodies, [editingSlideId]: bodyDraft }
-      await onSave({ title: savedTitle, bodies: nextBodies })
+      await onSave({ title: articleTitle, bodies: nextBodies })
       setSavedBodies(nextBodies)
       setBodyDraft('')
       setEditingTarget(null)
@@ -131,19 +105,11 @@ export function ArticleReviewPage({
     if (switchingArticleId || isSaving || summaryGeneration.status === 'running') return false
 
     if (hasUnsavedChanges) {
-      if (isEditingTitle && !titleDraft.trim()) {
-        setSaveError('記事タイトルを入力してから切り替えてください。')
-        return false
-      }
-      const nextBodies =
-        editingSlideId === null ? savedBodies : { ...savedBodies, [editingSlideId]: bodyDraft }
-      const nextTitle = isEditingTitle ? titleDraft.trim() : savedTitle
+      const nextBodies = { ...savedBodies, [editingSlideId!]: bodyDraft }
       setIsSaving(true)
       setSaveError(null)
       try {
-        await onSave({ title: nextTitle, bodies: nextBodies })
-        setSavedTitle(nextTitle)
-        setTitleDraft(nextTitle)
+        await onSave({ title: articleTitle, bodies: nextBodies })
         setSavedBodies(nextBodies)
         setBodyDraft('')
         setEditingTarget(null)
@@ -178,106 +144,31 @@ export function ArticleReviewPage({
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
       <AppHeader onHome={onHome} homeDisabled={hasUnsavedChanges || isBusy} />
-      <WorkflowBar
-        activeStep="article-review"
-        maxReachedStep={maxReachedStep}
-        onStepClick={handleWorkflowNavigation}
-        disabled={isBusy}
-        leadingContent={
-          <ArticleNavigationBar
-            project={project}
-            onBack={onBackToProject}
-            disabled={isBusy || switchingArticleId !== null}
-            onSelect={switchArticle}
-          />
-        }
+      <div className="mx-auto flex min-h-[56px] w-[calc(100%-48px)] max-w-[1040px] items-center md:w-[calc(100%-11.6vw)]">
+        <ArticleNavigationBar
+          onBack={onBackToProject}
+          disabled={isBusy || switchingArticleId !== null}
+        />
+      </div>
+      <ArticleContextRow
+        project={project}
+        sourceName={project.source.name}
+        onSelect={switchArticle}
+        onSaveTitle={onSaveTitle}
+        disabled={isBusy || switchingArticleId !== null || editingSlideId !== null}
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
-          <div className="border-b border-[#d8e1dc] px-5 py-4 md:px-7">
-            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
-              04 / ARTICLE PREVIEW
-            </p>
-            <h2 className="mt-1 text-[21px] font-bold tracking-[-0.05em]">記事プレビュー</h2>
-            <p className="mt-1 text-xs text-[#71807b]">
-              生成した記事の見た目を確認します。必要なSlideだけ編集できます。
-            </p>
-          </div>
-          <div className="border-b border-[#d8e1dc] px-5 py-5 md:px-7">
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <div className="min-w-0 flex-1">
-                {isEditingTitle ? (
-                  <>
-                    <label
-                      className="block text-xs font-semibold text-[#18211f]"
-                      htmlFor="article-title"
-                    >
-                      記事タイトル
-                    </label>
-                    <input
-                      className="mt-2 w-full border-0 border-b border-[#b7cbc0] bg-transparent px-0 py-1 text-[23px] font-bold tracking-[-0.05em] text-[#18211f] outline-none transition placeholder:text-[#9aa6a1] focus:border-[#1d6b50] disabled:cursor-not-allowed disabled:opacity-60"
-                      id="article-title"
-                      value={titleDraft}
-                      disabled={isSaving}
-                      onChange={(event) => {
-                        setTitleDraft(event.target.value)
-                        setSaveError(null)
-                      }}
-                      placeholder="記事タイトル"
-                    />
-                  </>
-                ) : (
-                  <>
-                    <p className="text-xs font-semibold text-[#71807b]">記事タイトル</p>
-                    <h2 className="mt-2 text-[23px] font-bold tracking-[-0.05em] text-[#18211f]">
-                      {savedTitle}
-                    </h2>
-                  </>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                {isEditingTitle ? (
-                  <>
-                    <button
-                      className="inline-flex items-center gap-2 rounded-[9px] border border-[#d8e1dc] px-3 py-2.5 text-xs font-semibold text-[#71807b] transition hover:border-[#9aa6a1] hover:bg-[#f1f3f1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50"
-                      type="button"
-                      onClick={cancelEditing}
-                      disabled={isSaving}
-                    >
-                      <X size={14} />
-                      キャンセル
-                    </button>
-                    <button
-                      className="inline-flex items-center gap-2 rounded-[9px] bg-[#1d6b50] px-4 py-2.5 text-xs font-semibold text-[#f3faf6] transition hover:bg-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      type="button"
-                      onClick={() => void saveTitle()}
-                      disabled={!isTitleDirty || hasEmptyTitle || isSaving}
-                    >
-                      <Save size={14} />
-                      {isSaving ? '保存中…' : '保存'}
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    className="inline-flex items-center gap-2 rounded-[9px] border border-[#b7cbc0] bg-[#fbfcfa] px-3 py-2.5 text-xs font-semibold text-[#1d6b50] transition hover:border-[#1d6b50] hover:bg-[#e2eee8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50"
-                    type="button"
-                    onClick={startTitleEditing}
-                    disabled={!canEdit}
-                  >
-                    <FilePenLine size={14} />
-                    タイトルを変更
-                  </button>
-                )}
-              </div>
-            </div>
-            {isEditingTitle && hasEmptyTitle && (
-              <p className="mt-3 text-xs text-[#b6533a]">記事タイトルを入力してください。</p>
-            )}
-            {isEditingTitle && saveError && (
-              <p className="mt-3 text-xs text-[#b6533a]">{saveError}</p>
-            )}
-          </div>
+          <WorkflowPanelHeader
+            activeStep="article-review"
+            maxReachedStep={maxReachedStep}
+            onStepClick={handleWorkflowNavigation}
+            disabled={isBusy}
+            eyebrow="04 / ARTICLE PREVIEW"
+            title="記事プレビュー"
+            description="生成した記事の見た目を確認します。必要なSlideだけ編集できます。"
+          />
 
           <div className="space-y-5 p-5 md:p-7">
             <ArticleSummaryCard
@@ -320,28 +211,23 @@ export function ArticleReviewPage({
               </div>
             )}
           </div>
-        </div>
-
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-[#d8e1dc] pt-5">
-          <p
-            className={`text-xs ${hasUnsavedChanges || hasEmptyTitle ? 'text-[#9a7a35]' : 'text-[#71807b]'}`}
-          >
-            {hasUnsavedChanges
-              ? '未保存の変更があります。保存してから書き出せます。'
-              : hasEmptyTitle
-                ? '記事タイトルを入力すると書き出せます。'
+          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[#d8e1dc] px-5 py-4 md:px-7">
+            <p className={`text-xs ${hasUnsavedChanges ? 'text-[#9a7a35]' : 'text-[#71807b]'}`}>
+              {hasUnsavedChanges
+                ? '未保存の変更があります。保存してから書き出せます。'
                 : '記事を確認したら、書き出しへ進みます。'}
-          </p>
-          <button
-            className="inline-flex items-center gap-2 rounded-[9px] bg-[#1d6b50] px-4 py-3 text-xs font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] transition hover:bg-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
-            type="button"
-            onClick={onExport}
-            disabled={hasUnsavedChanges || isBusy || hasEmptyTitle}
-            title={hasUnsavedChanges ? '編集中の変更を保存してください' : undefined}
-          >
-            書き出しへ
-            <ArrowRight size={14} />
-          </button>
+            </p>
+            <button
+              className="inline-flex items-center gap-2 rounded-[9px] bg-[#1d6b50] px-4 py-3 text-xs font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] transition hover:bg-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+              type="button"
+              onClick={onExport}
+              disabled={hasUnsavedChanges || isBusy}
+              title={hasUnsavedChanges ? '編集中の変更を保存してください' : undefined}
+            >
+              書き出しへ
+              <ArrowRight size={14} />
+            </button>
+          </div>
         </div>
       </section>
     </main>

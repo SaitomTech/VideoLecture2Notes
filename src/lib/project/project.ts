@@ -112,7 +112,7 @@ export function activateArticle(project: MediaProject, articleId: string): Media
 export function syncActiveArticle(project: MediaProject): MediaProject {
   const article = getActiveArticle(project)
   if (!article) return project
-  const nextTitle = project.article?.title?.trim() || article.title
+  const nextTitle = article.title.trim() || project.article?.title?.trim() || '無題の記事'
   const nextArticle: Article = {
     ...article,
     title: nextTitle,
@@ -412,19 +412,35 @@ export function updateProjectArticleDraft(
   project: MediaProject,
   draft: ArticleDraft,
 ): MediaProject {
+  const activeArticle = getActiveArticle(project)
   const title =
-    draft.title.trim() || project.article?.title || project.source.name.replace(/\.[^.]+$/, '')
+    draft.title.trim() ||
+    activeArticle?.title.trim() ||
+    project.article?.title?.trim() ||
+    project.source.name.replace(/\.[^.]+$/, '')
   const nextArticle = { ...project.article, title }
+  const nextArticles = activeArticle
+    ? project.articles.map((article) =>
+        article.id === activeArticle.id && article.title !== title
+          ? { ...article, title }
+          : article,
+      )
+    : project.articles
   const nextSlides = project.slides.map((slide) => {
     const body = draft.bodies[slide.id]
     if (body === undefined || !slide.transcript || body === slide.transcript.articleBody)
       return slide
     return { ...slide, transcript: { ...slide.transcript, articleBody: body } }
   })
-  if (sameValue(project.article, nextArticle) && sameValue(project.slides, nextSlides))
+  if (
+    sameValue(project.article, nextArticle) &&
+    sameValue(project.articles, nextArticles) &&
+    sameValue(project.slides, nextSlides)
+  )
     return project
   return {
     ...project,
+    articles: nextArticles,
     article: nextArticle,
     slides: nextSlides,
     workflow: workflowWithReachableStep(
@@ -438,11 +454,36 @@ export function updateProjectArticleDraft(
   }
 }
 
+export function updateProjectArticleTitle(project: MediaProject, draftTitle: string): MediaProject {
+  const activeArticle = getActiveArticle(project)
+  if (!activeArticle) return project
+  const title = draftTitle.trim()
+  if (!title) throw new Error('記事タイトルを入力してください。')
+
+  const nextArticle = { ...project.article, title }
+  const nextArticles = project.articles.map((article) =>
+    article.id === activeArticle.id && article.title !== title ? { ...article, title } : article,
+  )
+  if (sameValue(project.article, nextArticle) && sameValue(project.articles, nextArticles))
+    return project
+
+  return {
+    ...project,
+    articles: nextArticles,
+    article: nextArticle,
+    updatedAt: new Date().toISOString(),
+  }
+}
+
 export function updateProjectArticleSummary(
   project: MediaProject,
   summary: ArticleSummary,
 ): MediaProject {
-  const title = project.article?.title?.trim() || project.source.name.replace(/\.[^.]+$/, '')
+  const activeArticle = getActiveArticle(project)
+  const title =
+    activeArticle?.title.trim() ||
+    project.article?.title?.trim() ||
+    project.source.name.replace(/\.[^.]+$/, '')
   const nextArticle = { ...project.article, title, summary }
   if (sameValue(project.article, nextArticle)) return project
   return {

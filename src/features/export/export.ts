@@ -3,7 +3,12 @@ import { appLocalDataDir, dirname, join } from '@tauri-apps/api/path'
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { copyFile, ensureDirectory, writeTextFile } from '../../lib/tauri/filesystem'
 import { hasCurrentArticleSummary } from '../article/article'
-import { getActiveMediaSource, type ArticleSummary, type MediaProject } from '../../types/project'
+import {
+  getActiveArticle,
+  getActiveMediaSource,
+  type ArticleSummary,
+  type MediaProject,
+} from '../../types/project'
 import { getActiveArticleDuration } from '../../lib/project/articleSource'
 import { renderHtml, renderMarkdown, renderTxt } from './renderers'
 
@@ -65,7 +70,11 @@ const EXPORT_RENDERERS: Record<ExportFormat, (document: ExportDocument) => strin
 }
 
 function defaultArticleTitle(project: MediaProject) {
-  return project.article?.title?.trim() || project.source.name.replace(/\.[^.]+$/, '')
+  return (
+    getActiveArticle(project)?.title.trim() ||
+    project.article?.title?.trim() ||
+    project.source.name.replace(/\.[^.]+$/, '')
+  )
 }
 
 function imageFilename(index: number) {

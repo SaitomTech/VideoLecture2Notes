@@ -1,9 +1,9 @@
 import { ArrowRight } from 'lucide-react'
 import { useMemo } from 'react'
 import { AppHeader } from '../../components/AppHeader'
-import { WorkflowBar } from '../../components/WorkflowBar'
+import { ArticleContextRow } from '../../components/ArticleContextRow'
+import { WorkflowPanelHeader } from '../../components/WorkflowPanelHeader'
 import type { WorkflowStep } from '../../lib/workflow'
-import { formatTimestamp } from '../../lib/time'
 import type { CropRegion, MediaProject, PerspectiveCrop, VideoTrimRange } from '../../types/project'
 import { ArticleNavigationBar } from '../article/components/ArticleNavigationBar'
 import { CropSettingsPanel } from '../project/article-creator/CropSettingsPanel'
@@ -20,6 +20,7 @@ type CropTrimPageProps = {
   onHome: () => void
   onBackToProject: () => void
   onOpenArticle: (articleId: string) => void | Promise<void>
+  onSaveTitle: (title: string) => void | Promise<void>
   maxReachedStep: WorkflowStep
   onStepClick: (step: WorkflowStep) => void
 }
@@ -30,6 +31,7 @@ export function CropTrimPage({
   onHome,
   onBackToProject,
   onOpenArticle,
+  onSaveTitle,
   maxReachedStep,
   onStepClick,
 }: CropTrimPageProps) {
@@ -53,6 +55,7 @@ export function CropTrimPage({
       onHome={onHome}
       onBackToProject={onBackToProject}
       onOpenArticle={onOpenArticle}
+      onSaveTitle={onSaveTitle}
       maxReachedStep={maxReachedStep}
       onStepClick={onStepClick}
     />
@@ -67,6 +70,7 @@ function CropTrimEditor({
   onHome,
   onBackToProject,
   onOpenArticle,
+  onSaveTitle,
   maxReachedStep,
   onStepClick,
 }: CropTrimPageProps & {
@@ -91,47 +95,31 @@ function CropTrimEditor({
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[#18211f]">
       <AppHeader onHome={onHome} homeDisabled={editor.busy || editor.isDetecting} />
-      <WorkflowBar
-        activeStep="crop"
-        maxReachedStep={maxReachedStep}
-        onStepClick={onStepClick}
+      <div className="mx-auto flex min-h-[56px] w-[calc(100%-48px)] max-w-[1040px] items-center md:w-[calc(100%-11.6vw)]">
+        <ArticleNavigationBar
+          onBack={onBackToProject}
+          disabled={editor.busy || editor.isDetecting}
+        />
+      </div>
+      <ArticleContextRow
+        project={project}
+        sourceName={video.media.name}
+        onSelect={onOpenArticle}
+        onSaveTitle={onSaveTitle}
         disabled={editor.busy || editor.isDetecting}
-        leadingContent={
-          <ArticleNavigationBar
-            project={project}
-            onBack={onBackToProject}
-            onSelect={onOpenArticle}
-            disabled={editor.busy || editor.isDetecting}
-          />
-        }
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
-          <div className="border-b border-[#d8e1dc] px-5 py-4 md:px-7">
-            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
-              01 / CROP &amp; TRIM
-            </p>
-            <h2 className="mt-1 text-[21px] font-bold tracking-[-0.05em]">範囲を調整</h2>
-            <p className="mt-1 text-xs text-[#71807b]">
-              記事にする時間範囲と、スライドの切り出し領域を設定します。
-            </p>
-          </div>
-          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#d8e1dc] px-5 py-5 md:px-7">
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold text-[#71807b]">記事</p>
-              <h2 className="mt-1 truncate text-[21px] font-bold tracking-[-0.04em]">
-                {article.title}
-              </h2>
-              <p className="mt-1 truncate text-xs text-[#71807b]" title={video.media.name}>
-                {video.media.name}
-              </p>
-            </div>
-            <div className="rounded-[9px] bg-[#edf4ef] px-3 py-2 text-right text-[10px] text-[#1d6b50]">
-              <p className="font-semibold">元動画を参照中</p>
-              <p className="mt-0.5 font-mono">{formatTimestamp(video.media.metadata.durationMs)}</p>
-            </div>
-          </div>
+          <WorkflowPanelHeader
+            activeStep="crop"
+            maxReachedStep={maxReachedStep}
+            onStepClick={onStepClick}
+            disabled={editor.busy || editor.isDetecting}
+            eyebrow="01 / CROP & TRIM"
+            title="範囲を調整"
+            description="記事にする時間範囲と、スライドの切り出し領域を設定します。"
+          />
 
           <div className="grid min-h-0 gap-4 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-0">
             <RangeEditor video={video} editor={editor} />

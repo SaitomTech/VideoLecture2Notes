@@ -13,6 +13,7 @@ import {
   markProjectOpened,
   markProjectExported,
   updateProjectArticleDraft,
+  updateProjectArticleTitle,
   updateProjectArticleSourceSettings,
   updateProjectArticleSummary,
   updateProjectSlideContent,
@@ -329,6 +330,10 @@ function App() {
   const handleSaveArticle = async (draft: ArticleDraft) => {
     await updateCurrentProject((current) => updateProjectArticleDraft(current, draft))
   }
+  const handleSaveArticleTitle = async (title: string) => {
+    const saved = await updateCurrentProject((current) => updateProjectArticleTitle(current, title))
+    if (!saved) throw new Error('記事が選択されていません。')
+  }
   const handleSaveArticleSummary = async (summary: ArticleSummary) => {
     await updateCurrentProject((current) => updateProjectArticleSummary(current, summary))
   }
@@ -354,6 +359,7 @@ function App() {
   const articleProps = {
     maxReachedStep: project.workflow.maxReachedStep,
     onStepClick: handleWorkflowStep,
+    onSaveTitle: handleSaveArticleTitle,
   }
   if (route.step === 'crop')
     return (

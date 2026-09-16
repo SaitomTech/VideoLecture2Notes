@@ -1,7 +1,8 @@
 import { ArrowRight, Check } from 'lucide-react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
-import { WorkflowBar } from '../../components/WorkflowBar'
+import { ArticleContextRow } from '../../components/ArticleContextRow'
+import { WorkflowPanelHeader } from '../../components/WorkflowPanelHeader'
 import type { WorkflowStep } from '../../lib/workflow'
 import type { MediaProject, SlideBoundary } from '../../types/project'
 import { getActiveArticleSourceContext } from '../../lib/project/articleSource'
@@ -19,6 +20,7 @@ type SlideDetectionPageProps = {
   onHome: () => void
   onBackToProject: () => void
   onOpenArticle: (articleId: string) => void | Promise<void>
+  onSaveTitle: (title: string) => void | Promise<void>
   maxReachedStep: WorkflowStep
   onStepClick: (step: WorkflowStep) => void
 }
@@ -30,6 +32,7 @@ export function SlideDetectionPage({
   onHome,
   onBackToProject,
   onOpenArticle,
+  onSaveTitle,
   maxReachedStep,
   onStepClick,
 }: SlideDetectionPageProps) {
@@ -116,46 +119,31 @@ export function SlideDetectionPage({
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
       <AppHeader onHome={onHome} homeDisabled={isRunning || isSavingReview || hasUnsavedReview} />
-      <WorkflowBar
-        activeStep="detect-slides"
-        maxReachedStep={maxReachedStep}
-        onStepClick={onStepClick}
+      <div className="mx-auto flex min-h-[56px] w-[calc(100%-48px)] max-w-[1040px] items-center md:w-[calc(100%-11.6vw)]">
+        <ArticleNavigationBar
+          onBack={onBackToProject}
+          disabled={isRunning || isSavingReview || hasUnsavedReview}
+        />
+      </div>
+      <ArticleContextRow
+        project={project}
+        sourceName={source.name}
+        onSelect={onOpenArticle}
+        onSaveTitle={onSaveTitle}
         disabled={isRunning || isSavingReview || hasUnsavedReview}
-        leadingContent={
-          <ArticleNavigationBar
-            project={project}
-            onBack={onBackToProject}
-            onSelect={onOpenArticle}
-            disabled={isRunning || isSavingReview || hasUnsavedReview}
-          />
-        }
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
-          <div className="border-b border-[#d8e1dc] px-5 py-4 md:px-7">
-            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
-              02 / DETECT SLIDES
-            </p>
-            <h2 className="mt-1 text-[21px] font-bold tracking-[-0.05em]">スライドを検出</h2>
-            <p className="mt-1 text-xs text-[#71807b]">
-              画面の変化を比較して、スライド区間を自動で分けます。
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d8e1dc] px-5 py-3.5">
-            <div className="min-w-0">
-              <p className="truncate text-xs font-semibold text-[#18211f]" title={source.path}>
-                {source.name}
-              </p>
-              <p className="mt-0.5 font-mono text-[10px] text-[#71807b]">
-                {source.metadata.width} × {source.metadata.height}px ·
-                {sourceContext.range.startMs === 0 &&
-                sourceContext.range.endMs === source.metadata.durationMs
-                  ? '元動画'
-                  : `元動画の ${Math.round(sourceContext.range.startMs / 1000)}秒〜${Math.round(sourceContext.range.endMs / 1000)}秒`}
-              </p>
-            </div>
-          </div>
+          <WorkflowPanelHeader
+            activeStep="detect-slides"
+            maxReachedStep={maxReachedStep}
+            onStepClick={onStepClick}
+            disabled={isRunning || isSavingReview || hasUnsavedReview}
+            eyebrow="02 / DETECT SLIDES"
+            title="スライドを検出"
+            description="画面の変化を比較して、スライド区間を自動で分けます。"
+          />
 
           <div className="p-5 md:p-7">
             <SlideDetectionSettingsStatus

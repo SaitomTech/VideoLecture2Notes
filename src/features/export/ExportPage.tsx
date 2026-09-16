@@ -8,7 +8,8 @@ import {
   type SyntheticEvent,
 } from 'react'
 import { AppHeader } from '../../components/AppHeader'
-import { WorkflowBar } from '../../components/WorkflowBar'
+import { ArticleContextRow } from '../../components/ArticleContextRow'
+import { WorkflowPanelHeader } from '../../components/WorkflowPanelHeader'
 import type { WorkflowStep } from '../../lib/workflow'
 import type { MediaProject } from '../../types/project'
 import { ArticleNavigationBar } from '../article/components/ArticleNavigationBar'
@@ -20,6 +21,7 @@ type ExportPageProps = {
   onHome: () => void
   onBackToProject: () => void
   onOpenArticle: (articleId: string) => void | Promise<void>
+  onSaveTitle: (title: string) => void | Promise<void>
   onGenerated: () => void | Promise<void>
   maxReachedStep: WorkflowStep
   onStepClick: (step: WorkflowStep) => void
@@ -43,6 +45,7 @@ export function ExportPage({
   onHome,
   onBackToProject,
   onOpenArticle,
+  onSaveTitle,
   onGenerated,
   maxReachedStep,
   onStepClick,
@@ -156,32 +159,28 @@ export function ExportPage({
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
       <AppHeader onHome={onHome} homeDisabled={isBusy} />
-      <WorkflowBar
-        activeStep="export"
-        maxReachedStep={maxReachedStep}
-        onStepClick={onStepClick}
+      <div className="mx-auto flex min-h-[56px] w-[calc(100%-48px)] max-w-[1040px] items-center md:w-[calc(100%-11.6vw)]">
+        <ArticleNavigationBar onBack={onBackToProject} disabled={isBusy} />
+      </div>
+      <ArticleContextRow
+        project={project}
+        sourceName={project.source.name}
+        onSelect={onOpenArticle}
+        onSaveTitle={onSaveTitle}
         disabled={isBusy}
-        leadingContent={
-          <ArticleNavigationBar
-            project={project}
-            onBack={onBackToProject}
-            onSelect={onOpenArticle}
-            disabled={isBusy}
-          />
-        }
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
-          <div className="border-b border-[#d8e1dc] px-5 py-4 md:px-7">
-            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
-              05 / RESULT
-            </p>
-            <h2 className="mt-1 text-[21px] font-bold tracking-[-0.05em]">書き出し結果</h2>
-            <p className="mt-1 text-xs text-[#71807b]">
-              HTMLの見た目を確認して、必要な形式をダウンロードします。
-            </p>
-          </div>
+          <WorkflowPanelHeader
+            activeStep="export"
+            maxReachedStep={maxReachedStep}
+            onStepClick={onStepClick}
+            disabled={isBusy}
+            eyebrow="05 / RESULT"
+            title="書き出し結果"
+            description="HTMLの見た目を確認して、必要な形式をダウンロードします。"
+          />
           <div className="flex justify-end px-5 py-4 md:px-7">
             <div className="flex flex-wrap items-center justify-end gap-2">
               <button

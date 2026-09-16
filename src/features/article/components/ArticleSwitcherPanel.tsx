@@ -306,7 +306,7 @@ export function ArticleSwitcherPanel({
               記事を切り替える
             </h2>
             <p className="mt-1 text-xs text-[#71807b]">
-              プロジェクト内の記事を動画ごとに表示しています。
+              記事を選ぶと、その記事の作業フローへ移動します。
             </p>
           </div>
           <button
