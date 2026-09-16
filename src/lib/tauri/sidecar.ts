@@ -1,5 +1,5 @@
-import { invoke } from '@tauri-apps/api/core'
 import { Command, type Child } from '@tauri-apps/plugin-shell'
+import { invoke } from '@tauri-apps/api/core'
 
 export type SidecarName =
   | 'binaries/ffmpeg'

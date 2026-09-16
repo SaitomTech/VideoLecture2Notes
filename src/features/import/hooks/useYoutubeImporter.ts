@@ -20,6 +20,14 @@ export function useYoutubeImporter() {
     setError(null)
   }
 
+  const reset = () => {
+    setUrl('')
+    setInfo(null)
+    setStatus('idle')
+    setError(null)
+    setQuality('720p')
+  }
+
   const resolve = async () => {
     setError(null)
     setInfo(null)
@@ -46,6 +54,7 @@ export function useYoutubeImporter() {
     error,
     quality,
     changeUrl,
+    reset,
     resolve,
     setQuality,
   }

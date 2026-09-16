@@ -11,13 +11,11 @@ export type YoutubeVideoInfo = {
   durationMs: number
 }
 
-export type YoutubeDownloadStage = 'downloading' | 'checking' | 'converting' | 'saving'
-
 export type YoutubeDownloadProgress = {
+  stage: 'downloading' | 'checking' | 'converting' | 'saving'
   percent?: number
   speed?: string
   eta?: string
-  stage: YoutubeDownloadStage
   adjustment?: VideoFormatAdjustment
 }
 

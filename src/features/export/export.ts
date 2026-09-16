@@ -3,7 +3,13 @@ import { appLocalDataDir, dirname, join } from '@tauri-apps/api/path'
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { copyFile, ensureDirectory, writeTextFile } from '../../lib/tauri/filesystem'
 import { hasCurrentArticleSummary } from '../article/article'
-import { getActiveMediaSource, type ArticleSummary, type MediaProject } from '../../types/project'
+import {
+  getActiveArticle,
+  getActiveMediaSource,
+  type ArticleSummary,
+  type MediaProject,
+} from '../../types/project'
+import { getActiveArticleDuration } from '../../lib/project/articleSource'
 import { renderHtml, renderMarkdown, renderTxt } from './renderers'
 
 export const EXPORT_OPTIONS = [
@@ -64,7 +70,11 @@ const EXPORT_RENDERERS: Record<ExportFormat, (document: ExportDocument) => strin
 }
 
 function defaultArticleTitle(project: MediaProject) {
-  return project.article?.title?.trim() || project.source.name.replace(/\.[^.]+$/, '')
+  return (
+    getActiveArticle(project)?.title.trim() ||
+    project.article?.title?.trim() ||
+    project.source.name.replace(/\.[^.]+$/, '')
+  )
 }
 
 function imageFilename(index: number) {
@@ -91,7 +101,7 @@ function buildExportDocument(
   return {
     title: defaultArticleTitle(project),
     sourceName: source.name,
-    durationMs: source.metadata.durationMs,
+    durationMs: getActiveArticleDuration(project),
     summary:
       project.article?.summary && hasCurrentArticleSummary(project, project.article.summary.model)
         ? project.article.summary
@@ -110,15 +120,17 @@ function buildExportDocument(
   }
 }
 
-async function getExportDirectory(projectId: string) {
-  return join(await appLocalDataDir(), 'projects', projectId, 'exports')
+async function getExportDirectory(projectId: string, articleId?: string) {
+  return articleId
+    ? join(await appLocalDataDir(), 'projects', projectId, 'articles', articleId, 'exports')
+    : join(await appLocalDataDir(), 'projects', projectId, 'exports')
 }
 
 export async function exportProject(
   project: MediaProject,
   onProgress?: (progress: ExportProgress) => void,
 ): Promise<ExportResult> {
-  const destination = await getExportDirectory(project.id)
+  const destination = await getExportDirectory(project.id, project.activeArticleId)
   const document = buildExportDocument(
     project,
     (_sourceImagePath, index) => `./assets/${imageFilename(index)}`,

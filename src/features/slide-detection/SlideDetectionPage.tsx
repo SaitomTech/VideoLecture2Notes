@@ -1,9 +1,12 @@
-import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
+import { ArrowRight, Check } from 'lucide-react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
-import { WorkflowBar } from '../../components/WorkflowBar'
+import { ArticleContextRow } from '../../components/ArticleContextRow'
+import { WorkflowPanelHeader } from '../../components/WorkflowPanelHeader'
 import type { WorkflowStep } from '../../lib/workflow'
-import { getActiveMediaSource, type MediaProject, type SlideBoundary } from '../../types/project'
+import type { MediaProject, SlideBoundary } from '../../types/project'
+import { getActiveArticleSourceContext } from '../../lib/project/articleSource'
+import { ArticleNavigationBar } from '../article/components/ArticleNavigationBar'
 import { useSlideDetection } from './hooks/useSlideDetection'
 import { buildSlideData } from './detection'
 import { SlideDetectionResultPanel } from './components/SlideDetectionResultPanel'
@@ -12,25 +15,30 @@ import type { SlideDetectionOutput } from './types'
 
 type SlideDetectionPageProps = {
   project: MediaProject
-  onBack: () => void
   onCompleted: (output: SlideDetectionOutput) => void | Promise<void>
   onContinue: () => void
   onHome: () => void
+  onBackToProject: () => void
+  onOpenArticle: (articleId: string) => void | Promise<void>
+  onSaveTitle: (title: string) => void | Promise<void>
   maxReachedStep: WorkflowStep
   onStepClick: (step: WorkflowStep) => void
 }
 
 export function SlideDetectionPage({
   project,
-  onBack,
   onCompleted,
   onContinue,
   onHome,
+  onBackToProject,
+  onOpenArticle,
+  onSaveTitle,
   maxReachedStep,
   onStepClick,
 }: SlideDetectionPageProps) {
-  const source = getActiveMediaSource(project)
-  const durationMs = source.metadata.durationMs
+  const sourceContext = getActiveArticleSourceContext(project)
+  const source = sourceContext.source
+  const durationMs = sourceContext.range.endMs - sourceContext.range.startMs
   const [reviewBoundaries, setReviewBoundaries] = useState<SlideBoundary[] | null>(
     () => project.slideDetection?.boundaries ?? null,
   )
@@ -111,46 +119,31 @@ export function SlideDetectionPage({
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
       <AppHeader onHome={onHome} homeDisabled={isRunning || isSavingReview || hasUnsavedReview} />
-      <WorkflowBar
-        activeStep="detect-slides"
-        maxReachedStep={maxReachedStep}
-        onStepClick={onStepClick}
+      <div className="mx-auto flex min-h-[56px] w-[calc(100%-48px)] max-w-[1040px] items-center md:w-[calc(100%-11.6vw)]">
+        <ArticleNavigationBar
+          onBack={onBackToProject}
+          disabled={isRunning || isSavingReview || hasUnsavedReview}
+        />
+      </div>
+      <ArticleContextRow
+        project={project}
+        sourceName={source.name}
+        onSelect={onOpenArticle}
+        onSaveTitle={onSaveTitle}
         disabled={isRunning || isSavingReview || hasUnsavedReview}
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
-              03 / DETECT SLIDES
-            </p>
-            <h1 className="mt-1 text-[27px] font-bold tracking-[-0.06em]">スライドを検出</h1>
-            <p className="mt-1 text-xs text-[#71807b]">
-              画面の変化を比較して、スライド区間を自動で分けます。
-            </p>
-          </div>
-          <button
-            className="inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-[#71807b] transition hover:bg-[#e2eee8] hover:text-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30"
-            type="button"
-            onClick={onBack}
-          >
-            <ArrowLeft size={15} strokeWidth={1.8} />
-            範囲を調整
-          </button>
-        </div>
-
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d8e1dc] px-5 py-3.5">
-            <div className="min-w-0">
-              <p className="truncate text-xs font-semibold text-[#18211f]" title={source.path}>
-                {source.name}
-              </p>
-              <p className="mt-0.5 font-mono text-[10px] text-[#71807b]">
-                Crop {project.crop.x}, {project.crop.y} · {project.crop.width} ×{' '}
-                {project.crop.height}px
-              </p>
-            </div>
-          </div>
+          <WorkflowPanelHeader
+            activeStep="detect-slides"
+            maxReachedStep={maxReachedStep}
+            onStepClick={onStepClick}
+            disabled={isRunning || isSavingReview || hasUnsavedReview}
+            eyebrow="02 / DETECT SLIDES"
+            title="スライドを検出"
+            description="画面の変化を比較して、スライド区間を自動で分けます。"
+          />
 
           <div className="p-5 md:p-7">
             <SlideDetectionSettingsStatus
@@ -172,6 +165,8 @@ export function SlideDetectionPage({
                 boundaries={boundaries}
                 slides={slides}
                 onChange={updateReviewBoundaries}
+                durationMs={durationMs}
+                timeOffsetMs={sourceContext.range.startMs}
               />
             )}
           </div>

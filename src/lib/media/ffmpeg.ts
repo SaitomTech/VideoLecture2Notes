@@ -8,6 +8,32 @@ export function runFfmpeg(args: string[]) {
   return executeSidecar('binaries/ffmpeg', args)
 }
 
+export async function extractVideoThumbnail(path: string, outputPath: string, timestampMs = 0) {
+  const seekArgs = timestampMs > 0 ? ['-ss', String(timestampMs / 1000)] : []
+  const output = await executeSidecar('binaries/ffmpeg', [
+    '-hide_banner',
+    '-v',
+    'error',
+    ...seekArgs,
+    '-i',
+    path,
+    '-frames:v',
+    '1',
+    '-vf',
+    'scale=480:-2:force_original_aspect_ratio=decrease',
+    '-q:v',
+    '4',
+    '-y',
+    outputPath,
+  ])
+  if (output.code !== 0) {
+    throw new Error(
+      output.stderr.trim() || `動画サムネイルの生成に失敗しました (code ${output.code})`,
+    )
+  }
+  return outputPath
+}
+
 export type FrameHash = {
   timestampMs: number
   hash: string
@@ -20,6 +46,8 @@ type SampleVideoFramesInput = {
   perspectiveCrop?: PerspectiveCrop
   metadata: Pick<MediaMetadata, 'width' | 'height'>
   sampleIntervalMs: number
+  startMs?: number
+  endMs?: number
 }
 
 type RepresentativeFrameInput = {
@@ -42,6 +70,8 @@ type CropDetectionFrameInput = {
 type ExtractAudioInput = {
   path: string
   outputPath: string
+  startMs?: number
+  endMs?: number
   signal?: AbortSignal
 }
 
@@ -58,12 +88,16 @@ type TrimVideoInput = {
   outputPath: string
   startMs: number
   endMs: number
+  crop?: CropRegion
+  perspectiveCrop?: PerspectiveCrop
+  metadata?: Pick<MediaMetadata, 'width' | 'height'>
   signal?: AbortSignal
 }
 
-type BrowserCompatibleVideoInput = {
+type ConvertVideoForWebViewInput = {
   path: string
   outputPath: string
+  adjustment: VideoFormatAdjustment
   signal?: AbortSignal
 }
 
@@ -71,8 +105,12 @@ function outputText(value: string | Uint8Array) {
   return typeof value === 'string' ? value : new TextDecoder().decode(value)
 }
 
+function filterNumber(value: number) {
+  return Number.isFinite(value) ? value.toFixed(4) : '0'
+}
+
 function fileExtension(path: string) {
-  return path.split(/[\\/\\\\]/).pop()?.split('.').pop()?.toLowerCase()
+  return path.split(/[\\/]/).pop()?.split('.').pop()?.toLowerCase()
 }
 
 function hasMp4Container(formatName?: string) {
@@ -88,61 +126,6 @@ export function getWebViewFormatAdjustment(
     video: metadata.videoCodec !== 'h264' || metadata.videoPixelFormat !== 'yuv420p',
     audio: metadata.audioCodec !== 'aac',
   }
-}
-
-type ConvertVideoForWebViewInput = {
-  path: string
-  outputPath: string
-  adjustment: VideoFormatAdjustment
-  signal?: AbortSignal
-}
-
-/** Converts only the tracks that are outside the WebView import format. */
-export async function convertVideoForWebView({
-  path,
-  outputPath,
-  adjustment,
-  signal,
-}: ConvertVideoForWebViewInput) {
-  const videoArguments = adjustment.video
-    ? ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p']
-    : ['-c:v', 'copy']
-  const audioArguments = adjustment.audio ? ['-c:a', 'aac', '-b:a', '160k'] : ['-c:a', 'copy']
-
-  const output = await executeSidecar(
-    'binaries/ffmpeg',
-    [
-      '-hide_banner',
-      '-v',
-      'error',
-      '-i',
-      path,
-      '-map',
-      '0:v:0',
-      '-map',
-      '0:a:0',
-      ...videoArguments,
-      ...audioArguments,
-      '-sn',
-      '-dn',
-      '-movflags',
-      '+faststart',
-      '-y',
-      outputPath,
-    ],
-    { signal },
-  )
-
-  if (output.code !== 0) {
-    const detail = output.stderr.trim()
-    throw new Error(detail || `動画をWebView対応形式へ変換できませんでした (code ${output.code})`)
-  }
-
-  return outputPath
-}
-
-function filterNumber(value: number) {
-  return Number.isFinite(value) ? value.toFixed(4) : '0'
 }
 
 function perspectiveOutputSize(perspectiveCrop: PerspectiveCrop, outputWidth = 1280) {
@@ -197,6 +180,8 @@ export async function sampleVideoFrames({
   perspectiveCrop,
   metadata,
   sampleIntervalMs,
+  startMs = 0,
+  endMs,
 }: SampleVideoFramesInput): Promise<FrameHash[]> {
   const frameWidth = 9
   const frameHeight = 8
@@ -204,12 +189,16 @@ export async function sampleVideoFrames({
   const fps = 1000 / sampleIntervalMs
   if (!Number.isFinite(fps) || fps <= 0) throw new Error('サンプリング間隔が不正です')
 
+  const durationSeconds =
+    endMs === undefined ? undefined : Math.max(0.001, (endMs - Math.max(0, startMs)) / 1000)
   const output = await executeSidecarRaw('binaries/ffmpeg', [
     '-hide_banner',
     '-v',
     'error',
+    ...(startMs > 0 ? ['-ss', String(startMs / 1000)] : []),
     '-i',
     path,
+    ...(durationSeconds ? ['-t', String(durationSeconds)] : []),
     '-an',
     '-sn',
     '-vf',
@@ -335,15 +324,25 @@ export async function extractCropDetectionFrame({
   return outputPath
 }
 
-export async function extractAudio({ path, outputPath, signal }: ExtractAudioInput) {
+export async function extractAudio({
+  path,
+  outputPath,
+  startMs = 0,
+  endMs,
+  signal,
+}: ExtractAudioInput) {
+  const durationSeconds =
+    endMs === undefined ? undefined : Math.max(0.001, (endMs - Math.max(0, startMs)) / 1000)
   const output = await executeSidecar(
     'binaries/ffmpeg',
     [
       '-hide_banner',
       '-v',
       'error',
+      ...(startMs > 0 ? ['-ss', String(startMs / 1000)] : []),
       '-i',
       path,
+      ...(durationSeconds ? ['-t', String(durationSeconds)] : []),
       '-vn',
       '-sn',
       '-dn',
@@ -367,12 +366,18 @@ export async function extractAudio({ path, outputPath, signal }: ExtractAudioInp
   return outputPath
 }
 
-/** Converts a downloaded source into a WebView-compatible H.264/AAC MP4. */
-export async function transcodeVideoForBrowser({
+/** Converts only tracks that are outside the WebView-compatible format. */
+export async function convertVideoForWebView({
   path,
   outputPath,
+  adjustment,
   signal,
-}: BrowserCompatibleVideoInput) {
+}: ConvertVideoForWebViewInput) {
+  const videoArguments = adjustment.video
+    ? ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p']
+    : ['-c:v', 'copy']
+  const audioArguments = adjustment.audio ? ['-c:a', 'aac', '-b:a', '160k'] : ['-c:a', 'copy']
+
   const output = await executeSidecar(
     'binaries/ffmpeg',
     [
@@ -384,19 +389,9 @@ export async function transcodeVideoForBrowser({
       '-map',
       '0:v:0',
       '-map',
-      '0:a:0?',
-      '-c:v',
-      'libx264',
-      '-preset',
-      'veryfast',
-      '-crf',
-      '18',
-      '-pix_fmt',
-      'yuv420p',
-      '-c:a',
-      'aac',
-      '-b:a',
-      '160k',
+      '0:a:0',
+      ...videoArguments,
+      ...audioArguments,
       '-sn',
       '-dn',
       '-movflags',
@@ -409,19 +404,33 @@ export async function transcodeVideoForBrowser({
 
   if (output.code !== 0) {
     const detail = output.stderr.trim()
-    throw new Error(detail || `動画を再生可能な形式へ変換できませんでした (code ${output.code})`)
+    throw new Error(detail || `動画をWebView対応形式へ変換できませんでした (code ${output.code})`)
   }
 
   return outputPath
 }
 
 /** Creates a frame-accurate, browser-friendly MP4 copy for the selected time range. */
-export async function trimVideo({ path, outputPath, startMs, endMs, signal }: TrimVideoInput) {
+export async function trimVideo({
+  path,
+  outputPath,
+  startMs,
+  endMs,
+  crop,
+  perspectiveCrop,
+  metadata,
+  signal,
+}: TrimVideoInput) {
   const startSeconds = Math.max(0, startMs / 1000)
   const durationSeconds = Math.max(0.001, (endMs - startMs) / 1000)
   if (!Number.isFinite(startSeconds) || !Number.isFinite(durationSeconds) || endMs <= startMs) {
     throw new Error('動画のトリミング範囲が不正です')
   }
+
+  const videoFilter =
+    crop && metadata
+      ? `${buildCropVideoFilter({ crop, perspectiveCrop, metadata })}${perspectiveCrop ? '' : ',scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1'}`
+      : undefined
 
   const output = await executeSidecar(
     'binaries/ffmpeg',
@@ -445,6 +454,7 @@ export async function trimVideo({ path, outputPath, startMs, endMs, signal }: Tr
       'veryfast',
       '-crf',
       '18',
+      ...(videoFilter ? ['-vf', videoFilter] : []),
       '-c:a',
       'aac',
       '-b:a',

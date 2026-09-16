@@ -14,8 +14,9 @@ import { ensureWhisperModel } from '../../lib/whisper/modelManager'
 import { runWhisper } from '../../lib/whisper/whisper'
 import { normalizeTranscriptSegments } from '../../lib/pipeline/assignTranscriptToSlides'
 import { buildOpenAiTranscriptionContext } from '../../lib/pipeline/transcriptionContext'
+import { getActiveArticleSourceContext } from '../../lib/project/articleSource'
 import {
-  getActiveMediaSource,
+  requireActiveArticleId,
   type MediaProject,
   type TranscriptionKeywordChunk,
   type TranscriptSegment,
@@ -74,7 +75,8 @@ function throwIfAborted(signal?: AbortSignal) {
 }
 
 function inputFingerprint(project: MediaProject, modelId: TranscriptionModelId, language: string) {
-  const source = getActiveMediaSource(project)
+  const context = getActiveArticleSourceContext(project)
+  const source = context.source
   const metadata = source.metadata
   const ocrContextFingerprint =
     modelId === OPENAI_TRANSCRIBE_MODEL.id
@@ -93,6 +95,10 @@ function inputFingerprint(project: MediaProject, modelId: TranscriptionModelId, 
     metadata.durationMs,
     metadata.width,
     metadata.height,
+    context.range.startMs,
+    context.range.endMs,
+    JSON.stringify(context.crop),
+    JSON.stringify(context.perspectiveCrop ?? null),
     modelId,
     language,
   ].join(':')
@@ -106,16 +112,20 @@ async function prepareAudio(
   signal: AbortSignal | undefined,
   onStage?: (stage: TranscriptionStage) => void,
 ) {
-  const source = getActiveMediaSource(project)
+  const context = getActiveArticleSourceContext(project)
   throwIfAborted(signal)
   onStage?.('extracting-audio')
   const audioError =
     '動画から音声を準備できませんでした。音声トラックを確認して、再試行してください。'
   return withUserFacingError(audioError, async () => {
-    const path = await getAudioAssetPath(project.id)
-    if (!(await fileExists(path))) {
-      await extractAudio({ path: source.path, outputPath: path, signal })
-    }
+    const path = await getAudioAssetPath(project.id, requireActiveArticleId(project))
+    await extractAudio({
+      path: context.source.path,
+      outputPath: path,
+      startMs: context.range.startMs,
+      endMs: context.range.endMs,
+      signal,
+    })
     if (!(await fileExists(path))) throw new UserFacingError(audioError)
     return path
   })
@@ -171,7 +181,8 @@ async function runAppleTranscription({
 }
 
 function createOpenAiAudioRanges(project: MediaProject) {
-  const durationMs = Math.max(1, getActiveMediaSource(project).metadata.durationMs)
+  const context = getActiveArticleSourceContext(project)
+  const durationMs = Math.max(1, context.range.endMs - context.range.startMs)
   const slides = project.slides.toSorted((first, second) => first.startMs - second.startMs)
   if (slides.length === 0) return [{ startMs: 0, endMs: durationMs }]
 
@@ -203,8 +214,8 @@ async function runLocalTranscription({
 }: RunTranscriptionInput & {
   model: Extract<TranscriptionModel, { provider: 'local' }>
 }): Promise<TranscriptionResult> {
-  const source = getActiveMediaSource(project)
   const effectiveLanguage = model.model.languageSupport === 'ja' ? 'ja' : language
+  const context = getActiveArticleSourceContext(project)
   throwIfAborted(signal)
   onStage?.('preparing-model')
   onProgress?.(null)
@@ -227,10 +238,14 @@ async function runLocalTranscription({
   const audioError =
     '動画から音声を準備できませんでした。音声トラックを確認して、再試行してください。'
   const audioPath = await withUserFacingError(audioError, async () => {
-    const path = await getAudioAssetPath(project.id)
-    if (!(await fileExists(path))) {
-      await extractAudio({ path: source.path, outputPath: path, signal })
-    }
+    const path = await getAudioAssetPath(project.id, requireActiveArticleId(project))
+    await extractAudio({
+      path: context.source.path,
+      outputPath: path,
+      startMs: context.range.startMs,
+      endMs: context.range.endMs,
+      signal,
+    })
     if (!(await fileExists(path))) throw new UserFacingError(audioError)
     return path
   })
@@ -243,6 +258,7 @@ async function runLocalTranscription({
     () =>
       runWhisper({
         projectId: project.id,
+        articleId: requireActiveArticleId(project),
         audioPath,
         modelPath,
         language: effectiveLanguage,
@@ -343,7 +359,12 @@ async function prepareOpenAiRange({
   signal?: AbortSignal
 }): Promise<PreparedChunk[]> {
   throwIfAborted(signal)
-  const path = await getTranscriptionAudioChunkPath(project.id, provider.provider, chunkIndex)
+  const path = await getTranscriptionAudioChunkPath(
+    project.id,
+    requireActiveArticleId(project),
+    provider.provider,
+    chunkIndex,
+  )
   const sizeBytes = await provider.prepareChunk(audioPath, path, range)
   if (sizeBytes <= MAX_OPENAI_AUDIO_BYTES) return [{ ...range, path }]
 
@@ -440,7 +461,7 @@ export async function runTranscription(input: RunTranscriptionInput): Promise<Tr
   }
 
   const provider = createOpenAiProvider({ ...input, model })
-  const source = getActiveMediaSource(project)
+  const context = getActiveArticleSourceContext(project)
 
   throwIfAborted(signal)
   onStage?.('preparing-model')
@@ -453,10 +474,14 @@ export async function runTranscription(input: RunTranscriptionInput): Promise<Tr
   const audioError =
     '動画から音声を準備できませんでした。音声トラックを確認して、再試行してください。'
   const audioPath = await withUserFacingError(audioError, async () => {
-    const path = await getAudioAssetPath(project.id)
-    if (!(await fileExists(path))) {
-      await extractAudio({ path: source.path, outputPath: path, signal })
-    }
+    const path = await getAudioAssetPath(project.id, requireActiveArticleId(project))
+    await extractAudio({
+      path: context.source.path,
+      outputPath: path,
+      startMs: context.range.startMs,
+      endMs: context.range.endMs,
+      signal,
+    })
     if (!(await fileExists(path))) throw new UserFacingError(audioError)
     return path
   })

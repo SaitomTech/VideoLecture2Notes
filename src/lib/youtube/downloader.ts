@@ -31,26 +31,6 @@ function parseProgress(chunk: string): YoutubeDownloadProgress | null {
   }
 }
 
-function printedOutputPath(stdout: string, sourceDirectory: string) {
-  const line = stdout
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .reverse()
-    .find((line) => line.startsWith(RESULT_PREFIX))
-  if (!line) return undefined
-
-  let outputPath: unknown
-  try {
-    outputPath = JSON.parse(line.slice(RESULT_PREFIX.length))
-  } catch {
-    return undefined
-  }
-
-  return typeof outputPath === 'string' && outputPath.startsWith(`${sourceDirectory}/source.`)
-    ? outputPath
-    : undefined
-}
-
 function safeSourceName(title: string, extension: VideoExtension, videoId: string) {
   const printableTitle = Array.from(title)
     .filter((character) => character >= ' ' && character !== '\u007f')
@@ -76,6 +56,26 @@ function formatForQuality(quality: YoutubeDownloadInput['quality']) {
     `bv${height}+ba`,
     `b${height}`,
   ].join('/')
+}
+
+function printedOutputPath(stdout: string, sourceDirectory: string) {
+  const line = stdout
+    .split(/\r?\n/)
+    .map((value) => value.trim())
+    .reverse()
+    .find((value) => value.startsWith(RESULT_PREFIX))
+  if (!line) return undefined
+
+  let outputPath: unknown
+  try {
+    outputPath = JSON.parse(line.slice(RESULT_PREFIX.length))
+  } catch {
+    return undefined
+  }
+
+  return typeof outputPath === 'string' && outputPath.startsWith(`${sourceDirectory}/source.`)
+    ? outputPath
+    : undefined
 }
 
 function hasFormatAdjustment(adjustment: VideoFormatAdjustment) {
@@ -154,10 +154,7 @@ export async function downloadYoutubeVideo({
 
   if (hasFormatAdjustment(adjustment)) {
     const compatiblePath = await join(sourceDirectory, 'source.compatible.mp4')
-    onProgress?.({
-      stage: 'converting',
-      adjustment,
-    })
+    onProgress?.({ stage: 'converting', adjustment })
     await convertVideoForWebView({
       path: outputPath,
       outputPath: compatiblePath,

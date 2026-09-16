@@ -24,6 +24,7 @@ type WhisperJson = {
 
 type RunWhisperInput = {
   projectId: string
+  articleId: string
   audioPath: string
   modelPath: string
   language: string
@@ -76,13 +77,14 @@ function createProgressParser(onProgress?: (progress: number) => void) {
 
 export async function runWhisper({
   projectId,
+  articleId,
   audioPath,
   modelPath,
   language,
   onProgress,
   signal,
 }: RunWhisperInput) {
-  const outputPath = await getRawTranscriptAssetPath(projectId)
+  const outputPath = await getRawTranscriptAssetPath(projectId, articleId)
   const parseProgress = createProgressParser(onProgress)
   const output = await executeSidecarStreaming(
     'binaries/whisper-cli',

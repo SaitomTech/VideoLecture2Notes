@@ -1,160 +1,261 @@
-import type { SelectedVideo } from '../../features/import/types'
 import {
   assignTranscriptToSlides,
   normalizeTranscriptSegments,
 } from '../pipeline/assignTranscriptToSlides'
 import {
   PROJECT_VERSION,
+  getActiveArticle,
+  type Article,
   type ArticleDraft,
   type ArticleSummary,
   type ContentProcessingResult,
   type CropRegion,
-  type MediaMetadata,
   type MediaProject,
   type MediaSource,
   type PerspectiveCrop,
+  type ProjectSettings,
   type ProjectStep,
+  type ProjectVideo,
   type SlideData,
   type SlideDetectionResult,
   type SlideOcrResult,
   type SlideResultEdits,
   type TranscriptionResult,
-  type VideoTrim,
+  type VideoTrimRange,
 } from '../../types/project'
+import { getFurthestWorkflowStep, getWorkflowStepIndex } from '../workflow'
+import { normalizeTrimRange } from './videoRange'
+import { normalizeArticleCrop } from './articleSource'
 
-const DEFAULT_SETTINGS = {
-  slideDetection: {
-    sampleIntervalMs: 500,
-    threshold: 12,
-  },
+export const DEFAULT_SETTINGS: ProjectSettings = {
+  slideDetection: { sampleIntervalMs: 500, threshold: 12 },
   transcription: true,
   ocr: true,
   correction: true,
   articleFormatting: true,
 }
 
-export function createMediaProject(
-  video: SelectedVideo,
-  metadata: MediaMetadata,
-  projectId = crypto.randomUUID(),
-): MediaProject {
-  const now = new Date().toISOString()
+function sameValue(first: unknown, second: unknown) {
+  return JSON.stringify(first) === JSON.stringify(second)
+}
 
+function sameSlideDetection(first: SlideDetectionResult | undefined, second: SlideDetectionResult) {
+  if (!first) return false
+  const withoutTimestamps = (result: SlideDetectionResult) => {
+    return {
+      sampleIntervalMs: result.sampleIntervalMs,
+      threshold: result.threshold,
+      framesAnalyzed: result.framesAnalyzed,
+      boundaries: result.boundaries,
+    }
+  }
+  return sameValue(withoutTimestamps(first), withoutTimestamps(second))
+}
+
+function sameSlideStructure(first: SlideData[], second: SlideData[]) {
+  return sameValue(
+    first.map(({ id, index, startMs, endMs, detection }) => ({
+      id,
+      index,
+      startMs,
+      endMs,
+      detection,
+    })),
+    second.map(({ id, index, startMs, endMs, detection }) => ({
+      id,
+      index,
+      startMs,
+      endMs,
+      detection,
+    })),
+  )
+}
+
+function articleToWorkspace(project: MediaProject, article: Article): MediaProject {
   return {
-    version: PROJECT_VERSION,
-    id: projectId,
-    source: {
-      path: video.path,
-      name: video.name,
-      extension: video.extension,
-      sizeBytes: video.sizeBytes,
-      metadata,
-      origin: video.origin ?? { kind: 'local-file' },
-    },
-    crop: {
-      x: 0,
-      y: 0,
-      width: metadata.width,
-      height: metadata.height,
-    },
-    settings: DEFAULT_SETTINGS,
-    slides: [],
-    article: {
-      title: video.name.replace(/\.[^.]+$/, ''),
-    },
-    workflow: {
-      lastVisitedStep: 'crop',
-      lastOpenedAt: now,
-    },
-    createdAt: now,
-    updatedAt: now,
+    ...project,
+    activeArticleId: article.id,
+    source: article.inputMedia,
+    sourceRange: article.sourceRange,
+    crop: article.crop,
+    perspectiveCrop: article.perspectiveCrop,
+    settings: article.settings,
+    slides: article.slides,
+    slideDetection: article.slideDetection,
+    transcription: article.transcription,
+    article: article.article,
+    workflow: article.workflow,
   }
 }
 
-export function updateProjectWorkflow(
+function workflowWithReachableStep(
   project: MediaProject,
-  step: ProjectStep,
-  options: { cropConfirmed?: boolean } = {},
-): MediaProject {
-  const now = new Date().toISOString()
+  maxReachedStep: ProjectStep,
+  lastVisitedStep = project.workflow.lastVisitedStep,
+) {
+  const lastVisitedIndex = getWorkflowStepIndex(lastVisitedStep)
+  const maxReachedIndex = getWorkflowStepIndex(maxReachedStep)
+  return {
+    ...project.workflow,
+    lastVisitedStep: lastVisitedIndex > maxReachedIndex ? maxReachedStep : lastVisitedStep,
+    maxReachedStep,
+  }
+}
 
+export function activateArticle(project: MediaProject, articleId: string): MediaProject {
+  const article = project.articles.find((candidate) => candidate.id === articleId)
+  if (!article) throw new Error('記事が見つかりません。')
+  return articleToWorkspace(project, article)
+}
+
+/** Copies the transient workspace fields back into the active Article before persistence. */
+export function syncActiveArticle(project: MediaProject): MediaProject {
+  const article = getActiveArticle(project)
+  if (!article) return project
+  const nextTitle = article.title.trim() || project.article?.title?.trim() || '無題の記事'
+  const nextArticle: Article = {
+    ...article,
+    title: nextTitle,
+    settings: project.settings,
+    slides: project.slides,
+    slideDetection: project.slideDetection,
+    transcription: project.transcription,
+    article: project.article,
+    sourceRange: project.sourceRange ?? article.sourceRange,
+    crop: project.crop,
+    perspectiveCrop: project.perspectiveCrop,
+    workflow: project.workflow,
+    updatedAt: project.updatedAt,
+  }
+  return {
+    ...project,
+    articles: project.articles.map((candidate) =>
+      candidate.id === article.id ? nextArticle : candidate,
+    ),
+  }
+}
+
+export function toPersistedProject(project: MediaProject) {
+  return {
+    version: PROJECT_VERSION,
+    id: project.id,
+    title: project.title,
+    videos: project.videos,
+    articles: project.articles,
+    ...(project.activeArticleId ? { activeArticleId: project.activeArticleId } : {}),
+    createdAt: project.createdAt,
+    updatedAt: project.updatedAt,
+  }
+}
+
+export function createEmptyProject(title: string, projectId = crypto.randomUUID()): MediaProject {
+  const now = new Date().toISOString()
+  const placeholder: MediaSource = {
+    path: '',
+    name: '',
+    extension: 'mp4',
+    metadata: { path: '', durationMs: 0, width: 1, height: 1 },
+    origin: { kind: 'local-file' },
+  }
+  return {
+    version: PROJECT_VERSION,
+    id: projectId,
+    title: title.trim() || '無題のプロジェクト',
+    videos: [],
+    articles: [],
+    createdAt: now,
+    updatedAt: now,
+    source: placeholder,
+    settings: DEFAULT_SETTINGS,
+    slides: [],
+    workflow: {
+      lastVisitedStep: 'detect-slides',
+      maxReachedStep: 'detect-slides',
+      lastOpenedAt: now,
+    },
+  }
+}
+
+/** Save the article-local range/crop selection and invalidate downstream outputs. */
+export function updateProjectArticleSourceSettings(
+  project: MediaProject,
+  range: VideoTrimRange,
+  crop: CropRegion,
+  perspectiveCrop?: PerspectiveCrop,
+): MediaProject {
+  const article = getActiveArticle(project)
+  if (!article) return project
+  const sourceVideo = article.sourceVideoId
+    ? project.videos.find((video) => video.id === article.sourceVideoId)
+    : undefined
+  const duration = sourceVideo?.media.metadata.durationMs ?? project.source.metadata.durationMs
+  const sourceMetadata = sourceVideo?.media.metadata ?? project.source.metadata
+  const nextRange = normalizeTrimRange(range, duration)
+  const nextCrop = normalizeArticleCrop(crop, sourceMetadata)
+  const now = new Date().toISOString()
+  const nextArticle: Article = {
+    ...article,
+    sourceRange: nextRange,
+    crop: nextCrop,
+    ...(perspectiveCrop ? { perspectiveCrop } : { perspectiveCrop: undefined }),
+    slides: [],
+    slideDetection: undefined,
+    transcription: undefined,
+    article: undefined,
+    workflow: {
+      ...article.workflow,
+      lastVisitedStep: 'detect-slides',
+      maxReachedStep: 'detect-slides',
+      lastOpenedAt: now,
+    },
+    updatedAt: now,
+  }
+  return articleToWorkspace(
+    {
+      ...project,
+      articles: project.articles.map((candidate) =>
+        candidate.id === article.id ? nextArticle : candidate,
+      ),
+      updatedAt: now,
+    },
+    nextArticle,
+  )
+}
+
+export function updateProjectWorkflow(project: MediaProject, step: ProjectStep): MediaProject {
   return {
     ...project,
     workflow: {
       ...project.workflow,
       lastVisitedStep: step,
-      ...(options.cropConfirmed ? { cropConfirmedAt: now } : {}),
+      maxReachedStep: getFurthestWorkflowStep(project.workflow.maxReachedStep, step),
     },
     updatedAt: project.updatedAt,
   }
 }
 
 export function markProjectOpened(project: MediaProject, step: ProjectStep): MediaProject {
-  const now = new Date().toISOString()
-
   return {
     ...project,
     workflow: {
       ...project.workflow,
       lastVisitedStep: step,
-      lastOpenedAt: now,
+      lastOpenedAt: new Date().toISOString(),
     },
-    updatedAt: project.updatedAt,
   }
 }
 
-export function updateProjectSource(project: MediaProject, source: MediaSource): MediaProject {
-  return {
-    ...project,
-    source,
-    updatedAt: new Date().toISOString(),
-  }
-}
-
-export function updateProjectCropAndTrim(
-  project: MediaProject,
-  crop: CropRegion,
-  trim?: VideoTrim,
-  perspectiveCrop?: PerspectiveCrop,
-): MediaProject {
-  const previousTrim = project.trim
-  const trimChanged =
-    previousTrim?.startMs !== trim?.startMs ||
-    previousTrim?.endMs !== trim?.endMs ||
-    previousTrim?.source.path !== trim?.source.path
-  const cropChanged =
-    project.crop.x !== crop.x ||
-    project.crop.y !== crop.y ||
-    project.crop.width !== crop.width ||
-    project.crop.height !== crop.height
-  const perspectiveChanged =
-    JSON.stringify(project.perspectiveCrop) !== JSON.stringify(perspectiveCrop)
-  const mediaChanged = trimChanged || cropChanged || perspectiveChanged
+export function markProjectExported(project: MediaProject): MediaProject {
   const now = new Date().toISOString()
-
   return {
     ...project,
-    ...(trim ? { trim } : { trim: undefined }),
-    crop,
-    ...(perspectiveCrop ? { perspectiveCrop } : { perspectiveCrop: undefined }),
     workflow: {
       ...project.workflow,
-      cropConfirmedAt: now,
-      lastVisitedStep: 'detect-slides',
-      lastExportedAt: undefined,
+      lastVisitedStep: 'export',
+      maxReachedStep: 'export',
+      lastExportedAt: now,
+      lastOpenedAt: now,
     },
-    ...(mediaChanged
-      ? {
-          slides: [],
-          slideDetection: undefined,
-        }
-      : {}),
-    ...(trimChanged
-      ? {
-          transcription: undefined,
-          article: project.article ? { title: project.article.title } : undefined,
-        }
-      : {}),
     updatedAt: now,
   }
 }
@@ -167,18 +268,22 @@ export function updateProjectSlideDetection(
   const nextSlides = project.transcription
     ? assignTranscriptToSlides(slides, project.transcription.segments, project.transcription.model)
     : slides
-
+  const nextSettings = {
+    ...project.settings,
+    slideDetection: { sampleIntervalMs: result.sampleIntervalMs, threshold: result.threshold },
+  }
+  if (
+    sameSlideDetection(project.slideDetection, result) &&
+    sameSlideStructure(project.slides, nextSlides) &&
+    sameValue(project.settings, nextSettings)
+  )
+    return project
   return {
     ...project,
     slideDetection: result,
     slides: nextSlides,
-    settings: {
-      ...project.settings,
-      slideDetection: {
-        sampleIntervalMs: result.sampleIntervalMs,
-        threshold: result.threshold,
-      },
-    },
+    settings: nextSettings,
+    workflow: workflowWithReachableStep(project, 'generate-notes', 'detect-slides'),
     updatedAt: new Date().toISOString(),
   }
 }
@@ -187,18 +292,22 @@ export function updateProjectTranscription(
   project: MediaProject,
   transcription: TranscriptionResult,
 ): MediaProject {
-  const normalizedTranscription = {
+  const normalized = {
     ...transcription,
     segments: normalizeTranscriptSegments(transcription.segments),
   }
+  const nextSlides = assignTranscriptToSlides(project.slides, normalized.segments, normalized.model)
+  if (
+    project.transcription?.inputFingerprint === normalized.inputFingerprint &&
+    project.transcription.model === normalized.model &&
+    sameValue(project.transcription.segments, normalized.segments)
+  )
+    return project
   return {
     ...project,
-    transcription: normalizedTranscription,
-    slides: assignTranscriptToSlides(
-      project.slides,
-      normalizedTranscription.segments,
-      normalizedTranscription.model,
-    ),
+    transcription: normalized,
+    slides: nextSlides,
+    workflow: workflowWithReachableStep(project, 'generate-notes', 'generate-notes'),
     updatedAt: new Date().toISOString(),
   }
 }
@@ -208,22 +317,25 @@ export function updateProjectSlideOcr(
   slideId: string,
   ocr: SlideOcrResult,
 ): MediaProject {
+  const currentSlide = project.slides.find((slide) => slide.id === slideId)
+  if (!currentSlide) return project
+  const ocrChanged = !sameValue(currentSlide.ocr, ocr)
+  if (!ocrChanged) return project
+  const nextTranscript = currentSlide.transcript
+    ? { raw: currentSlide.transcript.raw, model: currentSlide.transcript.model }
+    : undefined
   return {
     ...project,
-    slides: project.slides.map((slide) => {
-      if (slide.id !== slideId) return slide
-
-      return {
-        ...slide,
-        ocr,
-        transcript: slide.transcript
-          ? {
-              raw: slide.transcript.raw,
-              model: slide.transcript.model,
-            }
-          : undefined,
-      }
-    }),
+    slides: project.slides.map((slide) =>
+      slide.id === slideId
+        ? {
+            ...slide,
+            ocr,
+            transcript: nextTranscript,
+          }
+        : slide,
+    ),
+    workflow: workflowWithReachableStep(project, 'generate-notes', 'generate-notes'),
     updatedAt: new Date().toISOString(),
   }
 }
@@ -233,28 +345,36 @@ export function updateProjectSlideContent(
   slideId: string,
   result: ContentProcessingResult,
 ): MediaProject {
+  const currentSlide = project.slides.find((slide) => slide.id === slideId)
+  if (!currentSlide?.transcript) return project
+  const nextTranscript = {
+    ...currentSlide.transcript,
+    articleBody: result.article.body,
+    articleModel: result.article.model,
+    articleInputFingerprint: result.article.inputFingerprint,
+    articleProvider: result.article.provider,
+    articleEngineVersion: result.article.engineVersion,
+    articleInputTokens: result.article.usage?.inputTokens,
+    articleOutputTokens: result.article.usage?.outputTokens,
+    articleRequestId: result.article.requestId,
+    articleGeneratedAt: result.article.generatedAt,
+  }
+  if (
+    currentSlide.transcript.articleInputFingerprint === result.article.inputFingerprint &&
+    currentSlide.transcript.articleBody === result.article.body &&
+    currentSlide.transcript.articleModel === result.article.model
+  )
+    return project
   return {
     ...project,
     slides: project.slides.map((slide) => {
       if (slide.id !== slideId || !slide.transcript) return slide
-
       return {
         ...slide,
-        transcript: {
-          raw: slide.transcript.raw,
-          model: slide.transcript.model,
-          articleBody: result.article.body,
-          articleModel: result.article.model,
-          articleInputFingerprint: result.article.inputFingerprint,
-          articleProvider: result.article.provider,
-          articleEngineVersion: result.article.engineVersion,
-          articleInputTokens: result.article.usage?.inputTokens,
-          articleOutputTokens: result.article.usage?.outputTokens,
-          articleRequestId: result.article.requestId,
-          articleGeneratedAt: result.article.generatedAt,
-        },
+        transcript: nextTranscript,
       }
     }),
+    workflow: workflowWithReachableStep(project, 'article-review', 'generate-notes'),
     updatedAt: new Date().toISOString(),
   }
 }
@@ -264,28 +384,26 @@ export function updateProjectSlideResultEdits(
   slideId: string,
   edits: SlideResultEdits,
 ): MediaProject {
+  const currentSlide = project.slides.find((slide) => slide.id === slideId)
+  if (!currentSlide) return project
+  const nextOcr = currentSlide.ocr ? { ...currentSlide.ocr, rawText: edits.ocrText } : undefined
+  const nextTranscript = currentSlide.transcript
+    ? { ...currentSlide.transcript, raw: edits.transcriptRaw, articleBody: edits.articleBody }
+    : undefined
+  if (sameValue(currentSlide.ocr, nextOcr) && sameValue(currentSlide.transcript, nextTranscript))
+    return project
   return {
     ...project,
-    slides: project.slides.map((slide) => {
-      if (slide.id !== slideId) return slide
-
-      return {
-        ...slide,
-        ocr: slide.ocr
-          ? {
-              ...slide.ocr,
-              rawText: edits.ocrText,
-            }
-          : undefined,
-        transcript: slide.transcript
-          ? {
-              ...slide.transcript,
-              raw: edits.transcriptRaw,
-              articleBody: edits.articleBody,
-            }
-          : undefined,
-      }
-    }),
+    slides: project.slides.map((slide) =>
+      slide.id === slideId
+        ? {
+            ...slide,
+            ocr: nextOcr,
+            transcript: nextTranscript,
+          }
+        : slide,
+    ),
+    workflow: workflowWithReachableStep(project, 'generate-notes', 'generate-notes'),
     updatedAt: new Date().toISOString(),
   }
 }
@@ -294,27 +412,66 @@ export function updateProjectArticleDraft(
   project: MediaProject,
   draft: ArticleDraft,
 ): MediaProject {
+  const activeArticle = getActiveArticle(project)
   const title =
-    draft.title.trim() || project.article?.title || project.source.name.replace(/\.[^.]+$/, '')
-  const updatedAt = new Date().toISOString()
+    draft.title.trim() ||
+    activeArticle?.title.trim() ||
+    project.article?.title?.trim() ||
+    project.source.name.replace(/\.[^.]+$/, '')
+  const nextArticle = { ...project.article, title }
+  const nextArticles = activeArticle
+    ? project.articles.map((article) =>
+        article.id === activeArticle.id && article.title !== title
+          ? { ...article, title }
+          : article,
+      )
+    : project.articles
+  const nextSlides = project.slides.map((slide) => {
+    const body = draft.bodies[slide.id]
+    if (body === undefined || !slide.transcript || body === slide.transcript.articleBody)
+      return slide
+    return { ...slide, transcript: { ...slide.transcript, articleBody: body } }
+  })
+  if (
+    sameValue(project.article, nextArticle) &&
+    sameValue(project.articles, nextArticles) &&
+    sameValue(project.slides, nextSlides)
+  )
+    return project
+  return {
+    ...project,
+    articles: nextArticles,
+    article: nextArticle,
+    slides: nextSlides,
+    workflow: workflowWithReachableStep(
+      project,
+      getWorkflowStepIndex(project.workflow.maxReachedStep) >= getWorkflowStepIndex('export')
+        ? 'export'
+        : 'article-review',
+      'article-review',
+    ),
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+export function updateProjectArticleTitle(project: MediaProject, draftTitle: string): MediaProject {
+  const activeArticle = getActiveArticle(project)
+  if (!activeArticle) return project
+  const title = draftTitle.trim()
+  if (!title) throw new Error('記事タイトルを入力してください。')
+
+  const nextArticle = { ...project.article, title }
+  const nextArticles = project.articles.map((article) =>
+    article.id === activeArticle.id && article.title !== title ? { ...article, title } : article,
+  )
+  if (sameValue(project.article, nextArticle) && sameValue(project.articles, nextArticles))
+    return project
 
   return {
     ...project,
-    article: { ...project.article, title },
-    slides: project.slides.map((slide) => {
-      const body = draft.bodies[slide.id]
-      if (body === undefined || !slide.transcript || body === slide.transcript.articleBody)
-        return slide
-
-      return {
-        ...slide,
-        transcript: {
-          ...slide.transcript,
-          articleBody: body,
-        },
-      }
-    }),
-    updatedAt,
+    articles: nextArticles,
+    article: nextArticle,
+    updatedAt: new Date().toISOString(),
   }
 }
 
@@ -322,11 +479,33 @@ export function updateProjectArticleSummary(
   project: MediaProject,
   summary: ArticleSummary,
 ): MediaProject {
-  const title = project.article?.title?.trim() || project.source.name.replace(/\.[^.]+$/, '')
-
+  const activeArticle = getActiveArticle(project)
+  const title =
+    activeArticle?.title.trim() ||
+    project.article?.title?.trim() ||
+    project.source.name.replace(/\.[^.]+$/, '')
+  const nextArticle = { ...project.article, title, summary }
+  if (sameValue(project.article, nextArticle)) return project
   return {
     ...project,
-    article: { ...project.article, title, summary },
+    article: nextArticle,
+    workflow: workflowWithReachableStep(
+      project,
+      getWorkflowStepIndex(project.workflow.maxReachedStep) >= getWorkflowStepIndex('export')
+        ? 'export'
+        : 'article-review',
+      'article-review',
+    ),
     updatedAt: new Date().toISOString(),
   }
+}
+
+export function projectWithArticle(project: MediaProject, article: Article): MediaProject {
+  return articleToWorkspace(project, article)
+}
+
+export function projectWithVideos(project: MediaProject, videos: ProjectVideo[]): MediaProject {
+  const next = { ...project, videos, updatedAt: new Date().toISOString() }
+  const active = getActiveArticle(next)
+  return active ? articleToWorkspace(next, active) : next
 }

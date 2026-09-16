@@ -99,7 +99,10 @@ export function OcrPanel({
     : project.slides.filter(
         (slide) => slide.ocr?.inputFingerprint !== ocrInputFingerprint(slide, modelId),
       )
-  const frameSize = representativeFrameDimensions(project.crop.width, project.crop.height)
+  const frameSize = representativeFrameDimensions(
+    project.source.metadata.width,
+    project.source.metadata.height,
+  )
   const costEstimate =
     model.provider === 'openai'
       ? estimateOpenAiOcrCost({

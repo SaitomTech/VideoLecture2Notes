@@ -1,41 +1,39 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { ArticleReviewPage } from '../features/article/ArticleReviewPage'
-import { CropPage } from '../features/crop/CropPage'
+import { CropTrimPage } from '../features/crop/CropTrimPage'
 import { ExportPage } from '../features/export/ExportPage'
 import { GenerateNotesPage } from '../features/generate-notes/GenerateNotesPage'
-import { ImportPage } from '../features/import/ImportPage'
 import { HomePage } from '../features/home/HomePage'
+import { ProjectDetailPage } from '../features/project/ProjectDetailPage'
 import { SlideDetectionPage } from '../features/slide-detection/SlideDetectionPage'
-import { getWorkflowStepIndex } from '../lib/workflow'
-import type { WorkflowStep } from '../lib/workflow'
-import { createTrimmedVideo, isFullTrimRange, normalizeTrimRange } from '../features/trim/trim'
+import { canNavigateToWorkflowStep, type WorkflowStep } from '../lib/workflow'
 import {
-  createMediaProject,
+  activateArticle,
+  createEmptyProject,
   markProjectOpened,
-  updateProjectSource,
-  updateProjectWorkflow,
+  markProjectExported,
   updateProjectArticleDraft,
+  updateProjectArticleTitle,
+  updateProjectArticleSourceSettings,
   updateProjectArticleSummary,
-  updateProjectCropAndTrim,
   updateProjectSlideContent,
   updateProjectSlideDetection,
   updateProjectSlideOcr,
   updateProjectSlideResultEdits,
   updateProjectTranscription,
+  updateProjectWorkflow,
 } from '../lib/project/project'
+import { addProjectVideo, createArticlesFromRanges } from '../lib/project/projectMedia'
 import {
-  loadProject,
-  loadProjectForResume,
-  saveProject,
   deleteProject,
+  deleteProjectArticle,
+  deleteProjectVideo,
+  loadProject,
+  saveProject,
+  saveProjectWithCreatedAssets,
 } from '../lib/storage/projectStorage'
-import {
-  removeProjectAnalysisAssets,
-  removeProjectSourceAssetDirectory,
-  removeTrimmedVideoAsset,
-} from '../lib/storage/projectAssets'
+import { removeProjectSourceAssetDirectory } from '../lib/storage/projectAssets'
 import { downloadYoutubeVideo } from '../lib/youtube/downloader'
-import { getErrorDetail } from '../lib/errors'
 import type { SelectedVideo } from '../features/import/types'
 import type { YoutubeImportOptions, YoutubeImportRequest } from '../features/import/types'
 import type { YoutubeDownloadInput } from '../lib/youtube/types'
@@ -45,9 +43,9 @@ import type {
   ContentProcessingResult,
   CropRegion,
   MediaProject,
-  MediaSource,
   PerspectiveCrop,
   ProjectStep,
+  ProjectVideo,
   SlideOcrResult,
   SlideResultEdits,
   TranscriptionResult,
@@ -55,357 +53,379 @@ import type {
 } from '../types/project'
 import type { SlideDetectionOutput } from '../features/slide-detection/types'
 
-type AppStep = 'home' | 'import' | ProjectStep
-
-async function relinkProject(projectId: string, source: MediaSource) {
-  const project = await loadProject(projectId)
-  const metadataMatches =
-    project.source.metadata.width === source.metadata.width &&
-    project.source.metadata.height === source.metadata.height &&
-    Math.abs(project.source.metadata.durationMs - source.metadata.durationMs) <= 2_000
-  const sizeMatches =
-    project.source.sizeBytes === undefined ||
-    source.sizeBytes === undefined ||
-    project.source.sizeBytes === source.sizeBytes
-
-  if (!metadataMatches || !sizeMatches) {
-    throw new Error('選択した動画は、保存時の元動画と一致しません。別の動画を選択してください。')
-  }
-
-  await saveProject(
-    updateProjectSource(project, {
-      ...source,
-      origin: source.origin ?? { kind: 'local-file' },
-    }),
-  )
-}
-
-async function removeProject(projectId: string) {
-  await deleteProject(projectId)
-}
+type Route =
+  | { kind: 'home' }
+  | { kind: 'project' }
+  | { kind: 'article'; articleId: string; step: ProjectStep }
 
 function App() {
-  const [step, setStep] = useState<AppStep>('home')
-  const [maxReachedStep, setMaxReachedStep] = useState<WorkflowStep>('import')
+  const [route, setRoute] = useState<Route>({ kind: 'home' })
   const [project, setProject] = useState<MediaProject | null>(null)
   const projectRef = useRef<MediaProject | null>(null)
+  const projectOperationQueue = useRef<Promise<unknown> | null>(null)
+  const navigationRequestRef = useRef(0)
 
-  useEffect(() => {
-    window.scrollTo(0, 0)
-  }, [step])
-
-  const markStepReached = (nextStep: WorkflowStep) => {
-    setMaxReachedStep((currentStep) =>
-      getWorkflowStepIndex(nextStep) > getWorkflowStepIndex(currentStep) ? nextStep : currentStep,
+  const enqueueProjectOperation = <T,>(operation: () => Promise<T>) => {
+    const previous = projectOperationQueue.current ?? Promise.resolve()
+    const next = previous.then(operation, operation)
+    projectOperationQueue.current = next.then(
+      () => undefined,
+      () => undefined,
     )
+    return next
   }
 
-  const handleWorkflowStep = (nextStep: WorkflowStep) => {
-    if (nextStep === step) return
-    if (getWorkflowStepIndex(nextStep) > getWorkflowStepIndex(maxReachedStep)) return
-    if (nextStep !== 'import' && !projectRef.current) return
-
-    setStep(nextStep)
+  const saveProjectState = async (nextProject: MediaProject) => {
+    const synced = await saveProject(nextProject)
+    projectRef.current = synced
+    setProject(synced)
+    return synced
   }
 
-  const persistProject = async (nextProject: MediaProject) => {
-    await saveProject(nextProject)
-    projectRef.current = nextProject
-    setProject(nextProject)
+  const persistProject = (nextProject: MediaProject) =>
+    enqueueProjectOperation(() => saveProjectState(nextProject))
+
+  const updateCurrentProject = (update: (current: MediaProject) => MediaProject) =>
+    enqueueProjectOperation(async () => {
+      const current = projectRef.current
+      if (!current) return null
+      return saveProjectState(update(current))
+    })
+
+  const handleCreateProject = async (title: string) => {
+    const next = createEmptyProject(title)
+    await persistProject(next)
+    setRoute({ kind: 'project' })
   }
 
-  const updateCurrentProject = async (update: (currentProject: MediaProject) => MediaProject) => {
-    const currentProject = projectRef.current
-    if (!currentProject) return null
-
-    const nextProject = update(currentProject)
-    await persistProject(nextProject)
-    return nextProject
+  const handleRenameProject = async (title: string) => {
+    const trimmed = title.trim()
+    if (!trimmed) throw new Error('プロジェクト名を入力してください。')
+    const saved = await updateCurrentProject((current) => ({
+      ...current,
+      title: trimmed,
+      updatedAt: new Date().toISOString(),
+    }))
+    if (!saved) throw new Error('プロジェクトが選択されていません。')
   }
 
-  const handleImportContinue = async (video: SelectedVideo) => {
-    if (!video.metadata) throw new Error('動画メタデータがありません')
-
-    await persistProject(createMediaProject(video, video.metadata))
-    markStepReached('crop')
-    setStep('crop')
+  const handleOpenProject = async (projectId: string) => {
+    const requestId = ++navigationRequestRef.current
+    await enqueueProjectOperation(async () => {
+      const loaded = await loadProject(projectId)
+      const next = markProjectOpened(
+        loaded,
+        loaded.activeArticleId ? loaded.workflow.lastVisitedStep : 'detect-slides',
+      )
+      await saveProjectState(next)
+      if (requestId === navigationRequestRef.current) setRoute({ kind: 'project' })
+    })
   }
 
-  const handleYoutubeImport = async (
+  const handleDeleteProject = async (projectId: string) => {
+    await enqueueProjectOperation(async () => {
+      await deleteProject(projectId)
+      if (projectRef.current?.id === projectId) {
+        projectRef.current = null
+        setProject(null)
+        setRoute({ kind: 'home' })
+      }
+    })
+  }
+
+  const handleAddLocalVideo = async (video: SelectedVideo): Promise<ProjectVideo> => {
+    return enqueueProjectOperation(async () => {
+      const current = projectRef.current
+      if (!current) throw new Error('プロジェクトが選択されていません。')
+      const added = await addProjectVideo(current, video)
+      const saved = await saveProjectWithCreatedAssets(added.project, [
+        { collection: 'videos', assetId: added.video.id },
+      ])
+      projectRef.current = saved
+      setProject(saved)
+      return added.video
+    })
+  }
+
+  const handleAddYoutubeVideo = async (
     request: YoutubeImportRequest,
     options: YoutubeImportOptions,
-  ) => {
-    const projectId = crypto.randomUUID()
-
-    try {
-      let video: SelectedVideo
+  ): Promise<ProjectVideo> => {
+    const temporaryProjectId = crypto.randomUUID()
+    return enqueueProjectOperation(async () => {
       try {
-        video = await downloadYoutubeVideo({
-          projectId,
+        const video = await downloadYoutubeVideo({
+          projectId: temporaryProjectId,
           info: request.info,
           quality: request.quality,
           signal: options.signal,
           onProgress: options.onProgress,
         } satisfies YoutubeDownloadInput)
-      } catch (error) {
-        throw new Error(
-          `動画の取得に失敗しました: ${getErrorDetail(error, '原因を特定できませんでした。')}`,
-        )
+        const current = projectRef.current
+        if (!current) throw new Error('プロジェクトが選択されていません。')
+        const added = await addProjectVideo(current, video)
+        const saved = await saveProjectWithCreatedAssets(added.project, [
+          { collection: 'videos', assetId: added.video.id },
+        ])
+        projectRef.current = saved
+        setProject(saved)
+        return added.video
+      } finally {
+        await removeProjectSourceAssetDirectory(temporaryProjectId).catch(() => undefined)
       }
-      if (!video.metadata) throw new Error('取得した動画のメタデータがありません')
+    })
+  }
 
-      try {
-        await persistProject(createMediaProject(video, video.metadata, projectId))
-      } catch (error) {
-        throw new Error(
-          `プロジェクトの保存に失敗しました: ${getErrorDetail(error, '原因を特定できませんでした。')}`,
-        )
+  const handleCreateArticles = async (
+    videoId: string,
+    ranges: Array<{
+      title: string
+      range: VideoTrimRange
+    }>,
+    crop: CropRegion,
+    perspectiveCrop?: PerspectiveCrop,
+  ) => {
+    return enqueueProjectOperation(async () => {
+      const current = projectRef.current
+      if (!current) throw new Error('プロジェクトが選択されていません。')
+      const created = await createArticlesFromRanges(
+        current,
+        videoId,
+        ranges,
+        crop,
+        perspectiveCrop,
+      )
+      const nextProject = {
+        ...current,
+        articles: [...current.articles, ...created],
+        updatedAt: new Date().toISOString(),
       }
-      return video
+      if (created.length === 0) throw new Error('記事を作成できませんでした。')
+      const saved = await saveProjectWithCreatedAssets(
+        nextProject,
+        created.map((article) => ({ collection: 'articles' as const, assetId: article.id })),
+      )
+      projectRef.current = saved
+      setProject(saved)
+      return created
+    })
+  }
+
+  const handleOpenArticle = async (articleId: string) => {
+    const requestId = ++navigationRequestRef.current
+    await enqueueProjectOperation(async () => {
+      const current = projectRef.current
+      if (!current) return
+      const next = activateArticle(current, articleId)
+      const article = next.articles.find((candidate) => candidate.id === articleId)
+      const opened = markProjectOpened(next, article?.workflow.lastVisitedStep ?? 'detect-slides')
+      await saveProjectState(opened)
+      if (requestId === navigationRequestRef.current)
+        setRoute({
+          kind: 'article',
+          articleId,
+          step: article?.workflow.lastVisitedStep ?? 'detect-slides',
+        })
+    })
+  }
+
+  const handleDeleteArticle = async (articleId: string) => {
+    await enqueueProjectOperation(async () => {
+      const current = projectRef.current
+      if (!current) return
+      const saved = await deleteProjectArticle(current, articleId)
+      projectRef.current = saved
+      setProject(saved)
+    })
+  }
+
+  const handleDeleteVideo = async (videoId: string) => {
+    await enqueueProjectOperation(async () => {
+      const current = projectRef.current
+      if (!current) return
+      const saved = await deleteProjectVideo(current, videoId)
+      projectRef.current = saved
+      setProject(saved)
+    })
+  }
+
+  const handleBackToProject = () => {
+    navigationRequestRef.current += 1
+    setRoute({ kind: 'project' })
+  }
+
+  const handleBackToHome = () => {
+    navigationRequestRef.current += 1
+    setRoute({ kind: 'home' })
+  }
+
+  const handleWorkflowStep = async (nextStep: WorkflowStep) => {
+    try {
+      if (route.kind !== 'article' || !projectRef.current) return
+      if (nextStep === 'import') return
+      if (!canNavigateToWorkflowStep(projectRef.current.workflow.maxReachedStep, nextStep)) return
+      const requestId = ++navigationRequestRef.current
+      const articleId = route.articleId
+      const saved = await updateCurrentProject((current) => markProjectOpened(current, nextStep))
+      if (!saved || requestId !== navigationRequestRef.current) return
+      setRoute({ kind: 'article', articleId, step: nextStep })
     } catch (error) {
-      await removeProjectSourceAssetDirectory(projectId).catch(() => undefined)
-      throw error
+      console.error('ステップを移動できませんでした。', error)
     }
-  }
-
-  const handleContinueYoutubeImport = () => {
-    if (!projectRef.current) return
-    markStepReached('crop')
-    setStep('crop')
-  }
-
-  const handleCreateProject = () => {
-    projectRef.current = null
-    setProject(null)
-    setMaxReachedStep('import')
-    setStep('import')
-  }
-
-  const handleGoHome = () => {
-    setStep('home')
   }
 
   const handleProjectStep = async (nextStep: ProjectStep) => {
-    const currentProject = projectRef.current
-    if (!currentProject) return
-
-    await persistProject(updateProjectWorkflow(currentProject, nextStep))
-    markStepReached(nextStep)
-    setStep(nextStep)
-  }
-
-  const handleOpenProject = async (projectId: string) => {
-    const result = await loadProjectForResume(projectId)
-    if (result.kind === 'source-missing') {
-      throw new Error(
-        '元動画にアクセスできません。保存済みプロジェクトから動画を再指定してください。',
+    try {
+      if (route.kind !== 'article') return
+      const requestId = ++navigationRequestRef.current
+      const articleId = route.articleId
+      if (nextStep === 'export') {
+        const saved = await updateCurrentProject((current) => markProjectOpened(current, nextStep))
+        if (saved && requestId === navigationRequestRef.current)
+          setRoute({ kind: 'article', articleId, step: nextStep })
+        return
+      }
+      const saved = await updateCurrentProject((current) =>
+        updateProjectWorkflow(current, nextStep),
       )
+      if (saved && requestId === navigationRequestRef.current)
+        setRoute({ kind: 'article', articleId, step: nextStep })
+    } catch (error) {
+      console.error('次のステップへ移動できませんでした。', error)
     }
-    if (result.kind === 'invalid') throw new Error(result.message)
-
-    const nextProject = markProjectOpened(result.project, result.step)
-    await persistProject(nextProject)
-    setMaxReachedStep(result.step)
-    setStep(result.step)
   }
 
-  const handleApplyCrop = async ({
-    crop,
-    trim: range,
-    perspectiveCrop,
-  }: {
-    crop: CropRegion
-    trim: VideoTrimRange
-    perspectiveCrop?: PerspectiveCrop
-  }) => {
-    const currentProject = projectRef.current
-    if (!currentProject) return
-
-    const durationMs = currentProject.source.metadata.durationMs
-    const normalizedRange = normalizeTrimRange(range, durationMs)
-    const { startMs, endMs } = normalizedRange
-    const isFullRange = isFullTrimRange(normalizedRange, durationMs)
-    const hasSameRange =
-      currentProject.trim?.startMs === startMs && currentProject.trim?.endMs === endMs
-
-    const nextTrim = isFullRange
-      ? undefined
-      : hasSameRange
-        ? currentProject.trim
-        : await createTrimmedVideo(currentProject, normalizedRange)
-    const trimChanged =
-      currentProject.trim?.startMs !== nextTrim?.startMs ||
-      currentProject.trim?.endMs !== nextTrim?.endMs ||
-      currentProject.trim?.source.path !== nextTrim?.source.path
-    const cropChanged =
-      currentProject.crop.x !== crop.x ||
-      currentProject.crop.y !== crop.y ||
-      currentProject.crop.width !== crop.width ||
-      currentProject.crop.height !== crop.height
-    const perspectiveChanged =
-      JSON.stringify(currentProject.perspectiveCrop) !== JSON.stringify(perspectiveCrop)
-    const mediaChanged = trimChanged || cropChanged || perspectiveChanged
-    const nextProject = updateProjectCropAndTrim(currentProject, crop, nextTrim, perspectiveCrop)
-    await persistProject(nextProject)
-
-    if (trimChanged) {
-      await removeProjectAnalysisAssets(currentProject.id)
-      if (isFullRange) await removeTrimmedVideoAsset(currentProject.id).catch(() => undefined)
-    }
-    if (mediaChanged) setMaxReachedStep('detect-slides')
-    else markStepReached('detect-slides')
-    setStep('detect-slides')
+  const handleExportCompleted = async () => {
+    await updateCurrentProject(markProjectExported)
   }
 
   const handleSlideDetectionCompleted = async (output: SlideDetectionOutput) => {
-    await updateCurrentProject((currentProject) =>
-      updateProjectSlideDetection(currentProject, output.result, output.slides),
+    await updateCurrentProject((current) =>
+      updateProjectSlideDetection(current, output.result, output.slides),
     )
   }
-
+  const handleArticleCropCompleted = async (
+    range: VideoTrimRange,
+    crop: CropRegion,
+    perspectiveCrop?: PerspectiveCrop,
+  ) => {
+    await updateCurrentProject((current) =>
+      updateProjectArticleSourceSettings(current, range, crop, perspectiveCrop),
+    )
+    if (route.kind === 'article')
+      setRoute({ kind: 'article', articleId: route.articleId, step: 'detect-slides' })
+  }
   const handleTranscriptionCompleted = async (transcription: TranscriptionResult) => {
-    await updateCurrentProject((currentProject) =>
-      updateProjectTranscription(currentProject, transcription),
-    )
+    await updateCurrentProject((current) => updateProjectTranscription(current, transcription))
   }
-
   const handleOcrSlideCompleted = async (slideId: string, ocr: SlideOcrResult) => {
-    await updateCurrentProject((currentProject) =>
-      updateProjectSlideOcr(currentProject, slideId, ocr),
-    )
+    await updateCurrentProject((current) => updateProjectSlideOcr(current, slideId, ocr))
   }
-
   const handleContentSlideCompleted = async (slideId: string, result: ContentProcessingResult) => {
-    await updateCurrentProject((currentProject) =>
-      updateProjectSlideContent(currentProject, slideId, result),
-    )
+    await updateCurrentProject((current) => updateProjectSlideContent(current, slideId, result))
   }
-
   const handleSaveSlideResultEdits = async (slideId: string, edits: SlideResultEdits) => {
-    await updateCurrentProject((currentProject) =>
-      updateProjectSlideResultEdits(currentProject, slideId, edits),
-    )
+    await updateCurrentProject((current) => updateProjectSlideResultEdits(current, slideId, edits))
   }
-
   const handleSaveArticle = async (draft: ArticleDraft) => {
-    await updateCurrentProject((currentProject) => updateProjectArticleDraft(currentProject, draft))
+    await updateCurrentProject((current) => updateProjectArticleDraft(current, draft))
   }
-
+  const handleSaveArticleTitle = async (title: string) => {
+    const saved = await updateCurrentProject((current) => updateProjectArticleTitle(current, title))
+    if (!saved) throw new Error('記事が選択されていません。')
+  }
   const handleSaveArticleSummary = async (summary: ArticleSummary) => {
-    await updateCurrentProject((currentProject) =>
-      updateProjectArticleSummary(currentProject, summary),
-    )
+    await updateCurrentProject((current) => updateProjectArticleSummary(current, summary))
   }
 
-  const handleOpenGenerateNotes = () => {
-    if (!project?.slideDetection) return
-    void handleProjectStep('generate-notes')
-  }
-
-  if (step === 'home') {
+  if (route.kind === 'home')
+    return <HomePage onCreateProject={handleCreateProject} onOpenProject={handleOpenProject} />
+  if (!project) return null
+  if (route.kind === 'project')
     return (
-      <HomePage
-        onHome={handleGoHome}
-        onCreateProject={handleCreateProject}
-        onOpenProject={handleOpenProject}
-        onRelinkProject={relinkProject}
-        onDeleteProject={removeProject}
-      />
-    )
-  }
-
-  if (step === 'article-review' && project) {
-    return (
-      <ArticleReviewPage
+      <ProjectDetailPage
         project={project}
-        onBack={() => void handleProjectStep('generate-notes')}
-        onSave={handleSaveArticle}
-        onSaveSummary={handleSaveArticleSummary}
-        onExport={() => void handleProjectStep('export')}
-        onHome={handleGoHome}
-        maxReachedStep={maxReachedStep}
-        onStepClick={handleWorkflowStep}
+        onBack={() => setRoute({ kind: 'home' })}
+        onDeleteProject={() => handleDeleteProject(project.id)}
+        onRenameProject={handleRenameProject}
+        onAddLocalVideo={handleAddLocalVideo}
+        onAddYoutubeVideo={handleAddYoutubeVideo}
+        onOpenArticle={(articleId) => void handleOpenArticle(articleId)}
+        onDeleteArticle={handleDeleteArticle}
+        onDeleteVideo={handleDeleteVideo}
+        onCreateArticles={handleCreateArticles}
       />
     )
+  const articleProps = {
+    maxReachedStep: project.workflow.maxReachedStep,
+    onStepClick: handleWorkflowStep,
+    onSaveTitle: handleSaveArticleTitle,
   }
-
-  if (step === 'export' && project) {
+  if (route.step === 'crop')
     return (
-      <ExportPage
+      <CropTrimPage
+        key={route.articleId}
         project={project}
-        onBack={() => void handleProjectStep('article-review')}
-        onHome={handleGoHome}
-        maxReachedStep={maxReachedStep}
-        onStepClick={handleWorkflowStep}
+        onCompleted={handleArticleCropCompleted}
+        onHome={handleBackToHome}
+        onBackToProject={handleBackToProject}
+        onOpenArticle={handleOpenArticle}
+        {...articleProps}
       />
     )
-  }
-
-  if (step === 'generate-notes' && project) {
+  if (route.step === 'detect-slides')
+    return (
+      <SlideDetectionPage
+        key={route.articleId}
+        project={project}
+        onCompleted={handleSlideDetectionCompleted}
+        onContinue={() => void handleProjectStep('generate-notes')}
+        onHome={handleBackToHome}
+        onBackToProject={handleBackToProject}
+        onOpenArticle={handleOpenArticle}
+        {...articleProps}
+      />
+    )
+  if (route.step === 'generate-notes')
     return (
       <GenerateNotesPage
+        key={route.articleId}
         project={project}
-        onBack={() => setStep('detect-slides')}
         onCompleted={handleTranscriptionCompleted}
         onOcrSlideCompleted={handleOcrSlideCompleted}
         onContentSlideCompleted={handleContentSlideCompleted}
         getCurrentProject={() => projectRef.current}
         onSaveSlideResultEdits={handleSaveSlideResultEdits}
         onOpenArticleReview={() => void handleProjectStep('article-review')}
-        onHome={handleGoHome}
-        maxReachedStep={maxReachedStep}
-        onStepClick={handleWorkflowStep}
+        onHome={handleBackToHome}
+        onBackToProject={handleBackToProject}
+        onOpenArticle={handleOpenArticle}
+        {...articleProps}
       />
     )
-  }
-
-  if (step === 'detect-slides' && project) {
+  if (route.step === 'article-review')
     return (
-      <SlideDetectionPage
+      <ArticleReviewPage
+        key={route.articleId}
         project={project}
-        onBack={() => setStep('crop')}
-        onCompleted={handleSlideDetectionCompleted}
-        onContinue={handleOpenGenerateNotes}
-        onHome={handleGoHome}
-        maxReachedStep={maxReachedStep}
-        onStepClick={handleWorkflowStep}
+        onSave={handleSaveArticle}
+        onSaveSummary={handleSaveArticleSummary}
+        onExport={() => void handleProjectStep('export')}
+        onHome={handleBackToHome}
+        onBackToProject={handleBackToProject}
+        onOpenArticle={handleOpenArticle}
+        {...articleProps}
       />
     )
-  }
-
-  if (step === 'crop' && project) {
-    return (
-      <CropPage
-        project={project}
-        onBack={() => setStep('import')}
-        onApply={handleApplyCrop}
-        onHome={handleGoHome}
-        maxReachedStep={maxReachedStep}
-        onStepClick={handleWorkflowStep}
-      />
-    )
-  }
-
-  const initialVideo = project
-    ? {
-        name: project.source.name,
-        path: project.source.path,
-        extension: project.source.extension,
-        sizeBytes: project.source.sizeBytes,
-        metadata: project.source.metadata,
-        origin: project.source.origin,
-      }
-    : undefined
-
   return (
-    <ImportPage
-      initialVideo={initialVideo}
-      onContinue={handleImportContinue}
-      onContinueYoutube={handleYoutubeImport}
-      onContinueYoutubeImport={handleContinueYoutubeImport}
-      onHome={handleGoHome}
-      maxReachedStep={maxReachedStep}
-      onStepClick={handleWorkflowStep}
+    <ExportPage
+      key={route.articleId}
+      project={project}
+      onHome={handleBackToHome}
+      onBackToProject={handleBackToProject}
+      onOpenArticle={handleOpenArticle}
+      onGenerated={handleExportCompleted}
+      {...articleProps}
     />
   )
 }

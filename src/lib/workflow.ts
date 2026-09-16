@@ -7,14 +7,25 @@ export type WorkflowStep =
   | 'export'
 
 export const WORKFLOW_STEPS: Array<{ id: WorkflowStep; label: string }> = [
-  { id: 'import', label: 'Import' },
-  { id: 'crop', label: 'Crop & Trim' },
-  { id: 'detect-slides', label: 'Detect slides' },
-  { id: 'generate-notes', label: 'Generate notes' },
-  { id: 'article-review', label: 'Article preview' },
-  { id: 'export', label: 'Result' },
+  { id: 'crop', label: '範囲を調整' },
+  { id: 'detect-slides', label: 'スライドを検出' },
+  { id: 'generate-notes', label: 'ノートを生成' },
+  { id: 'article-review', label: '記事プレビュー' },
+  { id: 'export', label: '書き出し' },
 ]
 
 export function getWorkflowStepIndex(step: WorkflowStep) {
   return WORKFLOW_STEPS.findIndex((workflowStep) => workflowStep.id === step)
+}
+
+export function getFurthestWorkflowStep<T extends WorkflowStep>(first: T, second: T): T {
+  return getWorkflowStepIndex(first) >= getWorkflowStepIndex(second) ? first : second
+}
+
+export function isWorkflowStepReached(maxReachedStep: WorkflowStep, step: WorkflowStep) {
+  return getWorkflowStepIndex(step) <= getWorkflowStepIndex(maxReachedStep)
+}
+
+export function canNavigateToWorkflowStep(maxReachedStep: WorkflowStep, step: WorkflowStep) {
+  return step !== 'import' && isWorkflowStepReached(maxReachedStep, step)
 }

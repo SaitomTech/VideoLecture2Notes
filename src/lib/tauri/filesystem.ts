@@ -1,13 +1,12 @@
 import {
   BaseDirectory,
+  copyFile as tauriCopyFile,
   mkdir,
   readDir,
-  readFile,
   readTextFile,
   remove,
   rename,
   stat,
-  writeFile,
   writeTextFile as tauriWriteTextFile,
 } from '@tauri-apps/plugin-fs'
 
@@ -60,6 +59,15 @@ export async function appLocalFileExists(path: string) {
   }
 }
 
+export async function appLocalPathExists(path: string) {
+  try {
+    await stat(path, { baseDir: BaseDirectory.AppLocalData })
+    return true
+  } catch {
+    return false
+  }
+}
+
 export async function renameAppLocalPath(oldPath: string, newPath: string) {
   await rename(oldPath, newPath, {
     oldPathBaseDir: BaseDirectory.AppLocalData,
@@ -93,7 +101,7 @@ export async function ensureDirectory(path: string) {
 }
 
 export async function copyFile(sourcePath: string, destinationPath: string) {
-  await writeFile(destinationPath, await readFile(sourcePath))
+  await tauriCopyFile(sourcePath, destinationPath)
 }
 
 export async function writeTextFile(path: string, contents: string) {

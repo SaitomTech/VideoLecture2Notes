@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "videolecture2notes",
-  "version": "0.17.0",
+  "version": "0.18.0",
   "identifier": "com.saitomtech.videolecture2notes",
   "build": {
     "frontendDist": "../dist",
@@ -13,8 +13,10 @@
     "windows": [
       {
         "title": "Video Lecture to Notes",
-        "width": 800,
-        "height": 600,
+        "width": 1200,
+        "height": 800,
+        "minWidth": 960,
+        "minHeight": 640,
         "resizable": true,
         "fullscreen": false
       }

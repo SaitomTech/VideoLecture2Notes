@@ -22,22 +22,26 @@ export function SlideSegmentList({
   onRemoveBoundary,
 }: SlideSegmentListProps) {
   const slideRefs = useRef<Array<HTMLDivElement | null>>([])
-  const listContainerRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!followPlayback || activeSlideIndex < 0) return
-    const container = listContainerRef.current
+    const list = listRef.current
     const slide = slideRefs.current[activeSlideIndex]
-    if (!container || !slide) return
+    if (!list || !slide) return
 
-    const containerRect = container.getBoundingClientRect()
+    const listRect = list.getBoundingClientRect()
     const slideRect = slide.getBoundingClientRect()
-    const topDelta = slideRect.top - containerRect.top
-    const bottomDelta = slideRect.bottom - containerRect.bottom
-    const scrollDelta = topDelta < 0 ? topDelta : bottomDelta > 0 ? bottomDelta : 0
-
-    if (scrollDelta !== 0) {
-      container.scrollTo({ top: container.scrollTop + scrollDelta, behavior: 'smooth' })
+    if (slideRect.top < listRect.top) {
+      list.scrollTo({
+        top: list.scrollTop + slideRect.top - listRect.top,
+        behavior: 'smooth',
+      })
+    } else if (slideRect.bottom > listRect.bottom) {
+      list.scrollTo({
+        top: list.scrollTop + slideRect.bottom - listRect.bottom,
+        behavior: 'smooth',
+      })
     }
   }, [activeSlideIndex, followPlayback])
 
@@ -50,7 +54,7 @@ export function SlideSegmentList({
       )}
 
       <div
-        ref={listContainerRef}
+        ref={listRef}
         className="max-h-[600px] overflow-y-auto overscroll-contain pr-1 lg:max-h-[min(720px,calc(100svh-260px))]"
       >
         <div className="space-y-3">
