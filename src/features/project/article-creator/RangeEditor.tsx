@@ -88,7 +88,7 @@ export function RangeEditor({
                 ? autoCropProgress
                   ? `検出中 ${Math.round((autoCropProgress.completed / Math.max(autoCropProgress.total, 1)) * 100)}%`
                   : '検出中…'
-                : '四隅を自動検出'}
+                : '自動検出'}
             </button>
             {onOpenCropPreview && (
               <button
