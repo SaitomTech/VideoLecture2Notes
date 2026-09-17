@@ -5,7 +5,7 @@ import { getErrorDetail } from '../lib/errors'
 import { UpdateContext, type UpdateState } from '../lib/updateContext'
 import { downloadAndInstallUpdate } from '../lib/updates'
 
-const STORAGE_KEY = 'videolecture2notes.auto-check-updates'
+const STORAGE_KEY = 'yomlecta.auto-check-updates'
 
 export function UpdateProvider({ children }: { children: ReactNode }) {
   const [update, setUpdate] = useState<Update | null>(null)

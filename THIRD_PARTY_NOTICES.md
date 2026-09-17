@@ -1,6 +1,6 @@
 # Third-party notices
 
-Video Lecture to Notes 0.9.0 の macOS Apple Silicon 配布物で使用する、アプリ本体以外のソフトウェアとモデルを記載します。アプリ本体のコードにはリポジトリ直下の [MIT License](./LICENSE) が適用されますが、ここに記載する外部コンポーネントにはそれぞれのライセンスと追加条件が適用されます。
+Yomlecta 0.9.0 の macOS Apple Silicon 配布物で使用する、アプリ本体以外のソフトウェアとモデルを記載します。アプリ本体のコードにはリポジトリ直下の [MIT License](./LICENSE) が適用されますが、ここに記載する外部コンポーネントにはそれぞれのライセンスと追加条件が適用されます。
 
 このファイルの確認日: 2026-09-08
 
@@ -41,9 +41,9 @@ Video Lecture to Notes 0.9.0 の macOS Apple Silicon 配布物で使用する、
 
 ### アプリ固有のhelper
 
-- `apple-vision-ocr-aarch64-apple-darwin`: Video Lecture to Notes 0.9.0のビルド、ソースは [`src-tauri/vision-ocr/main.swift`](https://github.com/SaitomTech/VideoLecture2Notes/blob/develop/src-tauri/vision-ocr/main.swift)
-- `apple-speech-transcriber-aarch64-apple-darwin`: Video Lecture to Notes 0.9.0のビルド、ソースは [`src-tauri/speech-transcriber/main.swift`](https://github.com/SaitomTech/VideoLecture2Notes/blob/develop/src-tauri/speech-transcriber/main.swift)
-- `apple-foundation-models-aarch64-apple-darwin`: Video Lecture to Notes 0.9.0のビルド、ソースは [`src-tauri/foundation-models/main.swift`](https://github.com/SaitomTech/VideoLecture2Notes/blob/develop/src-tauri/foundation-models/main.swift)
+- `apple-vision-ocr-aarch64-apple-darwin`: Yomlecta 0.9.0のビルド、ソースは [`src-tauri/vision-ocr/main.swift`](https://github.com/SaitomTech/VideoLecture2Notes/blob/develop/src-tauri/vision-ocr/main.swift)
+- `apple-speech-transcriber-aarch64-apple-darwin`: Yomlecta 0.9.0のビルド、ソースは [`src-tauri/speech-transcriber/main.swift`](https://github.com/SaitomTech/VideoLecture2Notes/blob/develop/src-tauri/speech-transcriber/main.swift)
+- `apple-foundation-models-aarch64-apple-darwin`: Yomlecta 0.9.0のビルド、ソースは [`src-tauri/foundation-models/main.swift`](https://github.com/SaitomTech/VideoLecture2Notes/blob/develop/src-tauri/foundation-models/main.swift)
 
 上記はこのリポジトリのSwiftソースからビルドするアプリ固有のコードです。AppleのOS/API自体の条件はAppleの利用規約・SDKライセンスに従います。
 

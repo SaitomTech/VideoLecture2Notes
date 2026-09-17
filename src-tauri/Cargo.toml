@@ -1,5 +1,5 @@
 [package]
-name = "videolecture2notes"
+name = "yomlecta"
 version = "0.18.0"
 description = "A macOS app for turning lecture videos into structured notes"
 authors = ["SaitomTech"]

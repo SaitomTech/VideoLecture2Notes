@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Yomlecta",
   "version": "0.18.0",
-  "identifier": "com.saitomtech.videolecture2notes",
+  "identifier": "com.saitomtech.yomlecta",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
