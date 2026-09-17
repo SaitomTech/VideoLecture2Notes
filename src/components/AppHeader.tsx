@@ -6,6 +6,8 @@ import { LicenseDialog } from './LicenseDialog'
 
 type AppHeaderProps = {
   onHome?: () => void
+  onProjects?: () => void
+  activeNav?: 'home' | 'projects'
   homeDisabled?: boolean
 }
 
@@ -18,7 +20,52 @@ const appBrand = (
   </>
 )
 
-export function AppHeader({ onHome, homeDisabled = false }: AppHeaderProps) {
+function HeaderNavigation({
+  activeNav,
+  onHome,
+  onProjects,
+  disabled,
+}: {
+  activeNav: 'home' | 'projects'
+  onHome?: () => void
+  onProjects?: () => void
+  disabled: boolean
+}) {
+  const linkClass =
+    'px-1 py-2 text-[13px] font-semibold text-[#71807b] transition hover:text-[#1d6b50] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-45'
+  const activeClass =
+    'border-b-2 border-[#1d6b50] px-1 py-2 text-[13px] font-semibold text-[#174d3c]'
+
+  return (
+    <nav className="hidden items-center gap-8 min-[980px]:flex" aria-label="メインナビゲーション">
+      {activeNav === 'home' ? (
+        <span className={activeClass} aria-current="page">
+          ホーム
+        </span>
+      ) : (
+        <button className={linkClass} type="button" onClick={onHome} disabled={!onHome || disabled}>
+          ホーム
+        </button>
+      )}
+      {activeNav === 'projects' ? (
+        <span className={activeClass} aria-current="page">
+          プロジェクト
+        </span>
+      ) : (
+        <button
+          className={linkClass}
+          type="button"
+          onClick={onProjects}
+          disabled={!onProjects || disabled}
+        >
+          プロジェクト
+        </button>
+      )}
+    </nav>
+  )
+}
+
+export function AppHeader({ onHome, onProjects, activeNav, homeDisabled = false }: AppHeaderProps) {
   const updates = useUpdates()
   const { update, phase, progress, autoCheck, setAutoCheck, checkForUpdates, installUpdate } =
     updates
@@ -26,23 +73,34 @@ export function AppHeader({ onHome, homeDisabled = false }: AppHeaderProps) {
   const isUpdateBusy = phase === 'checking' || phase === 'downloading' || phase === 'installing'
   const isInstallingUpdate = phase === 'downloading' || phase === 'installing'
   const updateMessage = getUpdateMessage(updates)
+  const brandContainerClass = 'inline-flex items-center gap-3 rounded-[9px] px-1.5 py-1 text-left'
+
+  const navigationDisabled = homeDisabled || isInstallingUpdate
 
   return (
-    <header className="flex h-[76px] items-center justify-between border-b border-[#d8e1dc]/75 bg-white px-[5.8vw]">
+    <header className="grid h-[76px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-b border-[#d8e1dc]/75 bg-white px-[5.8vw]">
       {onHome ? (
         <button
-          className="inline-flex cursor-pointer items-center gap-3 rounded-[9px] px-1.5 py-1 text-left transition hover:bg-[#e2eee8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-45"
+          className={`${brandContainerClass} cursor-pointer transition hover:bg-[#e2eee8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-45`}
           type="button"
           onClick={onHome}
           disabled={homeDisabled || isInstallingUpdate}
-          aria-label="プロジェクトトップへ戻る"
+          aria-label="ホームへ戻る"
         >
           {appBrand}
         </button>
       ) : (
-        <div className="flex items-center gap-3">{appBrand}</div>
+        <div className={brandContainerClass}>{appBrand}</div>
       )}
-      <div className="flex min-w-0 items-center gap-2">
+      {activeNav && (
+        <HeaderNavigation
+          activeNav={activeNav}
+          onHome={onHome}
+          onProjects={onProjects}
+          disabled={navigationDisabled}
+        />
+      )}
+      <div className="flex min-w-0 items-center justify-self-end gap-2">
         {updateMessage && (
           <span
             className="hidden max-w-[230px] truncate text-[11px] text-[#53615b] sm:inline"

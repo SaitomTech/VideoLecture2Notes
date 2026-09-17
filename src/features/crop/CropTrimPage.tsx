@@ -95,7 +95,11 @@ function CropTrimEditor({
 
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[#18211f]">
-      <AppHeader onHome={onHome} homeDisabled={editor.busy || editor.isDetecting} />
+      <AppHeader
+        activeNav="projects"
+        onHome={onHome}
+        homeDisabled={editor.busy || editor.isDetecting}
+      />
       <div className="mx-auto flex min-h-[56px] w-[calc(100%-48px)] max-w-[1040px] items-center md:w-[calc(100%-11.6vw)]">
         <ArticleNavigationBar
           onBack={onBackToProject}
