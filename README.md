@@ -1,5 +1,3 @@
-# Yomlecta
-
 <p align="center">
   <img src="public/yomlecta-logo.png" alt="Yomlecta" width="420">
 </p>
