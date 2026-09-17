@@ -152,7 +152,12 @@ export function GenerateNotesPage({
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
-        <WorkflowBar activeStep="generate-notes" maxReachedStep={maxReachedStep} onStepClick={onStepClick} disabled={isProcessing} />
+        <WorkflowBar
+          activeStep="generate-notes"
+          maxReachedStep={maxReachedStep}
+          onStepClick={onStepClick}
+          disabled={isProcessing}
+        />
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
           <WorkflowPanelHeader
             eyebrow="03 / TRANSCRIPTION & OCR"
@@ -267,6 +272,7 @@ export function GenerateNotesPage({
 
             <AnalysisResultPreview
               slides={project.slides}
+              videoPath={sourceContext.source.path}
               onEdit={onOpenArticleReview}
               onSaveSlideResultEdits={onSaveSlideResultEdits}
               disabled={isProcessing}

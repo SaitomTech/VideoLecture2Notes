@@ -5,18 +5,20 @@ import {
   FilePenLine,
   Image as ImageIcon,
   ScanText,
-  Sparkles,
+  Video,
   X,
 } from 'lucide-react'
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { SlideThumbnail } from '../../../components/SlideThumbnail'
 import { formatTimestamp } from '../../../lib/time'
+import { useVideoSourceUrl } from '../../../lib/media/useVideoSourceUrl'
 import type { SlideData, SlideResultEdits } from '../../../types/project'
 
 type AnalysisResultPreviewProps = {
   slides: SlideData[]
   onEdit: () => void
   onSaveSlideResultEdits: (slideId: string, edits: SlideResultEdits) => void | Promise<void>
+  videoPath: string
   disabled?: boolean
 }
 
@@ -108,21 +110,85 @@ function ResultPane({
   )
 }
 
-function ImagePane({ slide }: { slide: SlideData }) {
+function SegmentVideoPreview({ slide, videoSrc }: { slide: SlideData; videoSrc: string | null }) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const startTime = Math.max(0, slide.startMs / 1000)
+  const endTime = Math.max(startTime, slide.endMs / 1000)
+  useEffect(() => {
+    if (!videoSrc || !videoRef.current) return
+    videoRef.current.currentTime = startTime
+  }, [startTime, videoSrc])
+
+  return (
+    <div className="mt-3">
+      <div className="overflow-hidden rounded-[9px] border border-[#b7cbc0] bg-[#0b1712]">
+        {videoSrc ? (
+          <video
+            ref={videoRef}
+            className="block aspect-video w-full object-contain"
+            src={videoSrc ?? undefined}
+            playsInline
+            preload="metadata"
+            controls
+            onLoadedMetadata={(event) => {
+              event.currentTarget.currentTime = startTime
+            }}
+            onTimeUpdate={(event) => {
+              const video = event.currentTarget
+              if (video.currentTime >= endTime) {
+                video.pause()
+                video.currentTime = startTime
+                return
+              }
+            }}
+            aria-label={`Slide ${String(slide.index + 1).padStart(2, '0')}の区間動画`}
+          />
+        ) : (
+          <div className="grid aspect-video place-items-center text-[10px] text-[#b7cbc0]">
+            動画を読み込んでいます…
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function SlidePane({ slide }: { slide: SlideData }) {
   return (
     <section
       className="flex min-h-0 flex-col bg-[#fbfcfa]"
-      aria-labelledby={`slide-image-${slide.id}`}
+      aria-labelledby={`slide-${slide.id}-label`}
     >
       <div className="flex shrink-0 items-center gap-2 px-4 pt-3 pb-1">
         <ImageIcon className="text-[#1d6b50]" size={15} strokeWidth={1.8} />
-        <h4 id={`slide-image-${slide.id}`} className="text-xs font-semibold text-[#18211f]">
+        <h4 id={`slide-${slide.id}-label`} className="text-xs font-semibold text-[#18211f]">
           スライド画像
         </h4>
       </div>
       <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto px-5 pt-1 pb-5">
         <div className="w-full max-w-[600px]">
           <SlideThumbnail slide={slide} />
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function VideoPane({ slide, videoSrc }: { slide: SlideData; videoSrc: string | null }) {
+  return (
+    <section
+      className="flex min-h-0 flex-col bg-[#fbfcfa]"
+      aria-labelledby={`video-${slide.id}-label`}
+    >
+      <div className="flex shrink-0 items-center gap-2 px-4 pt-3 pb-1">
+        <Video className="text-[#1d6b50]" size={15} strokeWidth={1.8} />
+        <h4 id={`video-${slide.id}-label`} className="text-xs font-semibold text-[#18211f]">
+          区間動画
+        </h4>
+      </div>
+      <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto px-5 pt-1 pb-5">
+        <div className="w-full max-w-[600px]">
+          <SegmentVideoPreview slide={slide} videoSrc={videoSrc} />
         </div>
       </div>
     </section>
@@ -141,9 +207,11 @@ export function AnalysisResultPreview({
   slides,
   onEdit,
   onSaveSlideResultEdits,
+  videoPath,
   disabled = false,
 }: AnalysisResultPreviewProps) {
   const hasAnyResult = slides.some((slide) => slide.ocr || slide.transcript)
+  const videoSource = useVideoSourceUrl(videoPath)
   const [editingSlideId, setEditingSlideId] = useState<string | null>(null)
   const [draft, setDraft] = useState<SlideResultEdits | null>(null)
   const [savingSlideId, setSavingSlideId] = useState<string | null>(null)
@@ -267,13 +335,13 @@ export function AnalysisResultPreview({
 
                 {isEditing && (
                   <p className="px-4 py-2 text-[10px] text-[#71807b] md:px-5">
-                    OCR・補正前・補正後を修正できます。変更した元データは本文を再生成すると反映されます。
+                    OCR・文字起こし結果を修正できます。変更した元データは本文を再生成すると反映されます。
                   </p>
                 )}
 
                 <div className="grid min-h-[760px] min-w-0 grid-cols-1 md:min-h-[640px] md:grid-cols-2">
                   <div className="border-b border-[#d8e1dc] md:col-start-1 md:row-start-1 md:border-b-2 md:border-b-[#d8e1dc] md:border-r-2 md:border-r-[#d8e1dc]">
-                    <ImagePane slide={slide} />
+                    <SlidePane slide={slide} />
                   </div>
                   <div className="border-b border-[#d8e1dc] md:col-start-2 md:row-start-1 md:border-b-2 md:border-b-[#d8e1dc]">
                     <ResultPane
@@ -290,31 +358,20 @@ export function AnalysisResultPreview({
                     />
                   </div>
                   <div className="border-b border-[#d8e1dc] md:col-start-1 md:row-start-2 md:border-r-2 md:border-r-[#d8e1dc]">
+                    <VideoPane slide={slide} videoSrc={videoSource.src} />
+                  </div>
+                  <div className="md:col-start-2 md:row-start-2">
                     <ResultPane
-                      label="補正前（文字起こし）"
+                      label="文字起こし結果"
                       icon={AudioLines}
                       value={values.transcriptRaw}
                       emptyLabel="この区間に発話はありません。"
-                      placeholder="補正前の文字起こしを入力"
+                      placeholder="文字起こし結果を入力"
                       inputId={`slide-${slide.id}-transcript`}
                       editing={isEditing}
                       disabled={isSaving || disabled}
                       editable={Boolean(slide.transcript)}
                       onChange={(value) => updateDraft('transcriptRaw', value)}
-                    />
-                  </div>
-                  <div className="md:col-start-2 md:row-start-2">
-                    <ResultPane
-                      label="記事本文（補正後）"
-                      icon={Sparkles}
-                      value={values.articleBody}
-                      emptyLabel="本文はまだ生成されていません。"
-                      placeholder="補正後の記事本文を入力"
-                      inputId={`slide-${slide.id}-article`}
-                      editing={isEditing}
-                      disabled={isSaving || disabled}
-                      editable={Boolean(slide.transcript)}
-                      onChange={(value) => updateDraft('articleBody', value)}
                     />
                   </div>
                 </div>
