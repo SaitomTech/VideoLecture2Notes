@@ -11,9 +11,17 @@ import { ArticleSummaryCard } from './components/ArticleSummaryCard'
 import { ArticleSectionEditor } from './components/ArticleSectionEditor'
 import { ArticleNavigationBar } from './components/ArticleNavigationBar'
 import { useArticleSummary } from './hooks/useArticleSummary'
+import {
+  ContentProcessingPanel,
+  ContentProcessingStatus,
+} from '../content-processing/components/ContentProcessingPanel'
+import type { ContentProcessingSlideCompleted } from '../content-processing/contentProcessing'
+import { useContentProcessing } from '../content-processing/hooks/useContentProcessing'
 
 type ArticleReviewPageProps = {
   project: MediaProject
+  onContentSlideCompleted: ContentProcessingSlideCompleted
+  getCurrentProject: () => MediaProject | null
   onSave: (draft: ArticleDraft) => void | Promise<void>
   onSaveSummary: (summary: ArticleSummary) => void | Promise<void>
   onExport: () => void
@@ -29,6 +37,8 @@ type EditingTarget = { type: 'slide'; slideId: string } | null
 
 export function ArticleReviewPage({
   project,
+  onContentSlideCompleted,
+  getCurrentProject,
   onSave,
   onSaveSummary,
   onExport,
@@ -51,6 +61,19 @@ export function ArticleReviewPage({
         .id,
   )
   const summaryGeneration = useArticleSummary(project, summaryModelId, onSaveSummary)
+  const storedTextModelId = project.slides
+    .map((slide) => slide.transcript?.articleModel)
+    .find((modelId): modelId is string => Boolean(modelId))
+  const [textModelId, setTextModelId] = useState<ArticleModelId>(
+    () => getArticleModel(storedTextModelId).id,
+  )
+  const textModel = getArticleModel(textModelId)
+  const processing = useContentProcessing(
+    project,
+    onContentSlideCompleted,
+    textModelId,
+    getCurrentProject,
+  )
   const initialBodies = Object.fromEntries(
     articleSlides.map((slide) => [slide.id, slide.transcript?.articleBody ?? '']),
   )
@@ -64,8 +87,16 @@ export function ArticleReviewPage({
   const editingSlideId = editingTarget?.type === 'slide' ? editingTarget.slideId : null
   const isBodyDirty = editingSlideId !== null && bodyDraft !== (savedBodies[editingSlideId] ?? '')
   const hasUnsavedChanges = isBodyDirty
-  const isBusy = isSaving || summaryGeneration.status === 'running'
+  const isBusy =
+    isSaving || summaryGeneration.status === 'running' || processing.status === 'running'
+  const contentControlsDisabled =
+    isSaving || summaryGeneration.status === 'running' || hasUnsavedChanges
   const canEdit = editingTarget === null && !isBusy
+
+  const handleTextModelChange = (nextModelId: ArticleModelId) => {
+    processing.reset()
+    setTextModelId(nextModelId)
+  }
 
   const startSlideEditing = (slideId: string) => {
     if (!canEdit) return
@@ -160,7 +191,12 @@ export function ArticleReviewPage({
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
-        <WorkflowBar activeStep="article-review" maxReachedStep={maxReachedStep} onStepClick={handleWorkflowNavigation} disabled={isBusy} />
+        <WorkflowBar
+          activeStep="article-review"
+          maxReachedStep={maxReachedStep}
+          onStepClick={handleWorkflowNavigation}
+          disabled={isBusy}
+        />
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
           <WorkflowPanelHeader
             eyebrow="04 / ARTICLE GENERATION & EDITING"
@@ -168,46 +204,77 @@ export function ArticleReviewPage({
             description="記事を生成し、内容や表示を編集します。"
           />
 
-          <div className="space-y-5 p-5 md:p-7">
-            <ArticleSummaryCard
-              project={project}
-              summary={project.article?.summary}
-              generation={summaryGeneration}
-              modelId={summaryModelId}
-              onModelChange={setSummaryModelId}
-              disabled={isBusy || hasUnsavedChanges}
-              onGenerate={(force) => void summaryGeneration.generate(force)}
-              onCancel={summaryGeneration.cancel}
-              onSave={onSaveSummary}
-            />
-            {articleSlides.length > 0 ? (
-              articleSlides.map((slide) => {
-                const isEditing = editingSlideId === slide.id
-                return (
-                  <ArticleSectionEditor
-                    key={slide.id}
-                    slide={slide}
-                    body={isEditing ? bodyDraft : (savedBodies[slide.id] ?? '')}
-                    editing={isEditing}
-                    editDisabled={!isEditing && !canEdit}
-                    saving={isSaving && isEditing}
-                    canSave={isBodyDirty}
-                    error={isEditing ? saveError : null}
-                    onEdit={() => startSlideEditing(slide.id)}
-                    onCancel={cancelEditing}
-                    onSave={() => void saveSlide()}
-                    onBodyChange={(body) => {
-                      setBodyDraft(body)
-                      setSaveError(null)
-                    }}
-                  />
-                )
-              })
-            ) : (
-              <div className="border-y border-dashed border-[#b7cbc0] px-4 py-10 text-center text-xs text-[#71807b]">
-                文字起こし済みの記事本文がありません。
+          <div className="space-y-10 p-5 md:p-7">
+            <section aria-labelledby="content-processing-heading">
+              <ContentProcessingPanel
+                project={project}
+                processing={processing}
+                model={textModel}
+                modelId={textModelId}
+                onModelChange={handleTextModelChange}
+                disabled={contentControlsDisabled || switchingArticleId !== null}
+              />
+              <div className="mt-6">
+                <ContentProcessingStatus
+                  processing={processing}
+                  disabled={contentControlsDisabled || switchingArticleId !== null}
+                />
               </div>
-            )}
+            </section>
+            <section aria-labelledby="article-review-heading">
+              <div>
+                <h2
+                  id="article-review-heading"
+                  className="text-[21px] font-bold tracking-[-0.05em]"
+                >
+                  2. 記事本文の確認・編集
+                </h2>
+                <p className="mt-1 text-xs text-[#71807b]">
+                  生成された本文を確認し、必要に応じて修正できます。
+                </p>
+              </div>
+              <div className="mt-5 space-y-5">
+                <ArticleSummaryCard
+                  project={project}
+                  summary={project.article?.summary}
+                  generation={summaryGeneration}
+                  modelId={summaryModelId}
+                  onModelChange={setSummaryModelId}
+                  disabled={isBusy || hasUnsavedChanges}
+                  onGenerate={(force) => void summaryGeneration.generate(force)}
+                  onCancel={summaryGeneration.cancel}
+                  onSave={onSaveSummary}
+                />
+                {articleSlides.length > 0 ? (
+                  articleSlides.map((slide) => {
+                    const isEditing = editingSlideId === slide.id
+                    return (
+                      <ArticleSectionEditor
+                        key={slide.id}
+                        slide={slide}
+                        body={isEditing ? bodyDraft : (savedBodies[slide.id] ?? '')}
+                        editing={isEditing}
+                        editDisabled={!isEditing && !canEdit}
+                        saving={isSaving && isEditing}
+                        canSave={isBodyDirty}
+                        error={isEditing ? saveError : null}
+                        onEdit={() => startSlideEditing(slide.id)}
+                        onCancel={cancelEditing}
+                        onSave={() => void saveSlide()}
+                        onBodyChange={(body) => {
+                          setBodyDraft(body)
+                          setSaveError(null)
+                        }}
+                      />
+                    )
+                  })
+                ) : (
+                  <div className="border-y border-dashed border-[#b7cbc0] px-4 py-10 text-center text-xs text-[#71807b]">
+                    文字起こし済みの記事本文がありません。
+                  </div>
+                )}
+              </div>
+            </section>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[#d8e1dc] px-5 py-4 md:px-7">
             <p className={`text-xs ${hasUnsavedChanges ? 'text-[#9a7a35]' : 'text-[#71807b]'}`}>

@@ -479,8 +479,6 @@ function App() {
         project={project}
         onCompleted={handleTranscriptionCompleted}
         onOcrSlideCompleted={handleOcrSlideCompleted}
-        onContentSlideCompleted={handleContentSlideCompleted}
-        getCurrentProject={() => projectRef.current}
         onSaveSlideResultEdits={handleSaveSlideResultEdits}
         onOpenArticleReview={() => void handleProjectStep('article-review')}
         onHome={handleBackToHome}
@@ -494,6 +492,8 @@ function App() {
       <ArticleReviewPage
         key={route.articleId}
         project={project}
+        onContentSlideCompleted={handleContentSlideCompleted}
+        getCurrentProject={() => projectRef.current}
         onSave={handleSaveArticle}
         onSaveSummary={handleSaveArticleSummary}
         onExport={() => void handleProjectStep('export')}

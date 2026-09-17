@@ -121,8 +121,8 @@ export function ContentProcessingPanel({
     <section aria-labelledby="content-processing-heading">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h3 id="content-processing-heading" className="text-[15px] font-semibold text-[#18211f]">
-            本文を生成
+          <h3 id="content-processing-heading" className="text-[21px] font-bold tracking-[-0.05em]">
+            1. 本文を生成
           </h3>
           <p className="mt-1 text-xs text-[#71807b]">
             スライドと音声の文字起こしをもとに、記事本文を生成します。
