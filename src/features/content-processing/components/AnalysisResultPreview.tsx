@@ -386,10 +386,7 @@ export function AnalysisResultPreview({
       )}
 
       {hasAnyResult && (
-        <div className="mt-7 flex flex-wrap items-center justify-between gap-4 border-t border-[#d8e1dc] pt-5">
-          <p className="text-xs text-[#71807b]">
-            解析結果を確認・編集して、次の「記事の生成・編集」ステップへ進みます。
-          </p>
+        <div className="mt-7 flex flex-wrap items-center justify-end gap-4 border-t border-[#d8e1dc] pt-5">
           <button
             className="inline-flex items-center gap-2 rounded-[9px] bg-[#1d6b50] px-4 py-3 text-xs font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] transition hover:bg-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none"
             type="button"

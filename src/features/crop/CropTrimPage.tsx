@@ -147,10 +147,7 @@ function CropTrimEditor({
             )}
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#d8e1dc] px-5 py-4 md:px-7">
-            <p className="text-xs text-[#71807b]">
-              選択中: {editor.rows[0]?.start ?? '00:00'} — {editor.rows[0]?.end ?? '00:00'}
-            </p>
+          <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[#d8e1dc] px-5 py-4 md:px-7">
             <button
               className="inline-flex items-center gap-2 rounded-[9px] bg-[#1d6b50] px-4 py-3 text-xs font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] transition hover:bg-[#174d3c] disabled:cursor-not-allowed disabled:opacity-50"
               type="button"

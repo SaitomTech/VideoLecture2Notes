@@ -6,7 +6,12 @@ import { WorkflowBar } from '../../components/WorkflowBar'
 import { WorkflowPanelHeader } from '../../components/WorkflowPanelHeader'
 import { getArticleModel, type ArticleModelId } from '../../lib/article/articleModel'
 import type { WorkflowStep } from '../../lib/workflow'
-import type { ArticleDraft, ArticleSummary, MediaProject } from '../../types/project'
+import type {
+  ArticleDraft,
+  ArticleSummary,
+  ContentProcessingResult,
+  MediaProject,
+} from '../../types/project'
 import { ArticleSummaryCard } from './components/ArticleSummaryCard'
 import { ArticleSectionEditor } from './components/ArticleSectionEditor'
 import { ArticleNavigationBar } from './components/ArticleNavigationBar'
@@ -17,6 +22,7 @@ import {
 } from '../content-processing/components/ContentProcessingPanel'
 import type { ContentProcessingSlideCompleted } from '../content-processing/contentProcessing'
 import { useContentProcessing } from '../content-processing/hooks/useContentProcessing'
+import { getActiveArticleSourceContext } from '../../lib/project/articleSource'
 
 type ArticleReviewPageProps = {
   project: MediaProject
@@ -50,6 +56,7 @@ export function ArticleReviewPage({
   onStepClick,
 }: ArticleReviewPageProps) {
   const articleSlides = project.slides.filter((slide) => Boolean(slide.transcript))
+  const sourcePath = getActiveArticleSourceContext(project).source.path
   const activeArticle = project.articles.find((article) => article.id === project.activeArticleId)
   const articleTitle =
     activeArticle?.title.trim() ||
@@ -68,12 +75,6 @@ export function ArticleReviewPage({
     () => getArticleModel(storedTextModelId).id,
   )
   const textModel = getArticleModel(textModelId)
-  const processing = useContentProcessing(
-    project,
-    onContentSlideCompleted,
-    textModelId,
-    getCurrentProject,
-  )
   const initialBodies = Object.fromEntries(
     articleSlides.map((slide) => [slide.id, slide.transcript?.articleBody ?? '']),
   )
@@ -83,6 +84,18 @@ export function ArticleReviewPage({
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [switchingArticleId, setSwitchingArticleId] = useState<string | null>(null)
+
+  const handleContentSlideCompleted = async (slideId: string, result: ContentProcessingResult) => {
+    await onContentSlideCompleted(slideId, result)
+    setSavedBodies((current) => ({ ...current, [slideId]: result.article.body }))
+  }
+
+  const processing = useContentProcessing(
+    project,
+    handleContentSlideCompleted,
+    textModelId,
+    getCurrentProject,
+  )
 
   const editingSlideId = editingTarget?.type === 'slide' ? editingTarget.slideId : null
   const isBodyDirty = editingSlideId !== null && bodyDraft !== (savedBodies[editingSlideId] ?? '')
@@ -252,6 +265,7 @@ export function ArticleReviewPage({
                       <ArticleSectionEditor
                         key={slide.id}
                         slide={slide}
+                        videoPath={sourcePath}
                         body={isEditing ? bodyDraft : (savedBodies[slide.id] ?? '')}
                         editing={isEditing}
                         editDisabled={!isEditing && !canEdit}
@@ -276,12 +290,14 @@ export function ArticleReviewPage({
               </div>
             </section>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[#d8e1dc] px-5 py-4 md:px-7">
-            <p className={`text-xs ${hasUnsavedChanges ? 'text-[#9a7a35]' : 'text-[#71807b]'}`}>
-              {hasUnsavedChanges
-                ? '未保存の変更があります。保存してから書き出せます。'
-                : '記事を確認したら、閲覧・ダウンロードへ進みます。'}
-            </p>
+          <div
+            className={`flex flex-wrap items-center gap-4 border-t border-[#d8e1dc] px-5 py-4 md:px-7 ${hasUnsavedChanges ? 'justify-between' : 'justify-end'}`}
+          >
+            {hasUnsavedChanges && (
+              <p className="text-xs text-[#9a7a35]">
+                未保存の変更があります。保存してから書き出せます。
+              </p>
+            )}
             <button
               className="inline-flex items-center gap-2 rounded-[9px] bg-[#1d6b50] px-4 py-3 text-xs font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] transition hover:bg-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
               type="button"

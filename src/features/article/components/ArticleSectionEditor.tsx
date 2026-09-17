@@ -1,10 +1,13 @@
 import { FilePenLine, Save, X } from 'lucide-react'
+import { useRef } from 'react'
 import { SlideThumbnail } from '../../../components/SlideThumbnail'
 import { formatTimestamp } from '../../../lib/time'
+import { useVideoSourceUrl } from '../../../lib/media/useVideoSourceUrl'
 import type { SlideData } from '../../../types/project'
 
 type ArticleSectionEditorProps = {
   slide: SlideData
+  videoPath: string
   body: string
   editing: boolean
   editDisabled?: boolean
@@ -17,8 +20,49 @@ type ArticleSectionEditorProps = {
   onBodyChange: (body: string) => void
 }
 
+function SegmentVideoPreview({ slide, videoPath }: { slide: SlideData; videoPath: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const videoSource = useVideoSourceUrl(videoPath)
+  const startTime = Math.max(0, slide.startMs / 1000)
+  const endTime = Math.max(startTime, slide.endMs / 1000)
+
+  return videoSource.src ? (
+    <video
+      ref={videoRef}
+      className="block aspect-video w-full max-w-[420px] rounded-[8px] border border-[#d8e1dc] bg-[#0b1712] object-contain"
+      src={videoSource.src}
+      playsInline
+      preload="metadata"
+      controls
+      onLoadedMetadata={(event) => {
+        event.currentTarget.currentTime = startTime
+      }}
+      onTimeUpdate={(event) => {
+        const video = event.currentTarget
+        if (video.currentTime < startTime) {
+          video.currentTime = startTime
+          return
+        }
+        if (video.currentTime >= endTime) {
+          video.pause()
+          video.currentTime = startTime
+        }
+      }}
+      onEnded={(event) => {
+        event.currentTarget.currentTime = startTime
+      }}
+      aria-label={`Slide ${String(slide.index + 1).padStart(2, '0')}の区間動画`}
+    />
+  ) : (
+    <div className="grid aspect-video w-full max-w-[420px] place-items-center rounded-[8px] border border-[#d8e1dc] bg-[#0b1712] text-[10px] text-[#b7cbc0]">
+      動画を読み込んでいます…
+    </div>
+  )
+}
+
 export function ArticleSectionEditor({
   slide,
+  videoPath,
   body,
   editing,
   editDisabled = false,
@@ -120,15 +164,21 @@ export function ArticleSectionEditor({
             元データを確認
           </summary>
           <div className="mt-4 grid gap-4 text-xs leading-6 text-[#53615b] md:grid-cols-2">
+            <div className="md:col-span-2">
+              <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
+                区間動画
+              </p>
+              <SegmentVideoPreview slide={slide} videoPath={videoPath} />
+            </div>
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
-                raw 発話
+                文字起こし結果
               </p>
               <p className="mt-1 whitespace-pre-wrap">{rawTranscript}</p>
             </div>
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#71807b]">
-                スライド内の文字
+                OCR結果
               </p>
               <p className="mt-1 whitespace-pre-wrap">{ocrText}</p>
             </div>
