@@ -2,6 +2,7 @@ import { Play, Square } from 'lucide-react'
 import { useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { ArticleContextRow } from '../../components/ArticleContextRow'
+import { WorkflowBar } from '../../components/WorkflowBar'
 import { WorkflowPanelHeader } from '../../components/WorkflowPanelHeader'
 import type { WorkflowStep } from '../../lib/workflow'
 import { getArticleModel, type ArticleModelId } from '../../lib/article/articleModel'
@@ -151,15 +152,12 @@ export function GenerateNotesPage({
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
+        <WorkflowBar activeStep="generate-notes" maxReachedStep={maxReachedStep} onStepClick={onStepClick} disabled={isProcessing} />
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
           <WorkflowPanelHeader
-            activeStep="generate-notes"
-            maxReachedStep={maxReachedStep}
-            onStepClick={onStepClick}
-            disabled={isProcessing}
-            eyebrow="03 / GENERATE NOTES"
-            title="ノートを生成"
-            description="OCR、文字起こし、本文生成を順に実行します。"
+            eyebrow="03 / TRANSCRIPTION & OCR"
+            title="文字起こしとOCR"
+            description="音声の文字起こしと、スライド内の文字認識を実行します。"
           />
 
           <div className="p-5 md:p-7">

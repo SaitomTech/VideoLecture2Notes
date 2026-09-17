@@ -2,6 +2,7 @@ import { ArrowRight } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { ArticleContextRow } from '../../components/ArticleContextRow'
+import { WorkflowBar } from '../../components/WorkflowBar'
 import { WorkflowPanelHeader } from '../../components/WorkflowPanelHeader'
 import type { WorkflowStep } from '../../lib/workflow'
 import type { CropRegion, MediaProject, PerspectiveCrop, VideoTrimRange } from '../../types/project'
@@ -115,12 +116,9 @@ function CropTrimEditor({
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
+        <WorkflowBar activeStep="crop" maxReachedStep={maxReachedStep} onStepClick={onStepClick} disabled={editor.busy || editor.isDetecting} />
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
           <WorkflowPanelHeader
-            activeStep="crop"
-            maxReachedStep={maxReachedStep}
-            onStepClick={onStepClick}
-            disabled={editor.busy || editor.isDetecting}
             eyebrow="01 / CROP & TRIM"
             title="時間範囲と表示領域を設定"
             description="記事にする時間範囲と、スライドの切り出し領域を設定します。"

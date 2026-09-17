@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { ArticleContextRow } from '../../components/ArticleContextRow'
+import { WorkflowBar } from '../../components/WorkflowBar'
 import { WorkflowPanelHeader } from '../../components/WorkflowPanelHeader'
 import type { WorkflowStep } from '../../lib/workflow'
 import type { MediaProject } from '../../types/project'
@@ -171,15 +172,12 @@ export function ExportPage({
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
+        <WorkflowBar activeStep="export" maxReachedStep={maxReachedStep} onStepClick={onStepClick} disabled={isBusy} />
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
           <WorkflowPanelHeader
-            activeStep="export"
-            maxReachedStep={maxReachedStep}
-            onStepClick={onStepClick}
-            disabled={isBusy}
-            eyebrow="05 / RESULT"
-            title="書き出し結果"
-            description="HTMLの見た目を確認して、必要な形式をダウンロードします。"
+            eyebrow="05 / REVIEW & EXPORT"
+            title="閲覧・ダウンロード"
+            description="記事の表示を確認し、必要な形式でダウンロードします。"
           />
           <div className="flex justify-end px-5 py-4 md:px-7">
             <div className="flex flex-wrap items-center justify-end gap-2">

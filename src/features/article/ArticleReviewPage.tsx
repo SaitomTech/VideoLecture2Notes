@@ -2,6 +2,7 @@ import { ArrowRight } from 'lucide-react'
 import { useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { ArticleContextRow } from '../../components/ArticleContextRow'
+import { WorkflowBar } from '../../components/WorkflowBar'
 import { WorkflowPanelHeader } from '../../components/WorkflowPanelHeader'
 import { getArticleModel, type ArticleModelId } from '../../lib/article/articleModel'
 import type { WorkflowStep } from '../../lib/workflow'
@@ -159,15 +160,12 @@ export function ArticleReviewPage({
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
+        <WorkflowBar activeStep="article-review" maxReachedStep={maxReachedStep} onStepClick={handleWorkflowNavigation} disabled={isBusy} />
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
           <WorkflowPanelHeader
-            activeStep="article-review"
-            maxReachedStep={maxReachedStep}
-            onStepClick={handleWorkflowNavigation}
-            disabled={isBusy}
-            eyebrow="04 / ARTICLE PREVIEW"
-            title="記事プレビュー"
-            description="生成した記事の見た目を確認します。必要なSlideだけ編集できます。"
+            eyebrow="04 / ARTICLE GENERATION & EDITING"
+            title="記事の生成・編集"
+            description="記事を生成し、内容や表示を編集します。"
           />
 
           <div className="space-y-5 p-5 md:p-7">
