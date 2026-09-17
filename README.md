@@ -1,5 +1,9 @@
 # Yomlecta
 
+<p align="center">
+  <img src="public/yomlecta-logo.png" alt="Yomlecta" width="420">
+</p>
+
 PowerPointやKeynoteなどのスライドを画面に投影した講演・講義動画を、**スライドごとの画像と、そのスライドで話された内容を読める記事**に変換するmacOSアプリです。
 
 スライド範囲の検出、スライド切り替わりの検出、OCR、文字起こし、表記補正、記事本文の生成を、ローカルモデルやmacOS標準機能、OpenAI APIなどを組み合わせて行います。
