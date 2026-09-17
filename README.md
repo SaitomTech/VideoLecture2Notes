@@ -1,4 +1,4 @@
-# VideoLecture2Notes
+# Yomlecta
 
 PowerPointやKeynoteなどのスライドを画面に投影した講演・講義動画を、**スライドごとの画像と、そのスライドで話された内容を読める記事**に変換するmacOSアプリです。
 
@@ -46,7 +46,7 @@ DMGからインストールして使う場合、Bun・Rust toolchain・Xcode Com
 Apple Developer Program未使用の未署名アプリのため、初回起動時にmacOSの確認が表示される場合があります。信頼できるGitHub Releaseからダウンロードした場合に限り、次の手順で起動してください。
 
 1. DMGからアプリを`Applications`へ移動します。
-2. Finderの`Applications`フォルダで`videolecture2notes`をControlクリック（または右クリック）し、「開く」を選びます。
+2. Finderの`Applications`フォルダで`Yomlecta`をControlクリック（または右クリック）し、「開く」を選びます。
 3. 確認ダイアログが表示されたら、もう一度「開く」を選びます。
 
 「開く」が表示されない場合は、いったんアプリをダブルクリックして警告を表示したあと、システム設定の「プライバシーとセキュリティ」を開き、「セキュリティ」欄の「このまま開く」を選んでください。その後、確認ダイアログで「開く」を選びます。許可したアプリは、次回から通常どおり起動できます。
@@ -58,8 +58,8 @@ Apple Developer Program未使用の未署名アプリのため、初回起動時
 GUI操作の代わりに、信頼できるGitHub Releaseからダウンロードしたアプリに限り、次のコマンドでも許可できます。
 
 ```bash
-xattr -dr com.apple.quarantine "/Applications/videolecture2notes.app"
-open "/Applications/videolecture2notes.app"
+xattr -dr com.apple.quarantine "/Applications/Yomlecta.app"
+open "/Applications/Yomlecta.app"
 ```
 
 アプリを`Applications`以外に置いた場合は、パスを実際の`.app`の場所に置き換えてください。

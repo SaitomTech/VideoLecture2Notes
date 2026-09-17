@@ -1,7 +1,6 @@
 import { Download, RefreshCw, Scale } from 'lucide-react'
 import { useState } from 'react'
 import { getUpdateMessage, useUpdates } from '../lib/updateContext'
-import { AppIcon } from './AppIcon'
 import { LicenseDialog } from './LicenseDialog'
 
 type AppHeaderProps = {
@@ -12,12 +11,12 @@ type AppHeaderProps = {
 }
 
 const appBrand = (
-  <>
-    <span className="grid h-10 w-10 place-items-center overflow-visible">
-      <AppIcon className="h-12 w-12" alt="Video Lecture to Notes" />
-    </span>
-    <span className="text-[15px] font-bold tracking-[-0.02em]">Video Lecture to Notes</span>
-  </>
+  <img
+    className="h-12 w-auto max-w-[190px] object-contain"
+    src="/yomlecta-logo.png"
+    alt="Yomlecta"
+    draggable={false}
+  />
 )
 
 function HeaderNavigation({
