@@ -139,7 +139,12 @@ export function SlideDetectionPage({
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
-        <WorkflowBar activeStep="detect-slides" maxReachedStep={maxReachedStep} onStepClick={onStepClick} disabled={isRunning || isSavingReview || hasUnsavedReview} />
+        <WorkflowBar
+          activeStep="detect-slides"
+          maxReachedStep={maxReachedStep}
+          onStepClick={onStepClick}
+          disabled={isRunning || isSavingReview || hasUnsavedReview}
+        />
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
           <WorkflowPanelHeader
             eyebrow="02 / DETECT SLIDES"
@@ -202,7 +207,7 @@ export function SlideDetectionPage({
                 type="button"
                 onClick={onContinue}
               >
-                文字起こしへ
+                文字起こしとOCRへ
                 <ArrowRight size={14} />
               </button>
             </div>

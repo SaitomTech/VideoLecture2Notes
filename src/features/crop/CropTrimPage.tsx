@@ -116,7 +116,12 @@ function CropTrimEditor({
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
-        <WorkflowBar activeStep="crop" maxReachedStep={maxReachedStep} onStepClick={onStepClick} disabled={editor.busy || editor.isDetecting} />
+        <WorkflowBar
+          activeStep="crop"
+          maxReachedStep={maxReachedStep}
+          onStepClick={onStepClick}
+          disabled={editor.busy || editor.isDetecting}
+        />
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
           <WorkflowPanelHeader
             eyebrow="01 / CROP & TRIM"
@@ -152,7 +157,7 @@ function CropTrimEditor({
               disabled={editor.busy || editor.isDetecting || editor.rows.length === 0}
               onClick={() => void editor.submit()}
             >
-              {editor.busy ? '保存中…' : '範囲を保存してスライド検出へ'}
+              {editor.busy ? '保存中…' : 'スライド区間を検出へ'}
               <ArrowRight size={14} />
             </button>
           </div>
