@@ -39,7 +39,7 @@ export function ArticleContextRow({
   return (
     <>
       <div
-        className="mx-auto mb-4 flex min-h-[76px] w-[calc(100%-48px)] max-w-[1040px] flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-[24px] border border-dashed border-[#c8cfcc] bg-[#eef1ef] px-5 py-3.5 shadow-[0_10px_28px_rgba(22,54,42,0.045)] md:w-[calc(100%-11.6vw)] md:px-7"
+        className="mx-auto mb-4 flex min-h-[52px] w-[calc(100%-48px)] max-w-[1040px] flex-wrap items-center justify-between gap-x-3 gap-y-1.5 rounded-[16px] border border-dashed border-[#c8cfcc] bg-[#eceeed] px-2 py-1.5 shadow-[0_10px_28px_rgba(22,54,42,0.045)] md:w-[calc(100%-11.6vw)] md:px-3"
         aria-label="現在の記事"
       >
         <div className="min-w-0 flex-1 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2">
@@ -48,7 +48,7 @@ export function ArticleContextRow({
           </span>
           {titleEditor.isEditing ? (
             <input
-              className="h-10 min-w-0 w-full max-w-[520px] flex-1 rounded-[8px] border border-[#1d6b50] bg-white px-3 text-[20px] font-bold tracking-[-0.05em] outline-none ring-2 ring-[#1d6b50]/10"
+              className="h-8 min-w-0 w-full max-w-[520px] flex-1 rounded-[8px] border border-[#1d6b50] bg-white px-2.5 text-[16px] font-bold tracking-[-0.05em] outline-none ring-2 ring-[#1d6b50]/10"
               value={titleEditor.draft}
               onChange={(event) => titleEditor.setDraft(event.target.value)}
               onKeyDown={titleEditor.handleKeyDown}
@@ -61,7 +61,7 @@ export function ArticleContextRow({
             />
           ) : (
             <button
-              className="group min-w-0 max-w-full rounded-[8px] px-0 py-0.5 text-left text-[21px] font-bold tracking-[-0.05em] transition hover:bg-[#eef3ef] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/20 disabled:cursor-not-allowed disabled:opacity-60"
+              className="group min-w-0 max-w-full rounded-[8px] px-0 py-0 text-left text-[16px] font-bold tracking-[-0.05em] transition hover:bg-[#eef3ef] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/20 disabled:cursor-not-allowed disabled:opacity-60"
               type="button"
               onClick={titleEditor.startEditing}
               disabled={disabled || titleEditor.isSaving}
@@ -82,14 +82,14 @@ export function ArticleContextRow({
               {titleEditor.error}
             </p>
           )}
-          <p className="col-start-2 mt-1 truncate text-xs text-[#71807b]" title={sourceName}>
+          <p className="col-start-2 mt-0 truncate text-xs text-[#71807b]" title={sourceName}>
             {sourceName}
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
           {onSelect && (
             <button
-              className="inline-flex shrink-0 items-center gap-2 rounded-[8px] border border-[#b7cbc0] bg-white px-3 py-2 text-xs font-semibold text-[#1d6b50] transition hover:border-[#1d6b50] hover:bg-[#e2eee8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50"
+              className="-mr-1 inline-flex shrink-0 items-center gap-2 rounded-[8px] border border-[#b7cbc0] bg-white px-3 py-2 text-xs font-semibold text-[#1d6b50] transition hover:border-[#1d6b50] hover:bg-[#e2eee8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-50"
               type="button"
               onClick={() => setIsSwitcherOpen(true)}
               disabled={disabled || titleEditor.isEditing || !canSwitchArticles}

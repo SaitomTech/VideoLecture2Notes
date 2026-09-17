@@ -20,7 +20,7 @@ export function WorkflowBar({
 
   return (
     <nav
-      className="flex min-w-0 w-full items-center justify-start gap-2 overflow-x-auto py-1 sm:gap-2.5 md:gap-3 min-[1060px]:justify-center"
+      className="mb-3 flex min-w-0 w-full items-center justify-start gap-2 overflow-x-auto py-1 sm:gap-2.5 md:gap-3 min-[1060px]:justify-center"
       aria-label="処理ステップ"
     >
       {steps.map((step, index) => {
