@@ -12,7 +12,7 @@ Yomlecta 0.9.0 の macOS Apple Silicon 配布物で使用する、アプリ本�
 - 取得元: [FFmpeg ZIP](https://ffmpeg.martin-riedl.de/download/macos/arm64/1787073674_9.0.1/ffmpeg.zip)、[ffprobe ZIP](https://ffmpeg.martin-riedl.de/download/macos/arm64/1787073674_9.0.1/ffprobe.zip)
 - SHA-256: `ffmpeg` = `8287a1b2229e05eb41859f073e18e6c52c60a778f2f5e6881070fe51b79407fe`、`ffprobe` = `102a26b8940a053298d9929bfaae71e4b6ef65ba5f19a99a88c433108560741a`
 - ライセンス: `--enable-gpl` を含むビルド設定のため、FFmpeg部分はLGPL-onlyではなくGPL v2以降の条件が適用されます。さらに、組み込まれたコーデック・ライブラリには個別のライセンスがあります。[FFmpegの公式ライセンス説明](https://ffmpeg.org/legal.html)と[LICENSEの詳細](https://ffmpeg.org/doxygen/trunk/md_LICENSE.html)を確認してください。
-- 対応ソースコード: [FFmpeg 9.0.1 source](https://ffmpeg.org/releases/ffmpeg-9.0.1.tar.xz)、[Martin Riedlのbuild script](https://git.martin-riedl.de/ffmpeg/build-script)、[build server](https://ffmpeg.martin-riedl.de/)。この配布物の取得設定は [prepare-sidecars.ts](https://github.com/SaitomTech/VideoLecture2Notes/blob/develop/scripts/prepare-sidecars.ts)、ビルド設定は実体の `ffmpeg -buildconf` で確認できます。
+- 対応ソースコード: [FFmpeg 9.0.1 source](https://ffmpeg.org/releases/ffmpeg-9.0.1.tar.xz)、[Martin Riedlのbuild script](https://git.martin-riedl.de/ffmpeg/build-script)、[build server](https://ffmpeg.martin-riedl.de/)。この配布物の取得設定は [prepare-sidecars.ts](https://github.com/SaitomTech/Yomlecta/blob/develop/scripts/prepare-sidecars.ts)、ビルド設定は実体の `ffmpeg -buildconf` で確認できます。
 - 著作権表示: Copyright (c) 2000-2026 the FFmpeg developers (`ffmpeg`)、Copyright (c) 2007-2026 the FFmpeg developers (`ffprobe`)
 
 ### whisper.cpp
@@ -41,15 +41,15 @@ Yomlecta 0.9.0 の macOS Apple Silicon 配布物で使用する、アプリ本�
 
 ### アプリ固有のhelper
 
-- `apple-vision-ocr-aarch64-apple-darwin`: Yomlecta 0.9.0のビルド、ソースは [`src-tauri/vision-ocr/main.swift`](https://github.com/SaitomTech/VideoLecture2Notes/blob/develop/src-tauri/vision-ocr/main.swift)
-- `apple-speech-transcriber-aarch64-apple-darwin`: Yomlecta 0.9.0のビルド、ソースは [`src-tauri/speech-transcriber/main.swift`](https://github.com/SaitomTech/VideoLecture2Notes/blob/develop/src-tauri/speech-transcriber/main.swift)
-- `apple-foundation-models-aarch64-apple-darwin`: Yomlecta 0.9.0のビルド、ソースは [`src-tauri/foundation-models/main.swift`](https://github.com/SaitomTech/VideoLecture2Notes/blob/develop/src-tauri/foundation-models/main.swift)
+- `apple-vision-ocr-aarch64-apple-darwin`: Yomlecta 0.9.0のビルド、ソースは [`src-tauri/vision-ocr/main.swift`](https://github.com/SaitomTech/Yomlecta/blob/develop/src-tauri/vision-ocr/main.swift)
+- `apple-speech-transcriber-aarch64-apple-darwin`: Yomlecta 0.9.0のビルド、ソースは [`src-tauri/speech-transcriber/main.swift`](https://github.com/SaitomTech/Yomlecta/blob/develop/src-tauri/speech-transcriber/main.swift)
+- `apple-foundation-models-aarch64-apple-darwin`: Yomlecta 0.9.0のビルド、ソースは [`src-tauri/foundation-models/main.swift`](https://github.com/SaitomTech/Yomlecta/blob/develop/src-tauri/foundation-models/main.swift)
 
 上記はこのリポジトリのSwiftソースからビルドするアプリ固有のコードです。AppleのOS/API自体の条件はAppleの利用規約・SDKライセンスに従います。
 
 ## アプリが提供するモデル
 
-モデルはDMGに同梱せず、初回利用時に下記の固定revisionからダウンロードします。各ファイルのSHA-256は [モデル定義](https://github.com/SaitomTech/VideoLecture2Notes/tree/develop/src/lib) にあるダウンロード検証値と一致します。
+モデルはDMGに同梱せず、初回利用時に下記の固定revisionからダウンロードします。各ファイルのSHA-256は [モデル定義](https://github.com/SaitomTech/Yomlecta/tree/develop/src/lib) にあるダウンロード検証値と一致します。
 
 ### Whisper系
 

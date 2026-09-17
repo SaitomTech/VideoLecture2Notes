@@ -39,7 +39,7 @@ OpenAIを選択した処理では、選択した音声・画像・文字起こ�
 
 ### DMGから使う
 
-[Releases](https://github.com/SaitomTech/VideoLecture2Notes/releases)からDMGをダウンロードし、アプリを`Applications`へ移動して起動してください。
+[Releases](https://github.com/SaitomTech/Yomlecta/releases)からDMGをダウンロードし、アプリを`Applications`へ移動して起動してください。
 
 DMGからインストールして使う場合、Bun・Rust toolchain・Xcode Command Line Toolsは不要です。
 
