@@ -7,7 +7,7 @@ export type WorkflowStep =
   | 'export'
 
 export const WORKFLOW_STEPS: Array<{ id: WorkflowStep; label: string }> = [
-  { id: 'crop', label: '範囲を調整' },
+  { id: 'crop', label: '時間範囲と表示領域を設定' },
   { id: 'detect-slides', label: 'スライドを検出' },
   { id: 'generate-notes', label: 'ノートを生成' },
   { id: 'article-review', label: '記事プレビュー' },

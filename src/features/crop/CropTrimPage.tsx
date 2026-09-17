@@ -122,7 +122,7 @@ function CropTrimEditor({
             onStepClick={onStepClick}
             disabled={editor.busy || editor.isDetecting}
             eyebrow="01 / CROP & TRIM"
-            title="範囲を調整"
+            title="時間範囲と表示領域を設定"
             description="記事にする時間範囲と、スライドの切り出し領域を設定します。"
           />
 
