@@ -285,7 +285,7 @@ mod tests {
     #[test]
     fn serves_a_requested_byte_range() {
         let path = std::env::temp_dir().join(format!(
-            "videolecture2notes-video-server-{}.mp4",
+            "yomlecta-video-server-{}.mp4",
             std::process::id()
         ));
         fs::write(&path, b"0123456789").expect("create test video");

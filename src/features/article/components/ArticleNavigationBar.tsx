@@ -9,7 +9,7 @@ type ArticleNavigationBarProps = {
 export function ArticleNavigationBar({
   onBack,
   disabled = false,
-  label = 'プロジェクト詳細へ戻る',
+  label = 'プロジェクト一覧へ戻る',
 }: ArticleNavigationBarProps) {
   return (
     <div className="flex w-full items-center">

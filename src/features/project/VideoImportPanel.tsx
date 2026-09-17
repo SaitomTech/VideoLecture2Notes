@@ -20,6 +20,7 @@ type VideoImportPanelProps = {
   ) => Promise<ProjectVideo>
   onVideoAdded?: (video: ProjectVideo) => void
   continueToPreparation?: boolean
+  primaryActionLabel?: string
 }
 
 export type VideoImportSource = 'finder' | 'youtube'
@@ -31,7 +32,7 @@ export type VideoImportPanelHandle = {
 
 export const VideoImportPanel = forwardRef<VideoImportPanelHandle, VideoImportPanelProps>(
   function VideoImportPanel(
-    { onAddLocalVideo, onAddYoutubeVideo, onVideoAdded, continueToPreparation },
+    { onAddLocalVideo, onAddYoutubeVideo, onVideoAdded, continueToPreparation, primaryActionLabel },
     ref,
   ) {
     const picker = useVideoPicker()
@@ -174,10 +175,9 @@ export const VideoImportPanel = forwardRef<VideoImportPanelHandle, VideoImportPa
             >
               {isAddingLocal && <LoaderCircle className="animate-spin" size={14} />}
               {isAddingLocal
-                ? '追加中…'
-                : continueToPreparation
-                  ? '追加して記事の範囲を指定'
-                  : 'この動画を追加'}
+                ? '準備中…'
+                : (primaryActionLabel ??
+                  (continueToPreparation ? '追加して記事の範囲を指定' : 'この動画を追加'))}
             </button>
           </YoutubeDownloadModal>
         )}
@@ -208,7 +208,10 @@ export const VideoImportPanel = forwardRef<VideoImportPanelHandle, VideoImportPa
               onContinue={closeYoutube}
               onCancel={() => youtubeAbortRef.current?.abort()}
               continueLabel="プロジェクト詳細へ戻る"
-              importLabel={continueToPreparation ? '追加して記事の範囲を指定' : 'この動画を追加'}
+              importLabel={
+                primaryActionLabel ??
+                (continueToPreparation ? '追加して記事の範囲を指定' : 'この動画を追加')
+              }
               showHeader={false}
             />
           </YoutubeDownloadModal>

@@ -55,7 +55,7 @@ async function readVersions(): Promise<AppVersions> {
 
   const cargoLockText = await Bun.file(manifestPaths.cargoLock).text()
   const cargoLockMatch = cargoLockText.match(
-    /\[\[package\]\]\nname = "videolecture2notes"\nversion = "([^"]+)"/,
+    /\[\[package\]\]\nname = "yomlecta"\nversion = "([^"]+)"/,
   )
   if (!cargoLockMatch) {
     throw new Error('src-tauri/Cargo.lockのアプリ自身のversionが見つかりません。')
@@ -138,7 +138,7 @@ async function setVersion(nextVersion: string) {
     manifestPaths.cargoLock,
     replaceVersion(
       cargoLockText,
-      /(\[\[package\]\]\nname = "videolecture2notes"\nversion = )"[^"]+("\n)/,
+      /(\[\[package\]\]\nname = "yomlecta"\nversion = )"[^"]+("\n)/,
       normalizedNextVersion,
       'src-tauri/Cargo.lock',
     ),

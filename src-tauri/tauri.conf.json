@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "videolecture2notes",
-  "version": "0.18.0",
-  "identifier": "com.saitomtech.videolecture2notes",
+  "productName": "Yomlecta",
+  "version": "0.19.0",
+  "identifier": "com.saitomtech.yomlecta",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Video Lecture to Notes",
+        "title": "Yomlecta",
         "width": 1200,
         "height": 800,
         "minWidth": 960,

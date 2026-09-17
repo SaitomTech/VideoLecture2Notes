@@ -5,6 +5,7 @@ import { ExportPage } from '../features/export/ExportPage'
 import { GenerateNotesPage } from '../features/generate-notes/GenerateNotesPage'
 import { HomePage } from '../features/home/HomePage'
 import { ProjectDetailPage } from '../features/project/ProjectDetailPage'
+import { ProjectsPage } from '../features/project/ProjectsPage'
 import { SlideDetectionPage } from '../features/slide-detection/SlideDetectionPage'
 import { canNavigateToWorkflowStep, type WorkflowStep } from '../lib/workflow'
 import {
@@ -12,6 +13,7 @@ import {
   createEmptyProject,
   markProjectOpened,
   markProjectExported,
+  projectWithArticle,
   updateProjectArticleDraft,
   updateProjectArticleTitle,
   updateProjectArticleSourceSettings,
@@ -55,6 +57,7 @@ import type { SlideDetectionOutput } from '../features/slide-detection/types'
 
 type Route =
   | { kind: 'home' }
+  | { kind: 'projects' }
   | { kind: 'project' }
   | { kind: 'article'; articleId: string; step: ProjectStep }
 
@@ -96,6 +99,73 @@ function App() {
     const next = createEmptyProject(title)
     await persistProject(next)
     setRoute({ kind: 'project' })
+  }
+
+  const startArticleFromImportedVideo = async (
+    projectTitle: string,
+    selectedVideo: SelectedVideo,
+  ): Promise<ProjectVideo> => {
+    const emptyProject = createEmptyProject(projectTitle)
+    const added = await addProjectVideo(emptyProject, selectedVideo)
+    const metadata = added.video.media.metadata
+    const article = (
+      await createArticlesFromRanges(
+        added.project,
+        added.video.id,
+        [
+          {
+            title: added.video.title,
+            range: { startMs: 0, endMs: metadata.durationMs },
+          },
+        ],
+        { x: 0, y: 0, width: metadata.width, height: metadata.height },
+      )
+    )[0]
+    if (!article) throw new Error('記事作成フローを開始できませんでした。')
+
+    const withArticle = projectWithArticle(
+      {
+        ...added.project,
+        articles: [...added.project.articles, article],
+        activeArticleId: article.id,
+      },
+      article,
+    )
+    const saved = await saveProjectWithCreatedAssets(withArticle, [
+      { collection: 'videos', assetId: added.video.id },
+      { collection: 'articles', assetId: article.id },
+    ])
+    projectRef.current = saved
+    setProject(saved)
+    setRoute({ kind: 'article', articleId: article.id, step: 'crop' })
+    return added.video
+  }
+
+  const handleHomeAddLocalVideo = (video: SelectedVideo) =>
+    enqueueProjectOperation(() =>
+      startArticleFromImportedVideo(video.name.replace(/\.[^.]+$/, '').trim(), video),
+    )
+
+  const handleHomeAddYoutubeVideo = async (
+    request: YoutubeImportRequest,
+    options: YoutubeImportOptions,
+  ) => {
+    const temporaryProjectId = crypto.randomUUID()
+    return enqueueProjectOperation(async () => {
+      try {
+        const video = await downloadYoutubeVideo({
+          projectId: temporaryProjectId,
+          info: request.info,
+          quality: request.quality,
+          signal: options.signal,
+          onProgress: options.onProgress,
+        } satisfies YoutubeDownloadInput)
+        const title = video.name.replace(/\.[^.]+$/, '').trim() || request.info.title
+        return await startArticleFromImportedVideo(title, video)
+      } finally {
+        await removeProjectSourceAssetDirectory(temporaryProjectId).catch(() => undefined)
+      }
+    })
   }
 
   const handleRenameProject = async (title: string) => {
@@ -249,9 +319,9 @@ function App() {
     })
   }
 
-  const handleBackToProject = () => {
+  const handleOpenProjects = () => {
     navigationRequestRef.current += 1
-    setRoute({ kind: 'project' })
+    setRoute({ kind: 'projects' })
   }
 
   const handleBackToHome = () => {
@@ -339,13 +409,29 @@ function App() {
   }
 
   if (route.kind === 'home')
-    return <HomePage onCreateProject={handleCreateProject} onOpenProject={handleOpenProject} />
+    return (
+      <HomePage
+        onOpenProjects={handleOpenProjects}
+        onOpenProject={handleOpenProject}
+        onAddLocalVideo={handleHomeAddLocalVideo}
+        onAddYoutubeVideo={handleHomeAddYoutubeVideo}
+      />
+    )
+  if (route.kind === 'projects')
+    return (
+      <ProjectsPage
+        onHome={handleBackToHome}
+        onCreateProject={handleCreateProject}
+        onOpenProject={handleOpenProject}
+      />
+    )
   if (!project) return null
   if (route.kind === 'project')
     return (
       <ProjectDetailPage
         project={project}
-        onBack={() => setRoute({ kind: 'home' })}
+        onHome={handleBackToHome}
+        onBackToProjects={handleOpenProjects}
         onDeleteProject={() => handleDeleteProject(project.id)}
         onRenameProject={handleRenameProject}
         onAddLocalVideo={handleAddLocalVideo}
@@ -368,7 +454,7 @@ function App() {
         project={project}
         onCompleted={handleArticleCropCompleted}
         onHome={handleBackToHome}
-        onBackToProject={handleBackToProject}
+        onBackToProject={handleOpenProjects}
         onOpenArticle={handleOpenArticle}
         {...articleProps}
       />
@@ -381,7 +467,7 @@ function App() {
         onCompleted={handleSlideDetectionCompleted}
         onContinue={() => void handleProjectStep('generate-notes')}
         onHome={handleBackToHome}
-        onBackToProject={handleBackToProject}
+        onBackToProject={handleOpenProjects}
         onOpenArticle={handleOpenArticle}
         {...articleProps}
       />
@@ -398,7 +484,7 @@ function App() {
         onSaveSlideResultEdits={handleSaveSlideResultEdits}
         onOpenArticleReview={() => void handleProjectStep('article-review')}
         onHome={handleBackToHome}
-        onBackToProject={handleBackToProject}
+        onBackToProject={handleOpenProjects}
         onOpenArticle={handleOpenArticle}
         {...articleProps}
       />
@@ -412,7 +498,7 @@ function App() {
         onSaveSummary={handleSaveArticleSummary}
         onExport={() => void handleProjectStep('export')}
         onHome={handleBackToHome}
-        onBackToProject={handleBackToProject}
+        onBackToProject={handleOpenProjects}
         onOpenArticle={handleOpenArticle}
         {...articleProps}
       />
@@ -422,7 +508,7 @@ function App() {
       key={route.articleId}
       project={project}
       onHome={handleBackToHome}
-      onBackToProject={handleBackToProject}
+      onBackToProject={handleOpenProjects}
       onOpenArticle={handleOpenArticle}
       onGenerated={handleExportCompleted}
       {...articleProps}

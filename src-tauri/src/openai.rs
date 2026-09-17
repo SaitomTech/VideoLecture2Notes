@@ -11,7 +11,7 @@ use std::{
 };
 use tauri::Manager;
 
-const KEYCHAIN_SERVICE: &str = "com.saitomtech.videolecture2notes.openai";
+const KEYCHAIN_SERVICE: &str = "com.saitomtech.yomlecta.openai";
 const KEYCHAIN_ACCOUNT: &str = "default";
 const OPENAI_MODEL: &str = "gpt-5.6-luna";
 const OPENAI_RESPONSES_URL: &str = "https://api.openai.com/v1/responses";
@@ -170,7 +170,7 @@ fn http_client() -> Result<&'static Client, String> {
 
     let client = Client::builder()
         .timeout(Duration::from_secs(180))
-        .user_agent("VideoLecture2Notes/0.1")
+        .user_agent("Yomlecta/0.1")
         .build()
         .map_err(|error| format!("OpenAI APIクライアントを準備できません: {error}"))?;
     let _ = HTTP_CLIENT.set(client);
