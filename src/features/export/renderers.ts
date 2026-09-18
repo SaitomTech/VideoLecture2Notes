@@ -1,6 +1,6 @@
 import { formatTimestamp } from '../../lib/time'
 import type { ArticleSummary } from '../../types/project'
-import type { ExportDocument } from './export'
+import type { ExportDocument, ExportSection } from './export'
 
 function escapeHtml(value: string) {
   const entities: Record<string, string> = {
@@ -69,23 +69,137 @@ function renderSummaryHtml(summary?: ArticleSummary) {
     .join('\n')
 }
 
-export function renderHtml(document: ExportDocument) {
-  const sections = document.sections
-    .map((section) => {
-      const body = section.body.trim() ? renderBodyHtml(section.body) : ''
-      const slideLabel = `Slide ${String(section.index + 1).padStart(2, '0')}`
+function renderMarkdownSummary(summary?: ArticleSummary) {
+  if (!summary) return ''
 
+  return [
+    '## 要約',
+    '',
+    summary.overview,
+    '',
+    '### 主なポイント',
+    '',
+    ...summary.keyPoints.map((point) => `- ${point}`),
+    '',
+    '### キーワード',
+    '',
+    summary.keywords.map((keyword) => `\`${keyword}\``).join(' · '),
+  ].join('\n')
+}
+
+function renderTxtSummary(summary?: ArticleSummary) {
+  if (!summary) return ''
+
+  return [
+    '要約',
+    '====',
+    summary.overview,
+    '',
+    '中心メッセージ',
+    summary.mainMessage,
+    '',
+    '主なポイント',
+    ...summary.keyPoints.map((point) => `・${point}`),
+    '',
+    'キーワード',
+    summary.keywords.map((keyword) => `・${keyword}`).join('\n'),
+  ].join('\n')
+}
+
+type ArticleChapter = {
+  heading?: string
+  slides: ExportSection[]
+}
+
+function getArticleChapters(document: ExportDocument): ArticleChapter[] {
+  if (!document.articleSections?.length) return []
+
+  const sectionsBySlideId = new Map(
+    document.articleSections.flatMap((section) =>
+      section.slideIds.map((slideId) => [slideId, section] as const),
+    ),
+  )
+  const chapters: ArticleChapter[] = []
+  let lastChapterId: string | null = null
+
+  for (const slide of [...document.sections].sort((first, second) => first.index - second.index)) {
+    const section = sectionsBySlideId.get(slide.id)
+    const chapterId = section?.id ?? '__unassigned__'
+    if (lastChapterId !== chapterId) {
+      chapters.push({
+        heading: section?.heading,
+        slides: [],
+      })
+      lastChapterId = chapterId
+    }
+    chapters.at(-1)?.slides.push(slide)
+  }
+
+  return chapters
+}
+
+function renderArticleSectionsHtml(document: ExportDocument) {
+  if (!document.articleSections?.length) return ''
+  let chapterNumber = 0
+  const chapters = getArticleChapters(document)
+    .map((chapter) => {
+      const slides = chapter.slides
+        .map((slide) => {
+          const body = slide.body.trim() ? renderBodyHtml(slide.body) : ''
+          const slideLabel = `Slide ${String(slide.index + 1).padStart(2, '0')}`
+          return [
+            '          <article class="slide-section">',
+            `            <div class="section-meta"><span>${slideLabel}</span><time>${formatTimestamp(slide.startMs)} — ${formatTimestamp(slide.endMs)}</time></div>`,
+            '            <div class="section-content">',
+            `              <figure><img src="${slide.imagePath}" alt="${slideLabel}の代表画像"></figure>`,
+            `              <div class="content">${body}</div>`,
+            '            </div>',
+            '          </article>',
+          ].join('\n')
+        })
+        .join('\n')
+      const heading = safeHeading(chapter.heading ?? '')
+      if (!heading) {
+        return [
+          '      <section class="article-section article-section-unassigned">',
+          slides,
+          '      </section>',
+        ].join('\n')
+      }
+
+      chapterNumber += 1
       return [
-        '      <section class="slide-section">',
-        `        <div class="section-meta"><span>${slideLabel}</span><time>${formatTimestamp(section.startMs)} — ${formatTimestamp(section.endMs)}</time></div>`,
-        '        <div class="section-content">',
-        `          <figure><img src="${section.imagePath}" alt="${slideLabel}の代表画像"></figure>`,
-        `          <div class="content">${body}</div>`,
-        '        </div>',
+        '      <section class="article-section">',
+        `        <p class="chapter-number">${String(chapterNumber).padStart(2, '0')}</p>`,
+        `        <h2>${escapeHtml(heading)}</h2>`,
+        slides,
         '      </section>',
       ].join('\n')
     })
     .join('\n')
+
+  return `    <article class="article-sections">\n${chapters}\n    </article>`
+}
+
+export function renderHtml(document: ExportDocument) {
+  const sections = document.articleSections?.length
+    ? ''
+    : document.sections
+        .map((section) => {
+          const body = section.body.trim() ? renderBodyHtml(section.body) : ''
+          const slideLabel = `Slide ${String(section.index + 1).padStart(2, '0')}`
+
+          return [
+            '      <section class="slide-section">',
+            `        <div class="section-meta"><span>${slideLabel}</span><time>${formatTimestamp(section.startMs)} — ${formatTimestamp(section.endMs)}</time></div>`,
+            '        <div class="section-content">',
+            `          <figure><img src="${section.imagePath}" alt="${slideLabel}の代表画像"></figure>`,
+            `          <div class="content">${body}</div>`,
+            '        </div>',
+            '      </section>',
+          ].join('\n')
+        })
+        .join('\n')
 
   return [
     '<!doctype html>',
@@ -115,6 +229,10 @@ export function renderHtml(document: ExportDocument) {
     '    .summary-group li { margin: 0 0 8px; font-size: 15px; line-height: 1.7; }',
     '    .keywords { display: flex; flex-wrap: wrap; gap: 8px; }',
     '    .keywords span { padding: 5px 10px; border: 1px solid #b7cbc0; border-radius: 999px; color: #53615b; background: #f4f8f4; font-size: 13px; }',
+    '    .article-sections { max-width: 920px; margin: 0 auto; }',
+    '    .article-section { padding: 40px 0 48px; border-top: 1px solid #d8e1dc; }',
+    '    .chapter-number { margin: 0 0 8px; color: #1d6b50; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; }',
+    '    .article-section h2 { margin: 0 0 24px; font-size: clamp(23px, 4vw, 34px); line-height: 1.35; letter-spacing: -.04em; }',
     '    .slide-section { padding: 40px 0; border-top: 1px solid #d8e1dc; }',
     '    .section-meta { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 16px; color: #1d6b50; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }',
     '    .section-content { display: grid; grid-template-columns: minmax(0, 2.5fr) minmax(0, 1.5fr); gap: 32px; align-items: start; }',
@@ -124,7 +242,7 @@ export function renderHtml(document: ExportDocument) {
     '    .section-content.content-below { display: block; }',
     '    .section-content.content-below figure { width: calc(62.5% - 20px); margin: 0 0 24px; }',
     '    p { margin: 0 0 16px; font-size: 16px; line-height: 1.9; }',
-    '    @media (max-width: 600px) { main { padding-top: 20px; } .article-summary { padding: 22px 20px; } .summary-grid { grid-template-columns: 1fr; gap: 24px; } .slide-section { padding: 28px 0; } .section-meta { display: block; } .section-meta time { display: block; margin-top: 4px; } .section-content { display: block; } figure, .section-content.content-below figure { width: auto; margin: 0 0 24px; } p { font-size: 14px; } }',
+    '    @media (max-width: 600px) { main { padding-top: 20px; } .article-summary { padding: 22px 20px; } .summary-grid { grid-template-columns: 1fr; gap: 24px; } .article-section { padding: 28px 0 36px; } .slide-section { padding: 28px 0; } .section-meta { display: block; } .section-meta time { display: block; margin-top: 4px; } .section-content { display: block; } figure, .section-content.content-below figure { width: auto; margin: 0 0 24px; } p { font-size: 14px; } }',
     '  </style>',
     '</head>',
     '<body>',
@@ -134,6 +252,7 @@ export function renderHtml(document: ExportDocument) {
     `      <p class="source">${escapeHtml(document.sourceName)} · ${formatTimestamp(document.durationMs)}</p>`,
     '    </header>',
     renderSummaryHtml(document.summary),
+    renderArticleSectionsHtml(document),
     sections,
     '  </main>',
     '  <script>',
@@ -167,6 +286,41 @@ export function renderHtml(document: ExportDocument) {
 }
 
 export function renderMarkdown(document: ExportDocument) {
+  if (document.articleSections?.length) {
+    let chapterNumber = 0
+    const chapters = getArticleChapters(document)
+      .map((chapter) => {
+        const slides = chapter.slides
+          .map((slide) => {
+            const slideLabel = `Slide ${String(slide.index + 1).padStart(2, '0')}`
+            return [
+              `### ${slideLabel} · ${formatTimestamp(slide.startMs)} — ${formatTimestamp(slide.endMs)}`,
+              '',
+              `![${slideLabel}](${slide.imagePath})`,
+              '',
+              slide.body.trim() || '（発話なし）',
+            ].join('\n')
+          })
+          .join('\n\n')
+        const heading = safeHeading(chapter.heading ?? '')
+        if (heading) chapterNumber += 1
+        return heading
+          ? [`## ${String(chapterNumber).padStart(2, '0')} ${heading}`, '', slides].join('\n')
+          : slides
+      })
+      .join('\n\n')
+    const summary = renderMarkdownSummary(document.summary)
+    return [
+      `# ${safeHeading(document.title)}`,
+      '',
+      `元動画: ${document.sourceName}`,
+      ...(summary ? ['', summary] : []),
+      '',
+      chapters,
+      '',
+    ].join('\n')
+  }
+
   const sections = document.sections
     .map((section) => {
       const slideLabel = `Slide ${String(section.index + 1).padStart(2, '0')}`
@@ -182,21 +336,7 @@ export function renderMarkdown(document: ExportDocument) {
     })
     .join('\n\n')
 
-  const summary = document.summary
-    ? [
-        '## 要約',
-        '',
-        document.summary.overview,
-        '',
-        '### 主なポイント',
-        '',
-        ...document.summary.keyPoints.map((point) => `- ${point}`),
-        '',
-        '### キーワード',
-        '',
-        document.summary.keywords.map((keyword) => `\`${keyword}\``).join(' · '),
-      ].join('\n')
-    : ''
+  const summary = renderMarkdownSummary(document.summary)
 
   return [
     `# ${safeHeading(document.title)}`,
@@ -210,6 +350,40 @@ export function renderMarkdown(document: ExportDocument) {
 }
 
 export function renderTxt(document: ExportDocument) {
+  if (document.articleSections?.length) {
+    let chapterNumber = 0
+    const chapters = getArticleChapters(document)
+      .map((chapter) => {
+        const slides = chapter.slides
+          .map((slide) => {
+            const slideLabel = `Slide ${String(slide.index + 1).padStart(2, '0')}`
+            return [
+              `${slideLabel} | ${formatTimestamp(slide.startMs)} — ${formatTimestamp(slide.endMs)}`,
+              '',
+              slide.body.trim() || '（発話なし）',
+            ].join('\n')
+          })
+          .join('\n\n')
+        const heading = safeHeading(chapter.heading ?? '')
+        if (heading) chapterNumber += 1
+        return heading
+          ? [`${String(chapterNumber).padStart(2, '0')} ${heading}`, '', slides]
+              .filter(Boolean)
+              .join('\n\n')
+          : slides
+      })
+      .join('\n\n------------------------------\n\n')
+    const summary = renderTxtSummary(document.summary)
+    return [
+      document.title,
+      `元動画: ${document.sourceName}`,
+      ...(summary ? ['', summary] : []),
+      '',
+      chapters,
+      '',
+    ].join('\n')
+  }
+
   const sections = document.sections
     .map((section) => {
       const slideLabel = `Slide ${String(section.index + 1).padStart(2, '0')}`
@@ -223,22 +397,7 @@ export function renderTxt(document: ExportDocument) {
     })
     .join('\n\n------------------------------\n\n')
 
-  const summary = document.summary
-    ? [
-        '要約',
-        '====',
-        document.summary.overview,
-        '',
-        '中心メッセージ',
-        document.summary.mainMessage,
-        '',
-        '主なポイント',
-        ...document.summary.keyPoints.map((point) => `・${point}`),
-        '',
-        'キーワード',
-        document.summary.keywords.map((keyword) => `・${keyword}`).join('\n'),
-      ].join('\n')
-    : ''
+  const summary = renderTxtSummary(document.summary)
 
   return [
     document.title,

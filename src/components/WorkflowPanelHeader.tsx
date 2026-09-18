@@ -4,11 +4,7 @@ type WorkflowPanelHeaderProps = {
   description: string
 }
 
-export function WorkflowPanelHeader({
-  eyebrow,
-  title,
-  description,
-}: WorkflowPanelHeaderProps) {
+export function WorkflowPanelHeader({ eyebrow, title, description }: WorkflowPanelHeaderProps) {
   return (
     <header className="border-b border-[#d8e1dc] px-5 py-3 md:px-7">
       <div className="min-w-0">

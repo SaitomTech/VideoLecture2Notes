@@ -1,12 +1,5 @@
 import { ChevronDown, Download, RefreshCw } from 'lucide-react'
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type SyntheticEvent,
-} from 'react'
+import { useCallback, useState, type ChangeEvent, type SyntheticEvent } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { ArticleContextRow } from '../../components/ArticleContextRow'
 import { WorkflowBar } from '../../components/WorkflowBar'
@@ -14,11 +7,12 @@ import { WorkflowPanelHeader } from '../../components/WorkflowPanelHeader'
 import type { WorkflowStep } from '../../lib/workflow'
 import type { MediaProject } from '../../types/project'
 import { ArticleNavigationBar } from '../article/components/ArticleNavigationBar'
-import { EXPORT_OPTIONS, type ExportFormat } from './export'
+import { EXPORT_OPTIONS, type ExportFormat, type ExportResult } from './export'
 import { useExport, type ExportController } from './hooks/useExport'
 
 type ExportPageProps = {
   project: MediaProject
+  exportResult?: ExportResult | null
   onHome: () => void
   onBackToProject: () => void
   onOpenArticle: (articleId: string) => void | Promise<void>
@@ -43,6 +37,7 @@ function getStatusMessage({ status, progress, error }: ExportController) {
 
 export function ExportPage({
   project,
+  exportResult = null,
   onHome,
   onBackToProject,
   onOpenArticle,
@@ -51,22 +46,12 @@ export function ExportPage({
   maxReachedStep,
   onStepClick,
 }: ExportPageProps) {
-  const exporter = useExport(project)
+  const exporter = useExport(project, exportResult)
   const { generate } = exporter
   const [isDownloading, setIsDownloading] = useState(false)
   const [downloadMessage, setDownloadMessage] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [previewHeight, setPreviewHeight] = useState(520)
-  const generateRef = useRef(generate)
-  const onGeneratedRef = useRef(onGenerated)
-
-  useEffect(() => {
-    generateRef.current = generate
-  }, [generate])
-
-  useEffect(() => {
-    onGeneratedRef.current = onGenerated
-  }, [onGenerated])
   const isRunning = exporter.status === 'running'
   const isBusy = isRunning || isDownloading
   const statusMessage = getStatusMessage(exporter)
@@ -85,29 +70,6 @@ export function ExportPage({
       setSaveError(error instanceof Error ? error.message : '書き出し状態を保存できませんでした。')
     }
   }, [generate, onGenerated])
-
-  useEffect(() => {
-    let disposed = false
-    void (async () => {
-      if (!disposed) setSaveError(null)
-      const output = await generateRef.current()
-      if (!output || disposed) return
-      try {
-        await onGeneratedRef.current()
-      } catch (error) {
-        if (disposed) return
-        console.error(error)
-        setSaveError(
-          error instanceof Error ? error.message : '書き出し状態を保存できませんでした。',
-        )
-      }
-    })()
-    // Workflow-only persistence must not trigger a second export for the same article.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    return () => {
-      disposed = true
-    }
-  }, [project.id])
 
   const handleDownload = async (event: ChangeEvent<HTMLSelectElement>) => {
     const format = event.target.value as ExportFormat
@@ -172,7 +134,12 @@ export function ExportPage({
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
-        <WorkflowBar activeStep="export" maxReachedStep={maxReachedStep} onStepClick={onStepClick} disabled={isBusy} />
+        <WorkflowBar
+          activeStep="export"
+          maxReachedStep={maxReachedStep}
+          onStepClick={onStepClick}
+          disabled={isBusy}
+        />
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
           <WorkflowPanelHeader
             eyebrow="05 / REVIEW & EXPORT"
@@ -270,7 +237,7 @@ export function ExportPage({
               <div className="mx-5 mt-5 flex min-h-[420px] items-center justify-center rounded-[12px] border border-dashed border-[#b7cbc0] bg-[#f4f7f4] px-5 text-center text-xs text-[#71807b] md:mx-7">
                 {exporter.status === 'error'
                   ? '書き出し結果を表示できません。記事プレビューに戻って内容を確認してください。'
-                  : '結果を準備しています…'}
+                  : '記事を保存すると、最新の書き出し結果がここに表示されます。'}
               </div>
             )}
           </div>

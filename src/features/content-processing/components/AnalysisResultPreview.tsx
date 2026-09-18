@@ -8,8 +8,9 @@ import {
   Video,
   X,
 } from 'lucide-react'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { SlideThumbnail } from '../../../components/SlideThumbnail'
+import { SegmentVideoPlayer } from '../../../components/SegmentVideoPlayer'
 import { formatTimestamp } from '../../../lib/time'
 import { useVideoSourceUrl } from '../../../lib/media/useVideoSourceUrl'
 import type { SlideData, SlideResultEdits } from '../../../types/project'
@@ -111,44 +112,9 @@ function ResultPane({
 }
 
 function SegmentVideoPreview({ slide, videoSrc }: { slide: SlideData; videoSrc: string | null }) {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const startTime = Math.max(0, slide.startMs / 1000)
-  const endTime = Math.max(startTime, slide.endMs / 1000)
-  useEffect(() => {
-    if (!videoSrc || !videoRef.current) return
-    videoRef.current.currentTime = startTime
-  }, [startTime, videoSrc])
-
   return (
     <div className="mt-3">
-      <div className="overflow-hidden rounded-[9px] border border-[#b7cbc0] bg-[#0b1712]">
-        {videoSrc ? (
-          <video
-            ref={videoRef}
-            className="block aspect-video w-full object-contain"
-            src={videoSrc ?? undefined}
-            playsInline
-            preload="metadata"
-            controls
-            onLoadedMetadata={(event) => {
-              event.currentTarget.currentTime = startTime
-            }}
-            onTimeUpdate={(event) => {
-              const video = event.currentTarget
-              if (video.currentTime >= endTime) {
-                video.pause()
-                video.currentTime = startTime
-                return
-              }
-            }}
-            aria-label={`Slide ${String(slide.index + 1).padStart(2, '0')}の区間動画`}
-          />
-        ) : (
-          <div className="grid aspect-video place-items-center text-[10px] text-[#b7cbc0]">
-            動画を読み込んでいます…
-          </div>
-        )}
-      </div>
+      <SegmentVideoPlayer slide={slide} videoSrc={videoSrc} />
     </div>
   )
 }

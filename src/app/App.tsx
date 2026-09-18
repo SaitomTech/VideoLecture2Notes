@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { ArticleReviewPage } from '../features/article/ArticleReviewPage'
 import { CropTrimPage } from '../features/crop/CropTrimPage'
 import { ExportPage } from '../features/export/ExportPage'
+import { exportProject, type ExportResult } from '../features/export/export'
 import { GenerateNotesPage } from '../features/generate-notes/GenerateNotesPage'
 import { HomePage } from '../features/home/HomePage'
 import { ProjectDetailPage } from '../features/project/ProjectDetailPage'
@@ -15,6 +16,7 @@ import {
   markProjectExported,
   projectWithArticle,
   updateProjectArticleDraft,
+  updateProjectArticleSections,
   updateProjectArticleTitle,
   updateProjectArticleSourceSettings,
   updateProjectArticleSummary,
@@ -44,6 +46,7 @@ import type {
   ArticleSummary,
   ContentProcessingResult,
   CropRegion,
+  ArticleSections,
   MediaProject,
   PerspectiveCrop,
   ProjectStep,
@@ -64,8 +67,13 @@ type Route =
 function App() {
   const [route, setRoute] = useState<Route>({ kind: 'home' })
   const [project, setProject] = useState<MediaProject | null>(null)
+  const [generatedExport, setGeneratedExport] = useState<{
+    articleId: string
+    result: ExportResult
+  } | null>(null)
   const projectRef = useRef<MediaProject | null>(null)
   const projectOperationQueue = useRef<Promise<unknown> | null>(null)
+  const exportOperationQueue = useRef<Promise<void> | null>(null)
   const navigationRequestRef = useRef(0)
 
   const enqueueProjectOperation = <T,>(operation: () => Promise<T>) => {
@@ -94,6 +102,28 @@ function App() {
       if (!current) return null
       return saveProjectState(update(current))
     })
+
+  const regenerateArticleExport = (savedProject: MediaProject | null) => {
+    if (!savedProject?.activeArticleId) return Promise.resolve()
+
+    const articleId = savedProject.activeArticleId
+    const previous = exportOperationQueue.current ?? Promise.resolve()
+    const next = previous
+      .catch(() => undefined)
+      .then(async () => {
+        try {
+          const result = await exportProject(savedProject)
+          setGeneratedExport({ articleId, result })
+        } catch (error) {
+          console.error('記事の書き出し結果を更新できませんでした。', error)
+        }
+      })
+    exportOperationQueue.current = next.then(
+      () => undefined,
+      () => undefined,
+    )
+    return next
+  }
 
   const handleCreateProject = async (title: string) => {
     const next = createEmptyProject(title)
@@ -395,17 +425,31 @@ function App() {
     await updateCurrentProject((current) => updateProjectSlideContent(current, slideId, result))
   }
   const handleSaveSlideResultEdits = async (slideId: string, edits: SlideResultEdits) => {
-    await updateCurrentProject((current) => updateProjectSlideResultEdits(current, slideId, edits))
+    const saved = await updateCurrentProject((current) =>
+      updateProjectSlideResultEdits(current, slideId, edits),
+    )
+    await regenerateArticleExport(saved)
   }
   const handleSaveArticle = async (draft: ArticleDraft) => {
-    await updateCurrentProject((current) => updateProjectArticleDraft(current, draft))
+    const saved = await updateCurrentProject((current) => updateProjectArticleDraft(current, draft))
+    await regenerateArticleExport(saved)
+  }
+  const handleSaveArticleSections = async (sections: ArticleSections | null) => {
+    const saved = await updateCurrentProject((current) =>
+      updateProjectArticleSections(current, sections),
+    )
+    await regenerateArticleExport(saved)
   }
   const handleSaveArticleTitle = async (title: string) => {
     const saved = await updateCurrentProject((current) => updateProjectArticleTitle(current, title))
     if (!saved) throw new Error('記事が選択されていません。')
+    await regenerateArticleExport(saved)
   }
   const handleSaveArticleSummary = async (summary: ArticleSummary) => {
-    await updateCurrentProject((current) => updateProjectArticleSummary(current, summary))
+    const saved = await updateCurrentProject((current) =>
+      updateProjectArticleSummary(current, summary),
+    )
+    await regenerateArticleExport(saved)
   }
 
   if (route.kind === 'home')
@@ -493,6 +537,7 @@ function App() {
         key={route.articleId}
         project={project}
         onContentSlideCompleted={handleContentSlideCompleted}
+        onSaveSections={handleSaveArticleSections}
         getCurrentProject={() => projectRef.current}
         onSave={handleSaveArticle}
         onSaveSummary={handleSaveArticleSummary}
@@ -507,6 +552,11 @@ function App() {
     <ExportPage
       key={route.articleId}
       project={project}
+      exportResult={
+        generatedExport && generatedExport.articleId === project.activeArticleId
+          ? generatedExport.result
+          : null
+      }
       onHome={handleBackToHome}
       onBackToProject={handleOpenProjects}
       onOpenArticle={handleOpenArticle}

@@ -3,6 +3,7 @@ import type { MediaProject, SlideData } from '../../types/project'
 
 const ARTICLE_PROMPT_VERSION = 'content-processing-v14-preserve-all-content'
 const ARTICLE_SUMMARY_PROMPT_VERSION = 'article-summary-v2-talk-lecture-core-fields'
+const ARTICLE_SECTIONS_PROMPT_VERSION = 'article-sections-v2-contiguous-all-transcribed-slides'
 
 export function articleInputFingerprint(
   slide: SlideData,
@@ -60,5 +61,40 @@ export function hasCurrentArticleSummary(
     summary.keyPoints.length > 0 &&
     summary.keywords.length > 0 &&
     summary.inputFingerprint === articleSummaryInputFingerprint(project, modelId),
+  )
+}
+
+export function articleSectionsInput(project: MediaProject) {
+  return project.slides
+    .filter((slide) => slide.transcript)
+    .map((slide) => {
+      return [
+        `<SLIDE id="${slide.id}" index="${slide.index + 1}">`,
+        `<ARTICLE BODY>\n${slide.transcript?.articleBody?.trim() || '(本文なし)'}\n</ARTICLE BODY>`,
+        '</SLIDE>',
+      ].join('\n')
+    })
+    .join('\n\n')
+}
+
+export function articleSectionsInputFingerprint(
+  project: MediaProject,
+  modelId = project.article?.sections?.model ?? DEFAULT_ARTICLE_MODEL_ID,
+) {
+  return JSON.stringify([
+    project.slides.map((slide) => [slide.id, slide.index, slide.transcript?.articleBody ?? '']),
+    modelId,
+    ARTICLE_SECTIONS_PROMPT_VERSION,
+  ])
+}
+
+export function hasCurrentArticleSections(
+  project: MediaProject,
+  modelId = project.article?.sections?.model ?? DEFAULT_ARTICLE_MODEL_ID,
+) {
+  const sections = project.article?.sections
+  return Boolean(
+    sections?.sections.length &&
+    sections.inputFingerprint === articleSectionsInputFingerprint(project, modelId),
   )
 }
