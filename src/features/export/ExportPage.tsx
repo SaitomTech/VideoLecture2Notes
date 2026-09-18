@@ -163,7 +163,7 @@ export function ExportPage({
                   size={14}
                 />
                 <select
-                  className="h-10 w-[148px] cursor-pointer appearance-none rounded-[9px] bg-[#1d6b50] py-2.5 pl-9 pr-10 text-xs font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] outline-none transition hover:bg-[#174d3c] focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="h-[34px] w-[148px] cursor-pointer appearance-none rounded-[9px] bg-[#1d6b50] py-2 pl-9 pr-10 text-xs font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] outline-none transition hover:bg-[#174d3c] focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   defaultValue=""
                   onChange={(event) => void handleDownload(event)}
                   disabled={isBusy || exporter.files.length === 0}
