@@ -7,6 +7,7 @@ import {
   getActiveArticle,
   type Article,
   type ArticleDraft,
+  type ArticleSections,
   type ArticleSummary,
   type ContentProcessingResult,
   type CropRegion,
@@ -471,6 +472,35 @@ export function updateProjectArticleTitle(project: MediaProject, draftTitle: str
     ...project,
     articles: nextArticles,
     article: nextArticle,
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+export function updateProjectArticleSections(
+  project: MediaProject,
+  sections: ArticleSections | null,
+): MediaProject {
+  const activeArticle = getActiveArticle(project)
+  const title =
+    activeArticle?.title.trim() ||
+    project.article?.title?.trim() ||
+    project.source.name.replace(/\.[^.]+$/, '')
+  const currentArticle = project.article ?? { title }
+  const { sections: _currentSections, ...articleWithoutSections } = currentArticle
+  const nextArticle = sections
+    ? { ...currentArticle, title, sections }
+    : { ...articleWithoutSections, title }
+  if (sameValue(project.article, nextArticle)) return project
+  return {
+    ...project,
+    article: nextArticle,
+    workflow: workflowWithReachableStep(
+      project,
+      getWorkflowStepIndex(project.workflow.maxReachedStep) >= getWorkflowStepIndex('export')
+        ? 'export'
+        : 'article-review',
+      'article-review',
+    ),
     updatedAt: new Date().toISOString(),
   }
 }

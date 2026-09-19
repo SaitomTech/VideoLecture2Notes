@@ -1,4 +1,4 @@
-import { ChevronDown, Download, RefreshCw } from 'lucide-react'
+import { ChevronDown, Download, RefreshCw, X } from 'lucide-react'
 import {
   useCallback,
   useEffect,
@@ -9,15 +9,17 @@ import {
 } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { ArticleContextRow } from '../../components/ArticleContextRow'
+import { WorkflowBar } from '../../components/WorkflowBar'
 import { WorkflowPanelHeader } from '../../components/WorkflowPanelHeader'
 import type { WorkflowStep } from '../../lib/workflow'
 import type { MediaProject } from '../../types/project'
 import { ArticleNavigationBar } from '../article/components/ArticleNavigationBar'
-import { EXPORT_OPTIONS, type ExportFormat } from './export'
+import { EXPORT_OPTIONS, type ExportFormat, type ExportResult } from './export'
 import { useExport, type ExportController } from './hooks/useExport'
 
 type ExportPageProps = {
   project: MediaProject
+  exportResult?: ExportResult | null
   onHome: () => void
   onBackToProject: () => void
   onOpenArticle: (articleId: string) => void | Promise<void>
@@ -42,6 +44,7 @@ function getStatusMessage({ status, progress, error }: ExportController) {
 
 export function ExportPage({
   project,
+  exportResult = null,
   onHome,
   onBackToProject,
   onOpenArticle,
@@ -50,28 +53,40 @@ export function ExportPage({
   maxReachedStep,
   onStepClick,
 }: ExportPageProps) {
-  const exporter = useExport(project)
+  const exporter = useExport(project, exportResult)
   const { generate } = exporter
   const [isDownloading, setIsDownloading] = useState(false)
   const [downloadMessage, setDownloadMessage] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [previewHeight, setPreviewHeight] = useState(520)
-  const generateRef = useRef(generate)
-  const onGeneratedRef = useRef(onGenerated)
-
-  useEffect(() => {
-    generateRef.current = generate
-  }, [generate])
-
-  useEffect(() => {
-    onGeneratedRef.current = onGenerated
-  }, [onGenerated])
+  const [previewHeight, setPreviewHeight] = useState(420)
+  const [previewImage, setPreviewImage] = useState<string | null>(null)
+  const previewFrameRef = useRef<HTMLIFrameElement | null>(null)
+  const previewDialogRef = useRef<HTMLDialogElement | null>(null)
   const isRunning = exporter.status === 'running'
   const isBusy = isRunning || isDownloading
   const statusMessage = getStatusMessage(exporter)
   const progressPercent = exporter.progress.total
     ? Math.round((exporter.progress.completed / exporter.progress.total) * 100)
     : 0
+
+  useEffect(() => {
+    const handlePreviewMessage = (event: MessageEvent) => {
+      if (event.source !== previewFrameRef.current?.contentWindow) return
+      if (event.data?.type !== 'preview-image' || typeof event.data.src !== 'string') return
+      setPreviewImage(event.data.src)
+    }
+
+    window.addEventListener('message', handlePreviewMessage)
+    return () => window.removeEventListener('message', handlePreviewMessage)
+  }, [])
+
+  useEffect(() => {
+    const dialog = previewDialogRef.current
+    if (!dialog) return
+
+    if (previewImage && !dialog.open) dialog.showModal()
+    if (!previewImage && dialog.open) dialog.close()
+  }, [previewImage])
 
   const handleGenerate = useCallback(async () => {
     setSaveError(null)
@@ -84,29 +99,6 @@ export function ExportPage({
       setSaveError(error instanceof Error ? error.message : '書き出し状態を保存できませんでした。')
     }
   }, [generate, onGenerated])
-
-  useEffect(() => {
-    let disposed = false
-    void (async () => {
-      if (!disposed) setSaveError(null)
-      const output = await generateRef.current()
-      if (!output || disposed) return
-      try {
-        await onGeneratedRef.current()
-      } catch (error) {
-        if (disposed) return
-        console.error(error)
-        setSaveError(
-          error instanceof Error ? error.message : '書き出し状態を保存できませんでした。',
-        )
-      }
-    })()
-    // Workflow-only persistence must not trigger a second export for the same article.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    return () => {
-      disposed = true
-    }
-  }, [project.id])
 
   const handleDownload = async (event: ChangeEvent<HTMLSelectElement>) => {
     const format = event.target.value as ExportFormat
@@ -144,16 +136,23 @@ export function ExportPage({
   }
 
   const handlePreviewLoad = (event: SyntheticEvent<HTMLIFrameElement>) => {
-    const previewDocument = event.currentTarget.contentDocument
+    const iframe = event.currentTarget
+    const previewDocument = iframe.contentDocument
     if (!previewDocument) return
 
-    setPreviewHeight(
-      Math.max(
-        420,
-        previewDocument.documentElement.scrollHeight,
-        previewDocument.body.scrollHeight,
-      ),
-    )
+    // Measure from a short viewport first. Otherwise scrollHeight can reflect
+    // the iframe's previous height and keep a large blank area forever.
+    iframe.style.height = '420px'
+    requestAnimationFrame(() => {
+      if (!iframe.isConnected) return
+      setPreviewHeight(
+        Math.max(
+          420,
+          previewDocument.documentElement.scrollHeight,
+          previewDocument.body.scrollHeight,
+        ),
+      )
+    })
   }
 
   return (
@@ -171,15 +170,17 @@ export function ExportPage({
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
+        <WorkflowBar
+          activeStep="export"
+          maxReachedStep={maxReachedStep}
+          onStepClick={onStepClick}
+          disabled={isBusy}
+        />
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
           <WorkflowPanelHeader
-            activeStep="export"
-            maxReachedStep={maxReachedStep}
-            onStepClick={onStepClick}
-            disabled={isBusy}
-            eyebrow="05 / RESULT"
-            title="書き出し結果"
-            description="HTMLの見た目を確認して、必要な形式をダウンロードします。"
+            eyebrow="05 / REVIEW & EXPORT"
+            title="閲覧・ダウンロード"
+            description="記事の表示を確認し、必要な形式でダウンロードします。"
           />
           <div className="flex justify-end px-5 py-4 md:px-7">
             <div className="flex flex-wrap items-center justify-end gap-2">
@@ -198,7 +199,7 @@ export function ExportPage({
                   size={14}
                 />
                 <select
-                  className="h-10 w-[148px] cursor-pointer appearance-none rounded-[9px] bg-[#1d6b50] py-2.5 pl-9 pr-10 text-xs font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] outline-none transition hover:bg-[#174d3c] focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="h-[34px] w-[148px] cursor-pointer appearance-none rounded-[9px] bg-[#1d6b50] py-2 pl-9 pr-10 text-xs font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] outline-none transition hover:bg-[#174d3c] focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   defaultValue=""
                   onChange={(event) => void handleDownload(event)}
                   disabled={isBusy || exporter.files.length === 0}
@@ -260,6 +261,7 @@ export function ExportPage({
 
             {exporter.previewHtml ? (
               <iframe
+                ref={previewFrameRef}
                 className="block min-h-[420px] w-full border-0 bg-[#fbfcfa]"
                 title="生成された記事"
                 srcDoc={exporter.previewHtml}
@@ -272,11 +274,37 @@ export function ExportPage({
               <div className="mx-5 mt-5 flex min-h-[420px] items-center justify-center rounded-[12px] border border-dashed border-[#b7cbc0] bg-[#f4f7f4] px-5 text-center text-xs text-[#71807b] md:mx-7">
                 {exporter.status === 'error'
                   ? '書き出し結果を表示できません。記事プレビューに戻って内容を確認してください。'
-                  : '結果を準備しています…'}
+                  : '記事を保存すると、最新の書き出し結果がここに表示されます。'}
               </div>
             )}
           </div>
         </div>
+
+        {previewImage && (
+          <dialog
+            ref={previewDialogRef}
+            className="fixed m-auto max-h-[calc(100svh-48px)] max-w-[min(1280px,calc(100vw-48px))] rounded-[16px] border border-[#b7cbc0] bg-[#fbfcfa] p-6 shadow-[0_24px_80px_rgba(24,33,31,0.24)] backdrop:bg-[rgba(24,33,31,0.48)] backdrop:backdrop-blur-[2px]"
+            aria-label="画像プレビュー"
+            onCancel={(event) => {
+              event.preventDefault()
+              setPreviewImage(null)
+            }}
+          >
+            <button
+              className="absolute right-2.5 top-2.5 grid size-8 place-items-center rounded-full border border-[#b7cbc0] bg-[#fbfcfa] text-[#1d6b50] transition hover:bg-[#e2eee8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30"
+              type="button"
+              aria-label="閉じる"
+              onClick={() => setPreviewImage(null)}
+            >
+              <X size={18} />
+            </button>
+            <img
+              className="block max-h-[calc(100svh-96px)] max-w-full rounded-[8px] object-contain"
+              src={previewImage}
+              alt="拡大プレビュー"
+            />
+          </dialog>
+        )}
 
         {downloadMessage && (
           <p className="mt-4 text-xs text-[#1d6b50]" role="status">

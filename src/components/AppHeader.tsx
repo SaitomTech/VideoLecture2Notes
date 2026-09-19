@@ -31,7 +31,7 @@ function HeaderNavigation({
   disabled: boolean
 }) {
   const linkClass =
-    'px-1 py-2 text-[13px] font-semibold text-[#71807b] transition hover:text-[#1d6b50] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-45'
+    'cursor-pointer px-1 py-2 text-[13px] font-semibold text-[#71807b] transition hover:text-[#1d6b50] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-45'
   const activeClass =
     'border-b-2 border-[#1d6b50] px-1 py-2 text-[13px] font-semibold text-[#174d3c]'
 
@@ -72,7 +72,7 @@ export function AppHeader({ onHome, onProjects, activeNav, homeDisabled = false 
   const isUpdateBusy = phase === 'checking' || phase === 'downloading' || phase === 'installing'
   const isInstallingUpdate = phase === 'downloading' || phase === 'installing'
   const updateMessage = getUpdateMessage(updates)
-  const brandContainerClass = 'inline-flex items-center gap-3 rounded-[9px] px-1.5 py-1 text-left'
+  const brandContainerClass = 'inline-flex w-fit items-center justify-self-start text-left'
 
   const navigationDisabled = homeDisabled || isInstallingUpdate
 
@@ -80,7 +80,7 @@ export function AppHeader({ onHome, onProjects, activeNav, homeDisabled = false 
     <header className="grid h-[76px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-b border-[#d8e1dc]/75 bg-white px-[5.8vw]">
       {onHome ? (
         <button
-          className={`${brandContainerClass} cursor-pointer transition hover:bg-[#e2eee8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-45`}
+          className={`${brandContainerClass} cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 disabled:cursor-not-allowed disabled:opacity-45`}
           type="button"
           onClick={onHome}
           disabled={homeDisabled || isInstallingUpdate}

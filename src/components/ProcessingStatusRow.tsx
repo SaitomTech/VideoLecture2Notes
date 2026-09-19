@@ -10,6 +10,7 @@ type ProcessingStatusRowProps = {
   errorDetail?: string | null
   onRetry?: () => void | Promise<unknown>
   retryDisabled?: boolean
+  compact?: boolean
 }
 
 export function ProcessingStatusRow({
@@ -22,9 +23,10 @@ export function ProcessingStatusRow({
   errorDetail,
   onRetry,
   retryDisabled = false,
+  compact = false,
 }: ProcessingStatusRowProps) {
   return (
-    <article className="py-5 first:pt-0 last:pb-0">
+    <article className={compact ? 'pt-2 pb-0' : 'py-5 first:pt-0 last:pb-0'}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <p className="min-w-0 text-xs text-[#71807b]">{message}</p>
         <span className="shrink-0 font-mono text-[11px] tabular-nums text-[#1d6b50]">

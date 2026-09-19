@@ -242,9 +242,32 @@ const ArticleSummarySchema = z.strictObject({
   inputFingerprint: z.string().min(1),
 })
 
+const ArticleSectionSchema = z.strictObject({
+  id: z.string().min(1),
+  heading: z.string().min(1),
+  slideIds: z.array(IdSchema).min(1),
+})
+
+const ArticleSectionsSchema = z.strictObject({
+  sections: z.array(ArticleSectionSchema).min(1),
+  model: z.string().min(1),
+  inputFingerprint: z.string().min(1),
+  provider: z.enum(['local', 'openai', 'apple']).optional(),
+  engineVersion: z.string().min(1).optional(),
+  usage: z
+    .strictObject({
+      inputTokens: z.number().int().nonnegative(),
+      outputTokens: z.number().int().nonnegative(),
+    })
+    .optional(),
+  requestId: z.string().min(1).optional(),
+  generatedAt: IsoDateSchema.optional(),
+})
+
 const ArticleDataSchema = z.strictObject({
   title: z.string().min(1),
   summary: ArticleSummarySchema.optional(),
+  sections: ArticleSectionsSchema.optional(),
 })
 
 const ProjectWorkflowSchema = z.strictObject({

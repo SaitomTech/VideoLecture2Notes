@@ -1,7 +1,6 @@
 import { RefreshCw, Square } from 'lucide-react'
+import { ArticleModelDetails } from '../../../components/ArticleModelDetails'
 import { ApiCostEstimate } from '../../../components/ApiCostEstimate'
-import { OpenAiApiKeySettings } from '../../../components/OpenAiApiKeySettings'
-import { ModelDescription } from '../../../components/ModelDescription'
 import { ModelSelect } from '../../../components/ModelSelect'
 import { ProcessingStatusRow } from '../../../components/ProcessingStatusRow'
 import { estimateOpenAiArticleCost } from '../../../lib/openai/cost'
@@ -29,55 +28,6 @@ const stageLabels = {
   'preparing-model': '文章処理モデルを確認・準備中…',
   processing: 'Slideごとに本文を生成中…',
 } as const
-
-function formatModelSize(bytes: number) {
-  return `${(bytes / 1024 ** 3).toFixed(2)}GB`
-}
-
-function assertNever(value: never): never {
-  throw new Error(`未対応の本文生成プロバイダーです: ${JSON.stringify(value)}`)
-}
-
-export function ArticleModelDetails({
-  model,
-  disabled,
-}: {
-  model: ArticleModel
-  disabled: boolean
-}) {
-  switch (model.provider) {
-    case 'apple':
-      return (
-        <ModelDescription
-          description={model.description}
-          annotation="文字起こしとOCRテキストはMac内で処理します。macOS 26以降、対応するApple Silicon MacでApple Intelligenceを有効にしてください。"
-        />
-      )
-    case 'local':
-      return (
-        <ModelDescription
-          description={model.model.description}
-          annotation={`初回のみモデルをダウンロードします（約${formatModelSize(model.model.totalSizeBytes)}）。`}
-        />
-      )
-    case 'openai':
-      return (
-        <ModelDescription
-          description={model.description}
-          annotation="文字起こしとOCRテキストを外部送信します。動画・音声・画像は送信しません。Slide単位で最大8件を並列処理します。"
-        >
-          <OpenAiApiKeySettings
-            verificationModel={OPENAI_LUNA_MODEL.apiModel}
-            verificationLabel={OPENAI_LUNA_MODEL.label}
-            billingNote="API利用料は、入力したAPIキーに紐づくOpenAI APIの請求先に発生します。"
-            disabled={disabled}
-          />
-        </ModelDescription>
-      )
-    default:
-      return assertNever(model)
-  }
-}
 
 function progressRatio(processing: ContentProcessingController) {
   if (processing.status === 'completed') return 1
@@ -121,8 +71,8 @@ export function ContentProcessingPanel({
     <section aria-labelledby="content-processing-heading">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h3 id="content-processing-heading" className="text-[15px] font-semibold text-[#18211f]">
-            本文を生成
+          <h3 id="content-processing-heading" className="text-[21px] font-bold tracking-[-0.05em]">
+            OCR補正を使って本文を生成
           </h3>
           <p className="mt-1 text-xs text-[#71807b]">
             スライドと音声の文字起こしをもとに、記事本文を生成します。
@@ -203,6 +153,7 @@ export function ContentProcessingStatus({
 
   return (
     <ProcessingStatusRow
+      compact
       status={processing.status}
       message={message}
       progress={progress}

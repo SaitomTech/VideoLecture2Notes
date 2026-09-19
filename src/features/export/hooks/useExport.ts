@@ -11,16 +11,18 @@ import {
 
 type ExportStatus = 'idle' | 'running' | 'completed' | 'error'
 
-export function useExport(project: MediaProject) {
+export function useExport(project: MediaProject, initialResult: ExportResult | null = null) {
   const [status, setStatus] = useState<ExportStatus>('idle')
   const [progress, setProgress] = useState<ExportProgress>({
     stage: 'copying-images',
     completed: 0,
     total: 0,
   })
-  const [result, setResult] = useState<ExportResult | null>(null)
+  const [hasLocalResult, setHasLocalResult] = useState(false)
+  const [localResult, setLocalResult] = useState<ExportResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const isGenerating = useRef(false)
+  const result = hasLocalResult ? localResult : initialResult
 
   const generate = useCallback(async () => {
     if (isGenerating.current) return null
@@ -28,12 +30,13 @@ export function useExport(project: MediaProject) {
     isGenerating.current = true
     setStatus('running')
     setError(null)
-    setResult(null)
+    setHasLocalResult(true)
+    setLocalResult(null)
     setProgress({ stage: 'copying-images', completed: 0, total: 0 })
 
     try {
       const output = await exportProject(project, setProgress)
-      setResult(output)
+      setLocalResult(output)
       setStatus('completed')
       return output
     } catch (exportError) {

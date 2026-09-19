@@ -2,6 +2,7 @@ import { ArrowRight, Check } from 'lucide-react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { ArticleContextRow } from '../../components/ArticleContextRow'
+import { WorkflowBar } from '../../components/WorkflowBar'
 import { WorkflowPanelHeader } from '../../components/WorkflowPanelHeader'
 import type { WorkflowStep } from '../../lib/workflow'
 import type { MediaProject, SlideBoundary } from '../../types/project'
@@ -138,14 +139,16 @@ export function SlideDetectionPage({
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
+        <WorkflowBar
+          activeStep="detect-slides"
+          maxReachedStep={maxReachedStep}
+          onStepClick={onStepClick}
+          disabled={isRunning || isSavingReview || hasUnsavedReview}
+        />
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
           <WorkflowPanelHeader
-            activeStep="detect-slides"
-            maxReachedStep={maxReachedStep}
-            onStepClick={onStepClick}
-            disabled={isRunning || isSavingReview || hasUnsavedReview}
             eyebrow="02 / DETECT SLIDES"
-            title="スライドを検出"
+            title="スライド区間を検出"
             description="画面の変化を比較して、スライド区間を自動で分けます。"
           />
 
@@ -204,7 +207,7 @@ export function SlideDetectionPage({
                 type="button"
                 onClick={onContinue}
               >
-                文字起こしへ
+                文字起こしとOCRへ
                 <ArrowRight size={14} />
               </button>
             </div>

@@ -14,6 +14,8 @@ const ALIGNMENT_INPUT_TOKENS_PER_CONTEXT = 1_800
 const ALIGNMENT_OUTPUT_TOKENS_PER_CONTEXT = 450
 const SUMMARY_INSTRUCTION_TOKENS = 500
 const SUMMARY_OUTPUT_TOKENS = 450
+const SECTIONS_INSTRUCTION_TOKENS = 700
+const SECTIONS_OUTPUT_TOKENS = 500
 
 export type OpenAiCostEstimate = {
   usd: number
@@ -101,6 +103,13 @@ export function estimateOpenAiSummaryCost(articleCharacters: number): OpenAiCost
   return costForTokens(
     SUMMARY_INSTRUCTION_TOKENS + estimateTextTokens(articleCharacters),
     SUMMARY_OUTPUT_TOKENS,
+  )
+}
+
+export function estimateOpenAiSectionsCost(articleCharacters: number): OpenAiCostEstimate {
+  return costForTokens(
+    SECTIONS_INSTRUCTION_TOKENS + estimateTextTokens(articleCharacters),
+    SECTIONS_OUTPUT_TOKENS,
   )
 }
 

@@ -2,17 +2,37 @@ import { ArrowRight } from 'lucide-react'
 import { useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { ArticleContextRow } from '../../components/ArticleContextRow'
+import { WorkflowBar } from '../../components/WorkflowBar'
 import { WorkflowPanelHeader } from '../../components/WorkflowPanelHeader'
 import { getArticleModel, type ArticleModelId } from '../../lib/article/articleModel'
 import type { WorkflowStep } from '../../lib/workflow'
-import type { ArticleDraft, ArticleSummary, MediaProject } from '../../types/project'
+import type {
+  ArticleDraft,
+  ArticleSections,
+  ArticleSummary,
+  ContentProcessingResult,
+  MediaProject,
+} from '../../types/project'
 import { ArticleSummaryCard } from './components/ArticleSummaryCard'
-import { ArticleSectionEditor } from './components/ArticleSectionEditor'
 import { ArticleNavigationBar } from './components/ArticleNavigationBar'
+import { ArticleSectionsCard } from './components/ArticleSectionsCard'
+import { ArticleStructureEditor } from './components/ArticleStructureEditor'
 import { useArticleSummary } from './hooks/useArticleSummary'
+import { useArticleSections } from './hooks/useArticleSections'
+import {
+  ContentProcessingPanel,
+  ContentProcessingStatus,
+} from '../content-processing/components/ContentProcessingPanel'
+import type { ContentProcessingSlideCompleted } from '../content-processing/contentProcessing'
+import { useContentProcessing } from '../content-processing/hooks/useContentProcessing'
+import { getActiveArticleSourceContext } from '../../lib/project/articleSource'
+import { hasCurrentArticleSections } from './article'
 
 type ArticleReviewPageProps = {
   project: MediaProject
+  onContentSlideCompleted: ContentProcessingSlideCompleted
+  onSaveSections: (sections: ArticleSections | null) => void | Promise<void>
+  getCurrentProject: () => MediaProject | null
   onSave: (draft: ArticleDraft) => void | Promise<void>
   onSaveSummary: (summary: ArticleSummary) => void | Promise<void>
   onExport: () => void
@@ -26,8 +46,19 @@ type ArticleReviewPageProps = {
 
 type EditingTarget = { type: 'slide'; slideId: string } | null
 
+function getCurrentArticleSections(project: MediaProject) {
+  const sections = project.article?.sections
+  return sections &&
+    (sections.model === 'manual' || hasCurrentArticleSections(project, sections.model))
+    ? sections
+    : undefined
+}
+
 export function ArticleReviewPage({
   project,
+  onContentSlideCompleted,
+  onSaveSections,
+  getCurrentProject,
   onSave,
   onSaveSummary,
   onExport,
@@ -39,6 +70,8 @@ export function ArticleReviewPage({
   onStepClick,
 }: ArticleReviewPageProps) {
   const articleSlides = project.slides.filter((slide) => Boolean(slide.transcript))
+  const currentArticleSections = getCurrentArticleSections(project)
+  const sourcePath = getActiveArticleSourceContext(project).source.path
   const activeArticle = project.articles.find((article) => article.id === project.activeArticleId)
   const articleTitle =
     activeArticle?.title.trim() ||
@@ -50,6 +83,18 @@ export function ArticleReviewPage({
         .id,
   )
   const summaryGeneration = useArticleSummary(project, summaryModelId, onSaveSummary)
+  const storedTextModelId = project.slides
+    .map((slide) => slide.transcript?.articleModel)
+    .find((modelId): modelId is string => Boolean(modelId))
+  const [textModelId, setTextModelId] = useState<ArticleModelId>(
+    () => getArticleModel(storedTextModelId).id,
+  )
+  const reviewSections = currentArticleSections ?? {
+    model: 'manual',
+    inputFingerprint: 'manual',
+    sections: [],
+  }
+  const textModel = getArticleModel(textModelId)
   const initialBodies = Object.fromEntries(
     articleSlides.map((slide) => [slide.id, slide.transcript?.articleBody ?? '']),
   )
@@ -60,11 +105,47 @@ export function ArticleReviewPage({
   const [saveError, setSaveError] = useState<string | null>(null)
   const [switchingArticleId, setSwitchingArticleId] = useState<string | null>(null)
 
+  const handleContentSlideCompleted = async (slideId: string, result: ContentProcessingResult) => {
+    await onContentSlideCompleted(slideId, result)
+    setSavedBodies((current) => ({ ...current, [slideId]: result.article.body }))
+  }
+
+  const processing = useContentProcessing(
+    project,
+    handleContentSlideCompleted,
+    textModelId,
+    getCurrentProject,
+  )
+  const sectionsGeneration = useArticleSections(project, textModelId, onSaveSections)
+
   const editingSlideId = editingTarget?.type === 'slide' ? editingTarget.slideId : null
   const isBodyDirty = editingSlideId !== null && bodyDraft !== (savedBodies[editingSlideId] ?? '')
   const hasUnsavedChanges = isBodyDirty
-  const isBusy = isSaving || summaryGeneration.status === 'running'
+  const isBusy =
+    isSaving ||
+    summaryGeneration.status === 'running' ||
+    processing.status === 'running' ||
+    sectionsGeneration.status === 'running'
+  const contentControlsDisabled =
+    isSaving ||
+    summaryGeneration.status === 'running' ||
+    sectionsGeneration.status === 'running' ||
+    hasUnsavedChanges
+  const sharedGenerationDisabled = isSaving || hasUnsavedChanges || switchingArticleId !== null
+  const summaryControlsDisabled =
+    sharedGenerationDisabled ||
+    processing.status === 'running' ||
+    sectionsGeneration.status === 'running'
+  const sectionsControlsDisabled =
+    sharedGenerationDisabled ||
+    summaryGeneration.status === 'running' ||
+    processing.status === 'running'
   const canEdit = editingTarget === null && !isBusy
+
+  const handleTextModelChange = (nextModelId: ArticleModelId) => {
+    processing.reset()
+    setTextModelId(nextModelId)
+  }
 
   const startSlideEditing = (slideId: string) => {
     if (!canEdit) return
@@ -102,7 +183,7 @@ export function ArticleReviewPage({
     if (articleId === project.activeArticleId) {
       return true
     }
-    if (switchingArticleId || isSaving || summaryGeneration.status === 'running') return false
+    if (switchingArticleId || isBusy) return false
 
     if (hasUnsavedChanges) {
       const nextBodies = { ...savedBodies, [editingSlideId!]: bodyDraft }
@@ -159,64 +240,106 @@ export function ArticleReviewPage({
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
+        <WorkflowBar
+          activeStep="article-review"
+          maxReachedStep={maxReachedStep}
+          onStepClick={handleWorkflowNavigation}
+          disabled={isBusy}
+        />
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
           <WorkflowPanelHeader
-            activeStep="article-review"
-            maxReachedStep={maxReachedStep}
-            onStepClick={handleWorkflowNavigation}
-            disabled={isBusy}
-            eyebrow="04 / ARTICLE PREVIEW"
-            title="記事プレビュー"
-            description="生成した記事の見た目を確認します。必要なSlideだけ編集できます。"
+            eyebrow="04 / ARTICLE GENERATION & EDITING"
+            title="記事の生成・編集"
+            description="記事を生成し、内容や表示を編集します。"
           />
 
-          <div className="space-y-5 p-5 md:p-7">
-            <ArticleSummaryCard
-              project={project}
-              summary={project.article?.summary}
-              generation={summaryGeneration}
-              modelId={summaryModelId}
-              onModelChange={setSummaryModelId}
-              disabled={isBusy || hasUnsavedChanges}
-              onGenerate={(force) => void summaryGeneration.generate(force)}
-              onCancel={summaryGeneration.cancel}
-              onSave={onSaveSummary}
-            />
-            {articleSlides.length > 0 ? (
-              articleSlides.map((slide) => {
-                const isEditing = editingSlideId === slide.id
-                return (
-                  <ArticleSectionEditor
-                    key={slide.id}
-                    slide={slide}
-                    body={isEditing ? bodyDraft : (savedBodies[slide.id] ?? '')}
-                    editing={isEditing}
-                    editDisabled={!isEditing && !canEdit}
-                    saving={isSaving && isEditing}
-                    canSave={isBodyDirty}
-                    error={isEditing ? saveError : null}
-                    onEdit={() => startSlideEditing(slide.id)}
-                    onCancel={cancelEditing}
-                    onSave={() => void saveSlide()}
-                    onBodyChange={(body) => {
-                      setBodyDraft(body)
-                      setSaveError(null)
-                    }}
-                  />
-                )
-              })
-            ) : (
-              <div className="border-y border-dashed border-[#b7cbc0] px-4 py-10 text-center text-xs text-[#71807b]">
-                文字起こし済みの記事本文がありません。
+          <div className="space-y-10 p-5 md:p-7">
+            <section aria-labelledby="article-generation-heading">
+              <div>
+                <h2
+                  id="article-generation-heading"
+                  className="text-[21px] font-bold tracking-[-0.05em]"
+                >
+                  1. 記事を生成
+                </h2>
+                <p className="mt-1 text-xs text-[#71807b]">
+                  OCR結果で文字起こしを補正し、要約とテーマ別セクションを追加します。
+                </p>
               </div>
-            )}
+              <div className="mt-5 space-y-5">
+                <div>
+                  <ContentProcessingPanel
+                    project={project}
+                    processing={processing}
+                    model={textModel}
+                    modelId={textModelId}
+                    onModelChange={handleTextModelChange}
+                    disabled={contentControlsDisabled || switchingArticleId !== null}
+                  />
+                  <ContentProcessingStatus
+                    processing={processing}
+                    disabled={contentControlsDisabled || switchingArticleId !== null}
+                  />
+                </div>
+                <ArticleSummaryCard
+                  project={project}
+                  summary={project.article?.summary}
+                  generation={summaryGeneration}
+                  modelId={summaryModelId}
+                  onModelChange={setSummaryModelId}
+                  disabled={summaryControlsDisabled}
+                  onGenerate={(force) => void summaryGeneration.generate(force)}
+                  onCancel={summaryGeneration.cancel}
+                />
+                <ArticleSectionsCard
+                  project={project}
+                  sections={currentArticleSections}
+                  generation={sectionsGeneration}
+                  model={textModel}
+                  modelId={textModelId}
+                  onModelChange={handleTextModelChange}
+                  onGenerate={(force) => void sectionsGeneration.generate(force)}
+                  onCancel={sectionsGeneration.cancel}
+                  disabled={sectionsControlsDisabled}
+                />
+              </div>
+            </section>
+            <section aria-labelledby="article-review-heading">
+              <ArticleStructureEditor
+                project={project}
+                sections={reviewSections}
+                sourcePath={sourcePath}
+                canEditSlide={canEdit}
+                editingSlideId={editingSlideId}
+                savedBodies={savedBodies}
+                bodyDraft={bodyDraft}
+                isSavingBody={isSaving}
+                isBodyDirty={isBodyDirty}
+                bodySaveError={saveError}
+                onStartSlideEditing={startSlideEditing}
+                onCancelSlideEditing={cancelEditing}
+                onSaveSlide={() => void saveSlide()}
+                onBodyChange={(body) => {
+                  setBodyDraft(body)
+                  setSaveError(null)
+                }}
+                onSaveSections={onSaveSections}
+                summary={project.article?.summary}
+                summaryIsUpToDate={summaryGeneration.isUpToDate}
+                summaryDisabled={isBusy || hasUnsavedChanges || switchingArticleId !== null}
+                onSaveSummary={onSaveSummary}
+                disabled={isBusy || isBodyDirty || switchingArticleId !== null}
+              />
+            </section>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[#d8e1dc] px-5 py-4 md:px-7">
-            <p className={`text-xs ${hasUnsavedChanges ? 'text-[#9a7a35]' : 'text-[#71807b]'}`}>
-              {hasUnsavedChanges
-                ? '未保存の変更があります。保存してから書き出せます。'
-                : '記事を確認したら、書き出しへ進みます。'}
-            </p>
+          <div
+            className={`flex flex-wrap items-center gap-4 border-t border-[#d8e1dc] px-5 py-4 md:px-7 ${hasUnsavedChanges ? 'justify-between' : 'justify-end'}`}
+          >
+            {hasUnsavedChanges && (
+              <p className="text-xs text-[#9a7a35]">
+                未保存の変更があります。保存してから書き出せます。
+              </p>
+            )}
             <button
               className="inline-flex items-center gap-2 rounded-[9px] bg-[#1d6b50] px-4 py-3 text-xs font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] transition hover:bg-[#174d3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
               type="button"
@@ -224,7 +347,7 @@ export function ArticleReviewPage({
               disabled={hasUnsavedChanges || isBusy}
               title={hasUnsavedChanges ? '編集中の変更を保存してください' : undefined}
             >
-              書き出しへ
+              閲覧・ダウンロードへ
               <ArrowRight size={14} />
             </button>
           </div>

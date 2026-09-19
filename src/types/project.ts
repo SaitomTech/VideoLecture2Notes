@@ -146,8 +146,27 @@ export type ArticleSummary = {
   model: string
   inputFingerprint: string
 }
+export type ArticleSection = {
+  id: string
+  heading: string
+  slideIds: string[]
+}
+export type ArticleSections = {
+  sections: ArticleSection[]
+  model: string
+  inputFingerprint: string
+  provider?: 'local' | 'openai' | 'apple'
+  engineVersion?: string
+  usage?: { inputTokens: number; outputTokens: number }
+  requestId?: string
+  generatedAt?: string
+}
 export type ContentProcessingResult = { article: ArticleFormattingResult }
-export type ArticleData = { title: string; summary?: ArticleSummary }
+export type ArticleData = {
+  title: string
+  summary?: ArticleSummary
+  sections?: ArticleSections
+}
 export type ArticleDraft = { title: string; bodies: Record<string, string> }
 export type SlideResultEdits = { ocrText: string; transcriptRaw: string; articleBody: string }
 export type ProjectSettings = {

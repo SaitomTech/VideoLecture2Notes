@@ -2,9 +2,9 @@ import { Play, Square } from 'lucide-react'
 import { useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { ArticleContextRow } from '../../components/ArticleContextRow'
+import { WorkflowBar } from '../../components/WorkflowBar'
 import { WorkflowPanelHeader } from '../../components/WorkflowPanelHeader'
 import type { WorkflowStep } from '../../lib/workflow'
-import { getArticleModel, type ArticleModelId } from '../../lib/article/articleModel'
 import { getOcrModel, type OcrModelId } from '../../lib/ocr/modelManager'
 import {
   getTranscriptionModel,
@@ -17,12 +17,6 @@ import {
   type TranscriptionResult,
 } from '../../types/project'
 import { AnalysisResultPreview } from '../content-processing/components/AnalysisResultPreview'
-import {
-  ContentProcessingPanel,
-  ContentProcessingStatus,
-} from '../content-processing/components/ContentProcessingPanel'
-import type { ContentProcessingSlideCompleted } from '../content-processing/contentProcessing'
-import { useContentProcessing } from '../content-processing/hooks/useContentProcessing'
 import { OcrPanel, OcrStatus } from '../ocr/components/OcrPanel'
 import { useOcr } from '../ocr/hooks/useOcr'
 import type { OcrSlideCompleted } from '../ocr/ocr'
@@ -38,8 +32,6 @@ type GenerateNotesPageProps = {
   project: MediaProject
   onCompleted: (result: TranscriptionResult) => void | Promise<void>
   onOcrSlideCompleted: OcrSlideCompleted
-  onContentSlideCompleted: ContentProcessingSlideCompleted
-  getCurrentProject: () => MediaProject | null
   onSaveSlideResultEdits: (slideId: string, edits: SlideResultEdits) => void | Promise<void>
   onOpenArticleReview: () => void
   onHome: () => void
@@ -50,14 +42,12 @@ type GenerateNotesPageProps = {
   onStepClick: (step: WorkflowStep) => void
 }
 
-type BatchStage = 'idle' | 'ocr' | 'transcription' | 'content'
+type BatchStage = 'idle' | 'ocr' | 'transcription'
 
 export function GenerateNotesPage({
   project,
   onCompleted,
   onOcrSlideCompleted,
-  onContentSlideCompleted,
-  getCurrentProject,
   onSaveSlideResultEdits,
   onOpenArticleReview,
   onHome,
@@ -82,33 +72,13 @@ export function GenerateNotesPage({
     .map((slide) => slide.ocr?.model)
     .find((modelId): modelId is string => Boolean(modelId))
   const [ocrModelId, setOcrModelId] = useState<OcrModelId>(() => getOcrModel(storedOcrModelId).id)
-  const storedTextModelId = project.slides
-    .map((slide) => slide.transcript?.articleModel)
-    .find((modelId): modelId is string => Boolean(modelId))
-  const [textModelId, setTextModelId] = useState<ArticleModelId>(
-    () => getArticleModel(storedTextModelId).id,
-  )
-  const textModel = getArticleModel(textModelId)
-  const transcription = useTranscription(
-    project,
-    transcriptionModelId,
-    onCompleted,
-    getCurrentProject,
-  )
-  const ocr = useOcr(project, onOcrSlideCompleted, ocrModelId, getCurrentProject)
-  const processing = useContentProcessing(
-    project,
-    onContentSlideCompleted,
-    textModelId,
-    getCurrentProject,
-  )
+  const transcription = useTranscription(project, transcriptionModelId, onCompleted)
+  const ocr = useOcr(project, onOcrSlideCompleted, ocrModelId)
   const [batchStage, setBatchStage] = useState<BatchStage>('idle')
   const handleTranscribe = () => transcription.transcribe(language)
   const isBatchRunning = batchStage !== 'idle'
   const isOcrRunning = ocr.status === 'running'
-  const isContentProcessing = processing.status === 'running'
-  const isProcessing =
-    isBatchRunning || transcription.status === 'running' || isOcrRunning || isContentProcessing
+  const isProcessing = isBatchRunning || transcription.status === 'running' || isOcrRunning
 
   const handleRunAll = async () => {
     if (isProcessing) return
@@ -119,9 +89,6 @@ export function GenerateNotesPage({
 
       setBatchStage('transcription')
       if (!(await transcription.transcribe(language))) return
-
-      setBatchStage('content')
-      await processing.process()
     } finally {
       setBatchStage('idle')
     }
@@ -130,11 +97,6 @@ export function GenerateNotesPage({
   const handleCancelBatch = () => {
     if (batchStage === 'ocr') ocr.cancel()
     if (batchStage === 'transcription') transcription.cancel()
-    if (batchStage === 'content') processing.cancel()
-  }
-  const handleTextModelChange = (nextModelId: ArticleModelId) => {
-    processing.reset()
-    setTextModelId(nextModelId)
   }
   return (
     <main className="flex min-h-svh flex-col bg-[#f4f7f4] font-[Avenir_Next,Hiragino_Sans,Yu_Gothic,system-ui,sans-serif] text-[18px] leading-[1.45] tracking-[0.18px] text-[#18211f]">
@@ -151,15 +113,17 @@ export function GenerateNotesPage({
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
+        <WorkflowBar
+          activeStep="generate-notes"
+          maxReachedStep={maxReachedStep}
+          onStepClick={onStepClick}
+          disabled={isProcessing}
+        />
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
           <WorkflowPanelHeader
-            activeStep="generate-notes"
-            maxReachedStep={maxReachedStep}
-            onStepClick={onStepClick}
-            disabled={isProcessing}
-            eyebrow="03 / GENERATE NOTES"
-            title="ノートを生成"
-            description="OCR、文字起こし、本文生成を順に実行します。"
+            eyebrow="03 / TRANSCRIPTION & OCR"
+            title="文字起こしとOCR"
+            description="音声の文字起こしと、スライド内の文字認識を実行します。"
           />
 
           <div className="p-5 md:p-7">
@@ -173,7 +137,7 @@ export function GenerateNotesPage({
                     1. 解析の設定・実行
                   </h2>
                   <p className="mt-1 text-xs text-[#71807b]">
-                    3つの処理に必要な設定を確認して、順番に実行します。解析結果は下の「2.
+                    OCRと文字起こしに必要な設定を確認して、順番に実行します。解析結果は下の「2.
                     解析結果の確認」で確認できます。
                   </p>
                 </div>
@@ -206,16 +170,12 @@ export function GenerateNotesPage({
                     ocr={ocr}
                     modelId={ocrModelId}
                     onModelChange={setOcrModelId}
-                    disabled={
-                      isBatchRunning || transcription.status === 'running' || isContentProcessing
-                    }
+                    disabled={isBatchRunning || transcription.status === 'running'}
                   />
                   <div className="mt-6">
                     <OcrStatus
                       ocr={ocr}
-                      disabled={
-                        isBatchRunning || transcription.status === 'running' || isContentProcessing
-                      }
+                      disabled={isBatchRunning || transcription.status === 'running'}
                     />
                   </div>
                 </div>
@@ -226,7 +186,7 @@ export function GenerateNotesPage({
                     modelId={transcriptionModelId}
                     durationMs={durationMs}
                     status={transcription.status}
-                    disabled={isBatchRunning || isOcrRunning || isContentProcessing}
+                    disabled={isBatchRunning || isOcrRunning}
                     onLanguageChange={setLanguage}
                     onModelChange={setTranscriptionModelId}
                     onTranscribe={handleTranscribe}
@@ -239,29 +199,10 @@ export function GenerateNotesPage({
                       stageProgress={transcription.stageProgress}
                       chunkProgress={transcription.chunkProgress}
                       error={transcription.error}
-                      disabled={isBatchRunning || isOcrRunning || isContentProcessing}
+                      disabled={isBatchRunning || isOcrRunning}
                       onRetry={handleTranscribe}
                     />
                     <TranscriptionKeywordsPanel context={project.transcription?.keywordContext} />
-                  </div>
-                </div>
-
-                <div>
-                  <ContentProcessingPanel
-                    project={project}
-                    processing={processing}
-                    model={textModel}
-                    modelId={textModelId}
-                    onModelChange={handleTextModelChange}
-                    disabled={isBatchRunning || transcription.status === 'running' || isOcrRunning}
-                  />
-                  <div className="mt-6">
-                    <ContentProcessingStatus
-                      processing={processing}
-                      disabled={
-                        isBatchRunning || transcription.status === 'running' || isOcrRunning
-                      }
-                    />
                   </div>
                 </div>
               </div>
@@ -269,6 +210,7 @@ export function GenerateNotesPage({
 
             <AnalysisResultPreview
               slides={project.slides}
+              videoPath={sourceContext.source.path}
               onEdit={onOpenArticleReview}
               onSaveSlideResultEdits={onSaveSlideResultEdits}
               disabled={isProcessing}

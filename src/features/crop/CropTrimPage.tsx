@@ -2,6 +2,7 @@ import { ArrowRight } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { ArticleContextRow } from '../../components/ArticleContextRow'
+import { WorkflowBar } from '../../components/WorkflowBar'
 import { WorkflowPanelHeader } from '../../components/WorkflowPanelHeader'
 import type { WorkflowStep } from '../../lib/workflow'
 import type { CropRegion, MediaProject, PerspectiveCrop, VideoTrimRange } from '../../types/project'
@@ -115,14 +116,16 @@ function CropTrimEditor({
       />
 
       <section className="mx-auto flex w-[calc(100%-48px)] max-w-[1040px] flex-1 flex-col pb-12 md:w-[calc(100%-11.6vw)]">
+        <WorkflowBar
+          activeStep="crop"
+          maxReachedStep={maxReachedStep}
+          onStepClick={onStepClick}
+          disabled={editor.busy || editor.isDetecting}
+        />
         <div className="overflow-hidden rounded-[18px] border border-[#b7cbc0] bg-[#fbfcfa] shadow-[0_18px_52px_rgba(22,54,42,0.07)]">
           <WorkflowPanelHeader
-            activeStep="crop"
-            maxReachedStep={maxReachedStep}
-            onStepClick={onStepClick}
-            disabled={editor.busy || editor.isDetecting}
             eyebrow="01 / CROP & TRIM"
-            title="範囲を調整"
+            title="時間範囲と表示領域を設定"
             description="記事にする時間範囲と、スライドの切り出し領域を設定します。"
           />
 
@@ -144,17 +147,14 @@ function CropTrimEditor({
             )}
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#d8e1dc] px-5 py-4 md:px-7">
-            <p className="text-xs text-[#71807b]">
-              選択中: {editor.rows[0]?.start ?? '00:00'} — {editor.rows[0]?.end ?? '00:00'}
-            </p>
+          <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[#d8e1dc] px-5 py-4 md:px-7">
             <button
               className="inline-flex items-center gap-2 rounded-[9px] bg-[#1d6b50] px-4 py-3 text-xs font-semibold text-[#f3faf6] shadow-[0_7px_16px_rgba(29,107,80,0.17)] transition hover:bg-[#174d3c] disabled:cursor-not-allowed disabled:opacity-50"
               type="button"
               disabled={editor.busy || editor.isDetecting || editor.rows.length === 0}
               onClick={() => void editor.submit()}
             >
-              {editor.busy ? '保存中…' : '範囲を保存してスライド検出へ'}
+              {editor.busy ? '保存中…' : 'スライド区間を検出へ'}
               <ArrowRight size={14} />
             </button>
           </div>

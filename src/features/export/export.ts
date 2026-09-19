@@ -2,10 +2,11 @@ import { convertFileSrc } from '@tauri-apps/api/core'
 import { appLocalDataDir, dirname, join } from '@tauri-apps/api/path'
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { copyFile, ensureDirectory, writeTextFile } from '../../lib/tauri/filesystem'
-import { hasCurrentArticleSummary } from '../article/article'
+import { hasCurrentArticleSections, hasCurrentArticleSummary } from '../article/article'
 import {
   getActiveArticle,
   getActiveMediaSource,
+  type ArticleSection,
   type ArticleSummary,
   type MediaProject,
 } from '../../types/project'
@@ -60,6 +61,7 @@ export type ExportDocument = {
   sourceName: string
   durationMs: number
   summary?: ArticleSummary
+  articleSections?: ArticleSection[]
   sections: ExportSection[]
 }
 
@@ -97,6 +99,17 @@ function buildExportDocument(
   }
 
   const source = getActiveMediaSource(project)
+  const sections = project.slides.map((slide) => ({
+    id: slide.id,
+    index: slide.index,
+    startMs: slide.startMs,
+    endMs: slide.endMs,
+    imagePath: imagePathFor(slide.image.representativeFramePath ?? '', slide.index),
+    sourceImagePath: slide.image.representativeFramePath ?? '',
+    ocrText: slide.ocr?.rawText ?? '',
+    transcriptRaw: slide.transcript?.raw ?? '',
+    body: slide.transcript?.articleBody ?? '',
+  }))
 
   return {
     title: defaultArticleTitle(project),
@@ -106,17 +119,14 @@ function buildExportDocument(
       project.article?.summary && hasCurrentArticleSummary(project, project.article.summary.model)
         ? project.article.summary
         : undefined,
-    sections: project.slides.map((slide) => ({
-      id: slide.id,
-      index: slide.index,
-      startMs: slide.startMs,
-      endMs: slide.endMs,
-      imagePath: imagePathFor(slide.image.representativeFramePath ?? '', slide.index),
-      sourceImagePath: slide.image.representativeFramePath ?? '',
-      ocrText: slide.ocr?.rawText ?? '',
-      transcriptRaw: slide.transcript?.raw ?? '',
-      body: slide.transcript?.articleBody ?? '',
-    })),
+    articleSections:
+      project.article?.sections &&
+      project.article.sections.sections.length > 0 &&
+      (project.article.sections.model === 'manual' ||
+        hasCurrentArticleSections(project, project.article.sections.model))
+        ? project.article.sections.sections
+        : undefined,
+    sections,
   }
 }
 

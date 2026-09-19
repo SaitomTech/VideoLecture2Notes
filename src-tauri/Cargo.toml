@@ -1,10 +1,10 @@
 [package]
 name = "yomlecta"
-version = "0.19.0"
+version = "0.20.0"
 description = "A macOS app for turning lecture videos into structured notes"
 authors = ["SaitomTech"]
 license = "MIT"
-repository = "https://github.com/SaitomTech/VideoLecture2Notes"
+repository = "https://github.com/SaitomTech/Yomlecta"
 edition = "2021"
 rust-version = "1.88.0"
 

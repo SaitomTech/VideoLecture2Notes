@@ -1,4 +1,6 @@
-# Yomlecta
+<p align="center">
+  <img src="public/yomlecta-logo.png" alt="Yomlecta" width="420">
+</p>
 
 PowerPointやKeynoteなどのスライドを画面に投影した講演・講義動画を、**スライドごとの画像と、そのスライドで話された内容を読める記事**に変換するmacOSアプリです。
 
@@ -39,7 +41,7 @@ OpenAIを選択した処理では、選択した音声・画像・文字起こ�
 
 ### DMGから使う
 
-[Releases](https://github.com/SaitomTech/VideoLecture2Notes/releases)からDMGをダウンロードし、アプリを`Applications`へ移動して起動してください。
+[Releases](https://github.com/SaitomTech/Yomlecta/releases)からDMGをダウンロードし、アプリを`Applications`へ移動して起動してください。
 
 DMGからインストールして使う場合、Bun・Rust toolchain・Xcode Command Line Toolsは不要です。
 
