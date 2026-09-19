@@ -364,6 +364,10 @@ function App() {
       if (route.kind !== 'article' || !projectRef.current) return
       if (nextStep === 'import') return
       if (!canNavigateToWorkflowStep(projectRef.current.workflow.maxReachedStep, nextStep)) return
+      if (nextStep === 'export') {
+        await handleProjectStep('export')
+        return
+      }
       const requestId = ++navigationRequestRef.current
       const articleId = route.articleId
       const saved = await updateCurrentProject((current) => markProjectOpened(current, nextStep))
@@ -381,6 +385,7 @@ function App() {
       const articleId = route.articleId
       if (nextStep === 'export') {
         const saved = await updateCurrentProject((current) => markProjectOpened(current, nextStep))
+        if (saved) await regenerateArticleExport(saved)
         if (saved && requestId === navigationRequestRef.current)
           setRoute({ kind: 'article', articleId, step: nextStep })
         return

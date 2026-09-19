@@ -1,5 +1,12 @@
-import { ChevronDown, Download, RefreshCw } from 'lucide-react'
-import { useCallback, useState, type ChangeEvent, type SyntheticEvent } from 'react'
+import { ChevronDown, Download, RefreshCw, X } from 'lucide-react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type SyntheticEvent,
+} from 'react'
 import { AppHeader } from '../../components/AppHeader'
 import { ArticleContextRow } from '../../components/ArticleContextRow'
 import { WorkflowBar } from '../../components/WorkflowBar'
@@ -51,13 +58,35 @@ export function ExportPage({
   const [isDownloading, setIsDownloading] = useState(false)
   const [downloadMessage, setDownloadMessage] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [previewHeight, setPreviewHeight] = useState(520)
+  const [previewHeight, setPreviewHeight] = useState(420)
+  const [previewImage, setPreviewImage] = useState<string | null>(null)
+  const previewFrameRef = useRef<HTMLIFrameElement | null>(null)
+  const previewDialogRef = useRef<HTMLDialogElement | null>(null)
   const isRunning = exporter.status === 'running'
   const isBusy = isRunning || isDownloading
   const statusMessage = getStatusMessage(exporter)
   const progressPercent = exporter.progress.total
     ? Math.round((exporter.progress.completed / exporter.progress.total) * 100)
     : 0
+
+  useEffect(() => {
+    const handlePreviewMessage = (event: MessageEvent) => {
+      if (event.source !== previewFrameRef.current?.contentWindow) return
+      if (event.data?.type !== 'preview-image' || typeof event.data.src !== 'string') return
+      setPreviewImage(event.data.src)
+    }
+
+    window.addEventListener('message', handlePreviewMessage)
+    return () => window.removeEventListener('message', handlePreviewMessage)
+  }, [])
+
+  useEffect(() => {
+    const dialog = previewDialogRef.current
+    if (!dialog) return
+
+    if (previewImage && !dialog.open) dialog.showModal()
+    if (!previewImage && dialog.open) dialog.close()
+  }, [previewImage])
 
   const handleGenerate = useCallback(async () => {
     setSaveError(null)
@@ -107,16 +136,23 @@ export function ExportPage({
   }
 
   const handlePreviewLoad = (event: SyntheticEvent<HTMLIFrameElement>) => {
-    const previewDocument = event.currentTarget.contentDocument
+    const iframe = event.currentTarget
+    const previewDocument = iframe.contentDocument
     if (!previewDocument) return
 
-    setPreviewHeight(
-      Math.max(
-        420,
-        previewDocument.documentElement.scrollHeight,
-        previewDocument.body.scrollHeight,
-      ),
-    )
+    // Measure from a short viewport first. Otherwise scrollHeight can reflect
+    // the iframe's previous height and keep a large blank area forever.
+    iframe.style.height = '420px'
+    requestAnimationFrame(() => {
+      if (!iframe.isConnected) return
+      setPreviewHeight(
+        Math.max(
+          420,
+          previewDocument.documentElement.scrollHeight,
+          previewDocument.body.scrollHeight,
+        ),
+      )
+    })
   }
 
   return (
@@ -225,6 +261,7 @@ export function ExportPage({
 
             {exporter.previewHtml ? (
               <iframe
+                ref={previewFrameRef}
                 className="block min-h-[420px] w-full border-0 bg-[#fbfcfa]"
                 title="生成された記事"
                 srcDoc={exporter.previewHtml}
@@ -242,6 +279,32 @@ export function ExportPage({
             )}
           </div>
         </div>
+
+        {previewImage && (
+          <dialog
+            ref={previewDialogRef}
+            className="fixed m-auto max-h-[calc(100svh-48px)] max-w-[min(1280px,calc(100vw-48px))] rounded-[16px] border border-[#b7cbc0] bg-[#fbfcfa] p-6 shadow-[0_24px_80px_rgba(24,33,31,0.24)] backdrop:bg-[rgba(24,33,31,0.48)] backdrop:backdrop-blur-[2px]"
+            aria-label="画像プレビュー"
+            onCancel={(event) => {
+              event.preventDefault()
+              setPreviewImage(null)
+            }}
+          >
+            <button
+              className="absolute right-2.5 top-2.5 grid size-8 place-items-center rounded-full border border-[#b7cbc0] bg-[#fbfcfa] text-[#1d6b50] transition hover:bg-[#e2eee8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d6b50]/30"
+              type="button"
+              aria-label="閉じる"
+              onClick={() => setPreviewImage(null)}
+            >
+              <X size={18} />
+            </button>
+            <img
+              className="block max-h-[calc(100svh-96px)] max-w-full rounded-[8px] object-contain"
+              src={previewImage}
+              alt="拡大プレビュー"
+            />
+          </dialog>
+        )}
 
         {downloadMessage && (
           <p className="mt-4 text-xs text-[#1d6b50]" role="status">
